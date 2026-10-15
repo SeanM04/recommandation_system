@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from recommender.config import PopulationSettings, load_offers, load_settings
+from recommender.config import load_offers, load_settings
 from recommender.domain import (
     SEGMENTS,
     Context,
@@ -12,6 +12,7 @@ from recommender.domain import (
     is_payday_week,
     time_of_day_for_hour,
 )
+from recommender.simulator.settings import PopulationSettings, load_simulation_settings
 
 
 def make_customer(**overrides) -> Customer:
@@ -33,7 +34,6 @@ def make_customer(**overrides) -> Customer:
 def test_settings_load_and_resolve_paths() -> None:
     settings = load_settings()
     assert settings.seed == 42
-    assert settings.population.n_customers == 5000
     assert settings.paths.offers.is_absolute()
     assert settings.paths.offers.exists()
 
@@ -69,6 +69,15 @@ def test_offer_rejects_margin_above_price() -> None:
             margin_zar=50,
             eligible_segments=("student",),
         )
+
+
+def test_simulation_settings_are_separate_from_recommender_settings() -> None:
+    simulation = load_simulation_settings()
+    assert simulation.population.n_customers == 5000
+    assert simulation.ground_truth.is_absolute()
+    days = simulation.calendar.days()
+    assert (days[0], len(days)) == (date(2026, 9, 1), 60)
+    assert "ground_truth" not in load_settings().model_dump_json()
 
 
 def test_segment_mix_must_sum_to_one() -> None:

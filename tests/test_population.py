@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from recommender.config import load_settings
 from recommender.customers import read_customers
 from recommender.domain import DEVICE_TIERS, PROVINCES, SEGMENTS, TIMES_OF_DAY
 from recommender.simulator.population import (
@@ -12,8 +11,9 @@ from recommender.simulator.population import (
     sample_context,
     write_customers_csv,
 )
+from recommender.simulator.settings import load_simulation_settings
 
-SEGMENT_MIX = load_settings().population.segment_mix
+SEGMENT_MIX = load_simulation_settings().population.segment_mix
 
 
 @pytest.fixture(scope="module")

@@ -1,4 +1,4 @@
-"""Print the hidden take-up table per segment, before and after the behaviour shift.
+"""Print the hidden take-up rates and each segment's favourite offer.
 
 This is for humans reviewing the simulation. The recommender never reads it.
 
@@ -11,33 +11,53 @@ import pandas as pd
 
 from recommender.config import load_offers, load_settings
 from recommender.customers import read_customers
-from recommender.simulator.ground_truth import GroundTruth, segment_take_up_table
+from recommender.simulator.ground_truth import GroundTruth, take_up_table, winners
+from recommender.simulator.settings import load_simulation_settings
 
 
-def _print_table(title: str, table: pd.DataFrame) -> None:
-    print(f"\n{title}\n{'=' * len(title)}")
-    print((table * 100).round(1).T.fillna("-").to_string())
-    print("\nBest offer per segment:")
-    for segment, row in table.iterrows():
-        ranked = row.dropna().sort_values(ascending=False)
-        gap = ranked.iloc[0] / ranked.iloc[1]
-        print(
-            f"  {segment:<20} {ranked.index[0]:<22} {ranked.iloc[0]:6.1%}"
-            f"   (runner-up {ranked.index[1]} {ranked.iloc[1]:.1%}, x{gap:.2f})"
-        )
+def _heading(title: str) -> None:
+    print(f"\n{title}\n{'-' * len(title)}")
+
+
+def _favourites(table: pd.DataFrame, value_format: str) -> str:
+    best = winners(table)
+    lines = [
+        f"  {' / '.join(map(str, key)) if isinstance(key, tuple) else key:<32} "
+        f"{row.best:<22} {format(row.value, value_format):>8}   "
+        f"lead x{row.lead:.2f} over {row.runner_up}"
+        for key, row in best.iterrows()
+    ]
+    return "\n".join(lines)
 
 
 def main() -> None:
     settings = load_settings()
+    simulation = load_simulation_settings()
     offers = load_offers()
     customers = read_customers(settings.paths.customers)
-    truth = GroundTruth.from_yaml(settings.simulation.ground_truth, offers)
+    days = simulation.calendar.days()
+    truth = GroundTruth.from_yaml(simulation.ground_truth, offers)
+    margins = pd.Series({offer.offer_id: offer.margin_zar for offer in offers})
 
-    before = segment_take_up_table(truth, customers, offers, seed=settings.seed)
-    after = segment_take_up_table(truth.after_shift(), customers, offers, seed=settings.seed)
-    _print_table("True take-up rate % (before shift)", before)
-    _print_table("True take-up rate % (after shift)", after)
-    print(f"\nShift: {truth.shift_description}")
+    def table(world: GroundTruth, by: tuple[str, ...] = ("segment",)) -> pd.DataFrame:
+        return take_up_table(world, customers, offers, days, by=by, seed=settings.seed)
+
+    before = table(truth)
+    _heading("True take-up rate, % per offer shown in first position (before shift)")
+    print((before * 100).round(1).T.fillna("-").to_string())
+
+    _heading("Favourite by take-up")
+    print(_favourites(before, ".1%"))
+
+    _heading("Favourite by revenue (margin x take-up, R per offer shown)")
+    print(_favourites(before.mul(margins, axis=1), ".2f"))
+
+    _heading("Favourite by take-up, per segment / payday week")
+    print(_favourites(table(truth, ("segment", "is_payday_week")), ".1%"))
+
+    _heading("Favourite by take-up after the behaviour shift")
+    print(_favourites(table(truth.after_shift()), ".1%"))
+    print(f"\n  Shift: {truth.shift_description}")
 
 
 if __name__ == "__main__":

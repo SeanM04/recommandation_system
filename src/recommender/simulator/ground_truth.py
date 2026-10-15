@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields, replace
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -132,38 +132,51 @@ class GroundTruth:
         return self.probabilities(context, [offer])[offer.offer_id]
 
 
-def default_days(start: date = date(2026, 9, 1), n_days: int = 30) -> list[date]:
-    """A month of consecutive calendar days, covering both payday windows."""
-    return [start + timedelta(days=offset) for offset in range(n_days)]
-
-
-def segment_take_up_table(
+def take_up_table(
     truth: GroundTruth,
     customers: Sequence[Customer],
     offers: Sequence[Offer],
+    days: Sequence[date],
     *,
-    days: Sequence[date] | None = None,
+    by: Sequence[str] = ("segment",),
     samples_per_segment: int = 4000,
     seed: int = 0,
 ) -> pd.DataFrame:
-    """Average true take-up per (segment, offer) over realistic customers, days and times.
+    """Average true take-up per offer, grouped by context attributes (segment first).
 
-    This is the yardstick for "the best offer per segment". Ineligible offers are NaN.
+    Contexts are sampled like real app opens: random customers of each segment on random
+    days of the simulated calendar. This is the yardstick for "the best offer" per
+    segment, or per segment x payday with ``by=("segment", "is_payday_week")``.
+    Ineligible offers are NaN.
     """
-    days = list(days or default_days())
+    if not by or by[0] != "segment":
+        raise ValueError("group by 'segment' first: contexts are sampled per segment")
     rng = np.random.default_rng(seed)
-    table: dict[str, dict[str, float]] = {}
+    records = []
     for segment in SEGMENTS:
         members = [customer for customer in customers if customer.segment == segment]
         eligible = [offer for offer in offers if offer.is_eligible(segment)]
-        totals = dict.fromkeys((offer.offer_id for offer in eligible), 0.0)
         for _ in range(samples_per_segment):
             customer = members[rng.integers(len(members))]
             context = sample_context(customer, rng, days[rng.integers(len(days))])
-            for offer_id, p in truth.probabilities(context, eligible).items():
-                totals[offer_id] += p
-        table[segment] = {
-            offer_id: total / samples_per_segment for offer_id, total in totals.items()
-        }
+            keys = {attribute: getattr(context, attribute) for attribute in by}
+            records.append(keys | truth.probabilities(context, eligible))
     columns = [offer.offer_id for offer in offers]
-    return pd.DataFrame.from_dict(table, orient="index").reindex(columns=columns)
+    return pd.DataFrame(records).groupby(list(by)).mean().reindex(columns=columns)
+
+
+def winners(table: pd.DataFrame) -> pd.DataFrame:
+    """Best and runner-up offer per row of a take-up (or revenue) table.
+
+    ``lead`` is best / runner-up: how clearly the favourite wins.
+    """
+    rows = {}
+    for key, row in table.iterrows():
+        ranked = row.dropna().sort_values(ascending=False)
+        rows[key] = {
+            "best": ranked.index[0],
+            "value": ranked.iloc[0],
+            "runner_up": ranked.index[1],
+            "lead": ranked.iloc[0] / ranked.iloc[1],
+        }
+    return pd.DataFrame.from_dict(rows, orient="index")

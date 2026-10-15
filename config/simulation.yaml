@@ -1,0 +1,20 @@
+# Simulated world: synthetic population, hidden ground truth and calendar.
+# Read ONLY by the simulator and offline evaluation, never by the recommender.
+
+population:
+  n_customers: 5000
+  segment_mix:          # share of customers per segment (must sum to 1)
+    student: 0.22
+    young_professional: 0.28
+    family: 0.25
+    small_business: 0.10
+    pensioner: 0.15
+
+# Hidden "true" take-up probabilities and the response model.
+ground_truth: config/ground_truth.yaml
+
+# Simulated days. App opens are spread evenly across them, so the run covers two
+# salary paydays (25th) and two SASSA grant weeks (1st-7th).
+calendar:
+  start_date: 2026-09-01
+  n_days: 60

@@ -8,29 +8,32 @@ import pytest
 
 from recommender.config import PROJECT_ROOT, load_offers, load_settings
 from recommender.domain import SEGMENTS, Context, Customer
-from recommender.simulator.ground_truth import Effect, GroundTruth, segment_take_up_table
+from recommender.simulator.ground_truth import Effect, GroundTruth, take_up_table, winners
 from recommender.simulator.population import generate_customers
+from recommender.simulator.settings import load_simulation_settings
 
 SETTINGS = load_settings()
+SIMULATION = load_simulation_settings()
+DAYS = SIMULATION.calendar.days()
 OFFERS = load_offers()
 OFFERS_BY_ID = {offer.offer_id: offer for offer in OFFERS}
 
 
 @pytest.fixture(scope="module")
 def truth() -> GroundTruth:
-    return GroundTruth.from_yaml(SETTINGS.simulation.ground_truth, OFFERS)
+    return GroundTruth.from_yaml(SIMULATION.ground_truth, OFFERS)
 
 
 @pytest.fixture(scope="module")
 def customers() -> list[Customer]:
-    frame = generate_customers(5000, SETTINGS.population.segment_mix, seed=SETTINGS.seed)
+    frame = generate_customers(5000, SIMULATION.population.segment_mix, seed=SETTINGS.seed)
     return [Customer(**record) for record in frame.to_dict("records")]
 
 
 @pytest.fixture(scope="module")
 def tables(truth, customers) -> tuple[pd.DataFrame, pd.DataFrame]:
-    before = segment_take_up_table(truth, customers, OFFERS, samples_per_segment=2000)
-    after = segment_take_up_table(truth.after_shift(), customers, OFFERS, samples_per_segment=2000)
+    before = take_up_table(truth, customers, OFFERS, DAYS, samples_per_segment=2000)
+    after = take_up_table(truth.after_shift(), customers, OFFERS, DAYS, samples_per_segment=2000)
     return before, after
 
 
@@ -50,8 +53,8 @@ def make_context(segment: str = "family", **overrides) -> Context:
     return Context(**(fields | overrides))
 
 
-def best_offer(table: pd.DataFrame, segment: str) -> str:
-    return table.loc[segment].idxmax()
+def best_offer(table: pd.DataFrame, key: str | tuple) -> str:
+    return table.loc[key].idxmax()
 
 
 # --- probabilities -------------------------------------------------------------------
@@ -102,9 +105,8 @@ def test_each_segment_has_the_intended_favourite(tables) -> None:
 
 def test_best_offer_is_clearly_better_than_runner_up(tables) -> None:
     before, _ = tables
-    for segment in SEGMENTS:
-        ranked = before.loc[segment].dropna().sort_values(ascending=False)
-        assert ranked.iloc[0] > 1.2 * ranked.iloc[1], f"{segment} has no clear winner"
+    lead = winners(before)["lead"]
+    assert (lead > 1.2).all(), f"no clear winner: {lead[lead <= 1.2].to_dict()}"
 
 
 def test_behaviour_shift_makes_streaming_the_young_professional_favourite(truth, tables) -> None:
@@ -146,14 +148,24 @@ def _imported_modules(path: Path) -> set[str]:
     return names
 
 
-def test_recommender_code_never_imports_the_simulator() -> None:
+def _recommender_modules() -> list[Path]:
+    """Every module that serves recommendations (simulator and offline evaluation excluded)."""
     package = PROJECT_ROOT / "src" / "recommender"
-    allowed = {package / "simulator", package / "evaluation"}  # offline-only code
-    for path in package.rglob("*.py"):
-        if any(parent in allowed for parent in path.parents):
-            continue
+    offline = {package / "simulator", package / "evaluation"}
+    return [p for p in package.rglob("*.py") if not any(d in offline for d in p.parents)]
+
+
+def test_recommender_code_never_imports_the_simulator() -> None:
+    for path in _recommender_modules():
         leaks = {m for m in _imported_modules(path) if m.startswith("recommender.simulator")}
         assert not leaks, f"{path.relative_to(PROJECT_ROOT)} imports {leaks}"
+
+
+def test_recommender_code_never_mentions_the_hidden_config() -> None:
+    for path in _recommender_modules():
+        source = path.read_text(encoding="utf-8")
+        for secret in ("ground_truth", "simulation.yaml"):
+            assert secret not in source, f"{path.relative_to(PROJECT_ROOT)} mentions {secret}"
 
 
 def test_payday_context_flows_from_calendar(truth: GroundTruth, customers) -> None:

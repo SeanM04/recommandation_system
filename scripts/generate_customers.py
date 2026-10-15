@@ -10,17 +10,19 @@ from pathlib import Path
 
 from recommender.config import load_settings
 from recommender.simulator.population import generate_customers, write_customers_csv
+from recommender.simulator.settings import load_simulation_settings
 
 
 def main() -> None:
     settings = load_settings()
+    population = load_simulation_settings().population
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--n", type=int, default=settings.population.n_customers)
+    parser.add_argument("--n", type=int, default=population.n_customers)
     parser.add_argument("--seed", type=int, default=settings.seed)
     parser.add_argument("--out", type=Path, default=settings.paths.customers)
     args = parser.parse_args()
 
-    customers = generate_customers(args.n, settings.population.segment_mix, args.seed)
+    customers = generate_customers(args.n, population.segment_mix, args.seed)
     write_customers_csv(customers, args.out)
 
     print(f"Wrote {len(customers):,} customers to {args.out}")
