@@ -8,3 +8,23 @@ paths:
   offers: config/offers.yaml
   customers: data/customers.csv
   database: data/recommender.db
+
+recommendation:
+  number_of_offers: 3          # offers returned per app open
+  reward: binary               # binary (take-up) or margin (revenue-aware)
+  learn_from_ignored: false    # an ignored offer was probably never seen: no update
+  active_policy: thompson_segment_decay
+
+# Every policy the API can serve and the simulator compares, by name.
+#   context: global (one pool) | segment | segment_payday
+#   decay:   1 = never forget; 0.9998 = each update shrinks old evidence by 0.02%,
+#            so roughly the last 5,000 updates in a context count
+policies:
+  random:                  {type: random}
+  static:                  {type: static}
+  epsilon_greedy:          {type: epsilon_greedy, epsilon: 0.1}
+  epsilon_greedy_segment:  {type: epsilon_greedy, epsilon: 0.1, context: segment}
+  thompson:                {type: thompson}
+  thompson_segment:        {type: thompson, context: segment}
+  thompson_segment_payday: {type: thompson, context: segment_payday}
+  thompson_segment_decay:  {type: thompson, context: segment, decay: 0.9998}

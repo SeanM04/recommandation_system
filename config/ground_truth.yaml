@@ -136,13 +136,20 @@ response:
   attention: [1.0, 0.6, 0.4, 0.25, 0.15]
 
 # Applied mid-simulation (see Phase 4) to test whether a policy can adapt.
+# Two events on the same day test two kinds of change:
+#   - a rarely shown offer becomes a hit (streaming for young professionals);
+#   - a well-known runner-up overtakes the favourite (electricity for families).
+# The second is the one that needs forgetting: the model is confident about the old rates.
 behaviour_shift:
   description: >-
-    A new streaming bundle goes viral with young professionals and partly
-    cannibalises their mid-size data bundle.
+    A streaming bundle goes viral with young professionals and partly cannibalises
+    their 5GB data bundle, and an electricity tariff hike makes the cashback offer
+    families' first choice.
   base_take_up:
     young_professional:
       streaming_bundle: 0.20
       data_5gb: 0.08
     student:
       streaming_bundle: 0.12
+    family:
+      electricity_cashback: 0.20

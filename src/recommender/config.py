@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from recommender.domain import Offer
 
@@ -31,9 +31,43 @@ class PathSettings(BaseModel):
         return resolve_path(path)
 
 
+class PolicySpec(BaseModel):
+    """One configured policy. Settings that don't apply to its type are ignored."""
+
+    type: Literal["random", "static", "epsilon_greedy", "thompson"]
+    context: Literal["global", "segment", "segment_payday"] = "global"
+    decay: float = Field(1.0, gt=0, le=1)  # 1 = never forget
+    epsilon: float = Field(0.1, ge=0, le=1)
+    epsilon_decay: float = Field(1.0, gt=0, le=1)
+    min_epsilon: float = Field(0.0, ge=0, le=1)
+
+
+class RecommendationSettings(BaseModel):
+    number_of_offers: int = Field(3, ge=1)
+    reward: Literal["binary", "margin"] = "binary"
+    learn_from_ignored: bool = False
+    active_policy: str
+
+
 class Settings(BaseModel):
     seed: int
     paths: PathSettings
+    recommendation: RecommendationSettings
+    policies: dict[str, PolicySpec]
+
+    @model_validator(mode="after")
+    def _active_policy_is_configured(self) -> Settings:
+        if self.recommendation.active_policy not in self.policies:
+            raise ValueError(
+                f"active_policy {self.recommendation.active_policy!r} is not in policies"
+            )
+        return self
+
+    @property
+    def database_url(self) -> str:
+        """``$RECOMMENDER_DATABASE_URL`` (e.g. Postgres), else the local SQLite file."""
+        default = f"sqlite:///{self.paths.database.as_posix()}"
+        return os.environ.get("RECOMMENDER_DATABASE_URL", default)
 
 
 def read_yaml(path: Path) -> Any:

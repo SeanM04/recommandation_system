@@ -143,11 +143,13 @@ def test_revenue_favourites_are_clear_and_differ_from_take_up(tables) -> None:
     assert best_offer(revenue, "pensioner") == "funeral_cover"  # take-up: airtime
 
 
-def test_behaviour_shift_makes_streaming_the_young_professional_favourite(truth, tables) -> None:
+def test_behaviour_shift_changes_two_favourites(truth, tables) -> None:
     before, after = tables
     assert best_offer(before, "young_professional") != "streaming_bundle"
     assert best_offer(after, "young_professional") == "streaming_bundle"
-    for segment in ("family", "small_business", "pensioner"):
+    assert best_offer(before, "family") == "funeral_cover"
+    assert best_offer(after, "family") == "electricity_cashback"  # a well-known runner-up
+    for segment in ("student", "small_business", "pensioner"):
         assert best_offer(after, segment) == best_offer(before, segment)
     assert not truth.is_shifted  # after_shift() returns a new object
     assert truth.after_shift().is_shifted
