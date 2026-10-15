@@ -1,0 +1,105 @@
+# Offer catalogue for a VodaPay-style telco / fintech super-app (South Africa).
+#
+# price_zar          what the customer pays (for cover products: the monthly premium;
+#                    for the savings pocket: the minimum opening deposit)
+# margin_zar         expected contribution per take-up, used by the revenue-aware reward
+# eligible_segments  business guardrail: an offer is never shown outside these segments
+#
+# Prices and margins are illustrative, not quotes from any real provider.
+
+offers:
+  - offer_id: data_1gb
+    name: 1GB Data Bundle (30 days)
+    category: data
+    price_zar: 85
+    margin_zar: 30
+    eligible_segments: [student, young_professional, family, small_business, pensioner]
+    description: Entry-level monthly data for WhatsApp and browsing.
+
+  - offer_id: data_5gb
+    name: 5GB Data Bundle (30 days)
+    category: data
+    price_zar: 199
+    margin_zar: 70
+    eligible_segments: [student, young_professional, family, small_business, pensioner]
+    description: Mid-size monthly data for social media and light streaming.
+
+  - offer_id: data_20gb
+    name: 20GB Data Bundle (30 days)
+    category: data
+    price_zar: 449
+    margin_zar: 150
+    eligible_segments: [student, young_professional, family, small_business]
+    description: Heavy-use monthly data for hotspotting and video calls.
+
+  - offer_id: airtime_r50_bonus
+    name: R50 Airtime + 10% Bonus
+    category: airtime
+    price_zar: 50
+    margin_zar: 4
+    eligible_segments: [student, young_professional, family, small_business, pensioner]
+    description: Buy R50 airtime in the app and get R5 extra.
+
+  - offer_id: electricity_cashback
+    name: Prepaid Electricity with 5% Cashback
+    category: utilities
+    price_zar: 300
+    margin_zar: 9
+    eligible_segments: [young_professional, family, small_business, pensioner]
+    description: Buy a prepaid electricity token and earn 5% back in the wallet.
+
+  - offer_id: paylater_voucher
+    name: Pay Later "Buy Now" R500 Voucher
+    category: credit
+    price_zar: 500
+    margin_zar: 45
+    eligible_segments: [young_professional, family, small_business]
+    description: Shop now and pay in three interest-free instalments.
+
+  - offer_id: funeral_cover
+    name: Family Funeral Cover (R20 000 payout)
+    category: insurance
+    price_zar: 99
+    margin_zar: 40
+    eligible_segments: [young_professional, family, small_business, pensioner]
+    description: Monthly cover for the main member, spouse and children.
+
+  - offer_id: device_insurance
+    name: Smartphone Insurance
+    category: insurance
+    price_zar: 79
+    margin_zar: 30
+    eligible_segments: [student, young_professional, family, small_business]
+    description: Monthly cover against theft, loss and a cracked screen.
+
+  - offer_id: savings_pocket
+    name: Savings Pocket (7.5% interest)
+    category: savings
+    price_zar: 100
+    margin_zar: 15
+    eligible_segments: [student, young_professional, family, small_business, pensioner]
+    description: Ring-fence money in the wallet and earn daily interest.
+
+  - offer_id: streaming_bundle
+    name: Music + Video Streaming Bundle (incl. 3GB)
+    category: entertainment
+    price_zar: 129
+    margin_zar: 35
+    eligible_segments: [student, young_professional, family]
+    description: Music and video streaming subscriptions with 3GB of streaming data.
+
+  - offer_id: food_delivery_voucher
+    name: R100 Food Delivery Voucher
+    category: lifestyle
+    price_zar: 100
+    margin_zar: 12
+    eligible_segments: [student, young_professional, family]
+    description: R100 off your next food-delivery order.
+
+  - offer_id: roaming_pack
+    name: SADC Roaming Pack (1GB + 30 min)
+    category: travel
+    price_zar: 249
+    margin_zar: 90
+    eligible_segments: [young_professional, family, small_business]
+    description: Data and calls while travelling in neighbouring SADC countries.

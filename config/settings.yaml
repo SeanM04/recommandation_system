@@ -1,0 +1,22 @@
+# Global settings. Every random draw is driven by `seed`, so runs are reproducible.
+seed: 42
+
+# Relative paths are resolved against the project root.
+paths:
+  offers: config/offers.yaml
+  customers: data/customers.csv
+  database: data/recommender.db
+
+population:
+  n_customers: 5000
+  segment_mix:          # share of customers per segment (must sum to 1)
+    student: 0.22
+    young_professional: 0.28
+    family: 0.25
+    small_business: 0.10
+    pensioner: 0.15
+
+simulation:
+  # Hidden "true" take-up probabilities. Read ONLY by the simulator and the offline
+  # regret oracle, never by the recommender.
+  ground_truth: config/ground_truth.yaml
