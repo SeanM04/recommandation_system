@@ -49,6 +49,7 @@ PAGES = [
     ("architecture.html", "Architecture"),
     ("simulation.html", "Simulated world"),
     ("algorithms.html", "Policies"),
+    ("api.html", "API"),
     ("workflows.html", "Workflows"),
     ("decisions.html", "Decisions"),
     ("stack.html", "Tools & quality"),
@@ -72,7 +73,7 @@ PHASES = [
     (
         3,
         "Real-time API",
-        "planned",
+        "built",
         "/invocations and /response with validation, idempotency, an event log, policy "
         "switching and latency timing.",
     ),
@@ -101,7 +102,7 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
     ("Python", None, "Language", "built",
      "Readable, typed code; the bandit maths is plain Python and NumPy."),
     ("FastAPI", "fastapi", "Real-time API", "built",
-     "Pydantic validation and OpenAPI docs out of the box. Serves /health today."),
+     "Eight endpoints with Pydantic validation and interactive docs generated at /docs."),
     ("Uvicorn", "uvicorn", "API server", "built",
      "The standard ASGI server for FastAPI (`make run`)."),
     ("Pydantic", "pydantic", "Validation", "built",
@@ -132,8 +133,8 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
      "Used when no Postgres URL is configured, so a clean machine runs with no server."),
     ("python-dotenv", "python-dotenv", "Local secrets", "built",
      "Loads the database URL from a git-ignored `.env` file."),
-    ("Requests", "requests", "HTTP client", "planned",
-     "The simulator and dashboard call the API the way an app would."),
+    ("Requests", "requests", "HTTP client", "built",
+     "The latency benchmark (and later the simulator) call the API as an app would."),
     ("Streamlit", "streamlit", "Dashboard", "planned",
      "Python-only dashboards; quick to build five pages."),
     ("Plotly", "plotly", "Charts", "planned",
@@ -144,7 +145,8 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
 # fmt: on
 
 TEST_FILES = {
-    "test_api.py": "API endpoints",
+    "test_api.py": "API: invocations, responses, idempotency, per-request policy, errors, "
+    "state and metrics",
     "test_domain.py": "Configuration, offer validation, calendar and context helpers",
     "test_population.py": "Synthetic population: reproducibility, realism, CSV round trip",
     "test_ground_truth.py": "Hidden truth, segment stories, payday, revenue, response "
@@ -671,6 +673,42 @@ def block_rewards(src: Sources, page: str) -> str:
     return table(headers, rows, numeric=(1, 2, 3, 4, 5)) + "\n" + note
 
 
+def block_endpoints(src: Sources, page: str) -> str:
+    from recommender.api.main import create_app  # routes only; no database connection
+
+    rows = []
+    for route in create_app().routes:
+        methods = getattr(route, "methods", None)
+        if not methods or route.path.startswith(("/docs", "/openapi", "/redoc")):
+            continue
+        method = sorted(methods - {"HEAD"})[0]
+        summary = (inspect.getdoc(route.endpoint) or "").split("\n\n")[0].replace("\n", " ")
+        rows.append(
+            [f"<code>{method}</code>", f"<code>{escape(route.path)}</code>", escape(summary)]
+        )
+    return table(["Method", "Path", "What it does"], rows)
+
+
+def block_event_schema(src: Sources, page: str) -> str:
+    from recommender.events.log import EVENT_TABLES
+
+    rows = []
+    for event_table in EVENT_TABLES:
+        for column in event_table.columns:
+            keys = ["PK"] if column.primary_key else []
+            keys += ["FK"] if column.foreign_keys else []
+            rows.append(
+                [
+                    f"<code>{event_table.name}</code>",
+                    f"<code>{column.name}</code>",
+                    escape(str(column.type)),
+                    " ".join(keys),
+                    "yes" if column.nullable and not column.primary_key else "no",
+                ]
+            )
+    return table(["Table", "Column", "Type", "Key", "Nullable"], rows)
+
+
 BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "sidenav": block_sidenav,
     "phases": block_phases,
@@ -693,6 +731,8 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "code-egreedy": block_code_egreedy,
     "code-update": block_code_update,
     "code-static": block_code_static,
+    "endpoints": block_endpoints,
+    "event-schema": block_event_schema,
 }
 
 

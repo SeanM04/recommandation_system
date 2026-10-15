@@ -23,6 +23,7 @@
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
+<li><a href="api.html">API</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html" aria-current=page>Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -31,7 +32,7 @@
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
-<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
@@ -294,6 +295,23 @@
 <tr><td>P12</td><td><code>alpha</code> and <code>beta</code> are <strong>generated columns</strong> (<code>GENERATED ALWAYS AS (1 + total_reward) STORED</code> and <code>1 + pulls - total_reward</code>), computed by the database.</td><td>The database itself guarantees the Beta belief matches the counts, for anyone querying the table directly.</td></tr>
 <tr><td>P13</td><td>The simulation loop lives in <code>recommender/simulator/engine.py</code> (fast mode: the policy is called directly) and is shared by the forgetting experiment and the tests. Phase 4 adds the same loop through the API.</td><td>One loop, not a copy per script, so experiments and tests measure the same thing.</td></tr>
 <tr><td>P14</td><td>One list of context modes (<code>CONTEXT_MODES</code> in <code>domain.py</code>), used by the policies and by settings validation. The policy attribute is <code>context_mode</code>, so it is never confused with a <code>Context</code> object.</td><td>Removes a duplicate list that could drift, and a name a reviewer would trip over.</td></tr>
+</tbody></table></div>
+<h3 id="log-phase-3-real-time-api">Phase 3: Real-time API</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>A1</td><td>The event log is three normalised tables: <code>invocations</code> (one row per app open, with the full context as JSON), <code>impressions</code> (one row per offer shown: position and score) and <code>responses</code> (one row per outcome).</td><td>Plain SQL can answer "take-up by position, offer, policy or segment" without unpacking blobs, and the nightly aggregation job (Phase 6) has clean inputs. The stored context is exactly what the policy learns from when the response arrives.</td></tr>
+<tr><td>A2</td><td><strong>Idempotency is enforced by the database.</strong> <code>responses</code> has the primary key <code>(invocation_id, offer_id)</code>, and the insert is <code>ON CONFLICT DO NOTHING</code>; zero rows written means a duplicate, answered with 409.</td><td>Correct even when two copies of the same response arrive at the same moment, or land on different API workers. A read-then-check in Python would not be.</td></tr>
+<tr><td>A3</td><td><strong>Log first, then learn.</strong> A response is written to the event log before the model is updated.</td><td>If the update fails, the record survives, and the options store can be rebuilt by replaying <code>responses</code>. The log is the source of truth; the model is derived from it.</td></tr>
+<tr><td>A4</td><td>The policy that served an invocation is stored with it and is the one that learns from its responses.</td><td>A/B arms chosen with <code>?policy=</code> learn only from their own traffic, so comparisons stay clean.</td></tr>
+<tr><td>A5</td><td>Customers live in a <code>customers</code> table. <code>make data</code> loads it, the API does one primary-key lookup per request, and an empty table is filled from <code>data/customers.csv</code> on first start.</td><td>Real profile lookups instead of an in-memory file. This resolves the Phase 1 item to move customers into the database.</td></tr>
+<tr><td>A6</td><td>The moment of an app open is "now" in <code>Africa/Johannesburg</code> (the <code>timezone</code> setting). A request may override <code>day</code>, <code>time_of_day</code> and <code>is_payday_week</code>, and the override is logged with the invocation.</td><td>South African paydays and times of day are local. The simulator (Phase 4) and the dashboard need to replay specific days.</td></tr>
+<tr><td>A7</td><td>Error handling: 404 for an unknown customer, invocation, offer, policy or segment; 409 for a duplicate response; 422 for a malformed body, an unknown field (<code>extra="forbid"</code>), too many offers, or an offer that was not shown in that invocation. Every error has a readable <code>detail</code>.</td><td>Clients get a precise reason, and silent mistakes such as a typo'd field name fail loudly instead of being ignored.</td></tr>
+<tr><td>A8</td><td>The static baseline is fitted at startup from every reward in the log, then frozen until the next restart.</td><td>A restart plays the role of the nightly batch retrain, which is exactly the behaviour being compared against.</td></tr>
+<tr><td>A9</td><td>Endpoints are synchronous, so FastAPI runs them on a thread pool. Learning is atomic in the store (P11), and each policy's ranking holds a per-policy lock because NumPy random generators are not thread-safe.</td><td>Correct under concurrent requests without async database drivers.</td></tr>
+<tr><td>A10</td><td>Timing middleware adds an <code>X-Response-Time-ms</code> header, writes a JSON log line per request, and keeps a rolling p50/p95 per endpoint for <code>/metrics</code>. <strong>Measured</strong> by <code>make benchmark</code> (a real uvicorn server, Postgres 18, real HTTP, a throwaway <code>benchmark</code> schema), with 1,000 app opens and 3,000 responses from a sequential client after 20 warm-up opens. Client-side p95 was 12.4 ms for <code>/invocations</code> and 13.5 ms for <code>/response</code>; server-side p95 was 10.1 ms and 11.2 ms.</td><td>The brief's target is p95 under 50 ms locally; it is met with roughly 4× headroom. The number comes from a rerunnable script, not an estimate.</td></tr>
+<tr><td>A11</td><td>Logs are JSON lines (<code>recommender/observability.py</code>), and uvicorn's own access log is turned off (<code>--no-access-log</code>) because the middleware logs every request.</td><td>One structured line per request that a log pipeline can parse; Phase 6 builds on this.</td></tr>
+<tr><td>A12</td><td>Added <code>GET /customers</code> (a few ids, optionally per segment), which the brief does not list.</td><td>Needed to try the API by hand and for the dashboard's "pick a customer" page.</td></tr>
 </tbody></table></div>
 <h3 id="log-database">Database</h3>
 <div class="table-wrap"><table class="decision-log">

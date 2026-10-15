@@ -52,6 +52,23 @@ Ambiguities in the brief, the default I picked, and why. Newest at the bottom of
 | P13 | The simulation loop lives in `recommender/simulator/engine.py` (fast mode: the policy is called directly) and is shared by the forgetting experiment and the tests. Phase 4 adds the same loop through the API. | One loop, not a copy per script, so experiments and tests measure the same thing. |
 | P14 | One list of context modes (`CONTEXT_MODES` in `domain.py`), used by the policies and by settings validation. The policy attribute is `context_mode`, so it is never confused with a `Context` object. | Removes a duplicate list that could drift, and a name a reviewer would trip over. |
 
+## Phase 3: Real-time API
+
+| # | Decision | Why |
+|---|----------|-----|
+| A1 | The event log is three normalised tables: `invocations` (one row per app open, with the full context as JSON), `impressions` (one row per offer shown: position and score) and `responses` (one row per outcome). | Plain SQL can answer "take-up by position, offer, policy or segment" without unpacking blobs, and the nightly aggregation job (Phase 6) has clean inputs. The stored context is exactly what the policy learns from when the response arrives. |
+| A2 | **Idempotency is enforced by the database.** `responses` has the primary key `(invocation_id, offer_id)`, and the insert is `ON CONFLICT DO NOTHING`; zero rows written means a duplicate, answered with 409. | Correct even when two copies of the same response arrive at the same moment, or land on different API workers. A read-then-check in Python would not be. |
+| A3 | **Log first, then learn.** A response is written to the event log before the model is updated. | If the update fails, the record survives, and the options store can be rebuilt by replaying `responses`. The log is the source of truth; the model is derived from it. |
+| A4 | The policy that served an invocation is stored with it and is the one that learns from its responses. | A/B arms chosen with `?policy=` learn only from their own traffic, so comparisons stay clean. |
+| A5 | Customers live in a `customers` table. `make data` loads it, the API does one primary-key lookup per request, and an empty table is filled from `data/customers.csv` on first start. | Real profile lookups instead of an in-memory file. This resolves the Phase 1 item to move customers into the database. |
+| A6 | The moment of an app open is "now" in `Africa/Johannesburg` (the `timezone` setting). A request may override `day`, `time_of_day` and `is_payday_week`, and the override is logged with the invocation. | South African paydays and times of day are local. The simulator (Phase 4) and the dashboard need to replay specific days. |
+| A7 | Error handling: 404 for an unknown customer, invocation, offer, policy or segment; 409 for a duplicate response; 422 for a malformed body, an unknown field (`extra="forbid"`), too many offers, or an offer that was not shown in that invocation. Every error has a readable `detail`. | Clients get a precise reason, and silent mistakes such as a typo'd field name fail loudly instead of being ignored. |
+| A8 | The static baseline is fitted at startup from every reward in the log, then frozen until the next restart. | A restart plays the role of the nightly batch retrain, which is exactly the behaviour being compared against. |
+| A9 | Endpoints are synchronous, so FastAPI runs them on a thread pool. Learning is atomic in the store (P11), and each policy's ranking holds a per-policy lock because NumPy random generators are not thread-safe. | Correct under concurrent requests without async database drivers. |
+| A10 | Timing middleware adds an `X-Response-Time-ms` header, writes a JSON log line per request, and keeps a rolling p50/p95 per endpoint for `/metrics`. **Measured** by `make benchmark` (a real uvicorn server, Postgres 18, real HTTP, a throwaway `benchmark` schema), with 1,000 app opens and 3,000 responses from a sequential client after 20 warm-up opens. Client-side p95 was 12.4 ms for `/invocations` and 13.5 ms for `/response`; server-side p95 was 10.1 ms and 11.2 ms. | The brief's target is p95 under 50 ms locally; it is met with roughly 4× headroom. The number comes from a rerunnable script, not an estimate. |
+| A11 | Logs are JSON lines (`recommender/observability.py`), and uvicorn's own access log is turned off (`--no-access-log`) because the middleware logs every request. | One structured line per request that a log pipeline can parse; Phase 6 builds on this. |
+| A12 | Added `GET /customers` (a few ids, optionally per segment), which the brief does not list. | Needed to try the API by hand and for the dashboard's "pick a customer" page. |
+
 ## Database
 
 | # | Decision | Why |

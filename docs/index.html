@@ -23,6 +23,7 @@
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
+<li><a href="api.html">API</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -31,7 +32,7 @@
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
-<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
@@ -59,7 +60,7 @@
 <div><dt>synthetic customers</dt><dd>5,000</dd></div>
 <div><dt>simulated days</dt><dd>60</dd></div>
 <div><dt>context effects</dt><dd>14</dd></div>
-<div><dt>automated tests</dt><dd>88</dd></div>
+<div><dt>automated tests</dt><dd>109</dd></div>
 </dl>
 <!-- END generated:facts -->
   <p class="source">From config/, the simulator and tests/ · rebuilt by <code>make docs</code></p>
@@ -82,7 +83,7 @@
 <ol class="phase-list">
 <li><span class="n">Phase 1</span><b>Domain &amp; data</b><span class="chip built">Built</span><p>Offer catalogue, synthetic customers, hidden ground truth and the response model.</p></li>
 <li><span class="n">Phase 2</span><b>Algorithms</b><span class="chip built">Built</span><p>Random, static, epsilon-greedy and Thompson sampling policies, contextual keys, forgetting, pluggable rewards and the options store.</p></li>
-<li><span class="n">Phase 3</span><b>Real-time API</b><span class="chip planned">Planned</span><p>/invocations and /response with validation, idempotency, an event log, policy switching and latency timing.</p></li>
+<li><span class="n">Phase 3</span><b>Real-time API</b><span class="chip built">Built</span><p>/invocations and /response with validation, idempotency, an event log, policy switching and latency timing.</p></li>
 <li><span class="n">Phase 4</span><b>Simulator</b><span class="chip planned">Planned</span><p>50,000 app opens through the API or in fast mode, with the behaviour shift halfway.</p></li>
 <li><span class="n">Phase 5</span><b>Evaluation &amp; dashboard</b><span class="chip planned">Planned</span><p>Take-up, revenue, regret against an oracle and convergence; a five-page dashboard.</p></li>
 <li><span class="n">Phase 6</span><b>Quality &amp; delivery</b><span class="chip planned">Planned</span><p>Docker, JSON logging, README and WRITEUP, and an optional nightly aggregation job.</p></li>
@@ -96,6 +97,7 @@
     <li><a href="architecture.html">Architecture</a><p>Components and how they talk, the life of one request, and how the hidden truth is kept away from the recommender.</p></li>
     <li><a href="simulation.html">Simulated world</a><p>Offers, customers, how a true take-up probability is computed, what each segment prefers, the behaviour shift and how customers respond to a list.</p></li>
     <li><a href="algorithms.html">Policies</a><p>How each bandit ranks and learns, with the code itself: Thompson sampling, epsilon-greedy, forgetting, rewards and the baselines.</p></li>
+    <li><a href="api.html">API</a><p>Endpoints, curl examples, error codes, the event log and the measured latency.</p></li>
     <li><a href="workflows.html">Workflows</a><p>The command pipeline, the simulation loop and how each phase is built, tested and committed.</p></li>
     <li><a href="decisions.html">Decisions</a><p>Decision trees for the learning approach and the update rule, plus the full decision log.</p></li>
     <li><a href="stack.html">Tools &amp; quality</a><p>Every tool, its version and why it was chosen; quality gates and the full test inventory.</p></li>
@@ -106,7 +108,8 @@
   <h2 id="run">Run it</h2>
 <pre><code>make install   # dependencies and the package (editable)
 make db        # tables in Postgres (from .env) or a local SQLite file
-make data      # 5,000 synthetic customers -> data/customers.csv
+make data      # 5,000 synthetic customers -> data/customers.csv and the database
+make run       # the API on http://localhost:8000 (interactive docs at /docs)
 make truth     # print the hidden take-up rates (simulator only)
 make test      # full test suite
 make docs      # rebuild the data tables in these pages</code></pre>

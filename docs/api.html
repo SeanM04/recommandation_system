@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender API</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Endpoints, examples, errors, the event log and measured latency of the real-time recommender API.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
+<li><a href="api.html" aria-current=page>API</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
+<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">API · Phase 3</p>
+  <h1>The real-time recommender API</h1>
+  <p class="lede">Two calls do the work: ask for offers when a customer opens the app, then report what happened to each offer. The model learns from every response before the next request arrives.</p>
+  <ul class="toc">
+    <li><a href="#run">Run it</a></li>
+    <li><a href="#endpoints">Endpoints</a></li>
+    <li><a href="#examples">Examples</a></li>
+    <li><a href="#errors">Errors</a></li>
+    <li><a href="#events">Event log</a></li>
+    <li><a href="#latency">Latency</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="run">
+  <div class="section-head"><h2 id="run">Run it</h2><span class="chip built">Built</span></div>
+<pre><code>make db      # tables in Postgres (Telco_Dynamic_Recomender) or SQLite
+make data    # 5,000 customers into data/customers.csv and the customers table
+make run     # API on http://localhost:8000, interactive docs at /docs</code></pre>
+  <p>FastAPI also serves an interactive version of every endpoint at <code>/docs</code>, generated from the same Pydantic schemas the API validates with.</p>
+</section>
+
+<section aria-labelledby="endpoints">
+  <h2 id="endpoints">Endpoints</h2>
+<!-- BEGIN generated:endpoints -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">What it does</th></tr></thead>
+<tbody>
+<tr><td><code>GET</code></td><td><code>/health</code></td><td>Liveness and readiness: is the database reachable, and what is being served.</td></tr>
+<tr><td><code>GET</code></td><td><code>/offers</code></td><td>The offer catalogue.</td></tr>
+<tr><td><code>GET</code></td><td><code>/customers</code></td><td>A few customer ids, for trying the API out.</td></tr>
+<tr><td><code>POST</code></td><td><code>/invocations</code></td><td>Rank offers for one app open, and log the invocation and every offer shown.</td></tr>
+<tr><td><code>POST</code></td><td><code>/response</code></td><td>Record what happened to one shown offer, and update the model immediately.</td></tr>
+<tr><td><code>GET</code></td><td><code>/policies</code></td><td>Every configured policy; any of them can serve a request via ?policy=.</td></tr>
+<tr><td><code>GET</code></td><td><code>/policies/{name}/state</code></td><td>What a policy has learned: its rows in the options store.</td></tr>
+<tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Per-policy take-up and revenue from the event log; latency per endpoint.</td></tr>
+</tbody></table></div>
+<!-- END generated:endpoints -->
+  <p class="source">From the FastAPI app's routes and docstrings · rebuilt by make docs</p>
+</section>
+
+<section aria-labelledby="examples">
+  <h2 id="examples">Examples</h2>
+  <h3>Ask for offers</h3>
+<pre><code>curl -X POST http://localhost:8000/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id": "C00042", "channel": "app", "number_of_offers": 3}'</code></pre>
+<pre><code>{
+  "invocation_id": "6f1c2a9e-1b0e-4c8e-9d4f-2f7a0c3b5e11",
+  "policy": "thompson_segment_decay",
+  "customer_id": "C00042",
+  "context": {"segment": "student", "time_of_day": "evening", "day_of_week": "thursday",
+              "is_payday_week": false, "channel": "app", ...},
+  "offers": [
+    {"rank": 1, "offer_id": "data_1gb", "name": "1GB Data Bundle (30 days)", "score": 0.214, ...},
+    {"rank": 2, "offer_id": "data_5gb", "score": 0.131, ...},
+    {"rank": 3, "offer_id": "airtime_r50_bonus", "score": 0.097, ...}
+  ]
+}</code></pre>
+  <p>Add <code>?policy=static</code> (or any name from <code>GET /policies</code>) to serve one request with another policy, for an A/B test. Add a <code>context</code> object to replay a specific moment: <code>{"day": "2026-09-26", "time_of_day": "night"}</code>.</p>
+
+  <h3>Report what happened</h3>
+<pre><code>curl -X POST http://localhost:8000/response \
+  -H "Content-Type: application/json" \
+  -d '{"invocation_id": "6f1c2a9e-...", "offer_id": "data_1gb", "outcome": "taken_up"}'</code></pre>
+<pre><code>{"invocation_id": "6f1c2a9e-...", "offer_id": "data_1gb", "outcome": "taken_up",
+ "policy": "thompson_segment_decay", "reward": 1.0, "model_updated": true}</code></pre>
+  <p>Send one response per shown offer: <code>taken_up</code>, <code>viewed</code> (seen, not taken) or <code>ignored</code> (not noticed). An ignored offer is logged but does not update the model by default.</p>
+
+  <h3>See what the model learned</h3>
+<pre><code>curl "http://localhost:8000/policies/thompson_segment_decay/state?context_key=student"
+curl http://localhost:8000/metrics</code></pre>
+</section>
+
+<section aria-labelledby="errors">
+  <h2 id="errors">Errors</h2>
+  <p>Every error has a <code>detail</code> that says what was wrong.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="num">Status</th><th>When</th><th>Example detail</th></tr></thead>
+      <tbody>
+        <tr><td class="num">404</td><td>Unknown customer, invocation, offer, policy or segment</td><td><code>unknown customer 'C99999'</code></td></tr>
+        <tr><td class="num">409</td><td>A response for this invocation and offer was already recorded</td><td><code>a response for offer 'data_1gb' in invocation '…' was already recorded</code></td></tr>
+        <tr><td class="num">422</td><td>Malformed body, unknown field, bad enum value, too many offers, or an offer that was not shown in that invocation</td><td><code>offer 'data_20gb' was not shown in invocation '…'</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="events">
+  <div class="section-head"><h2 id="events">Event log</h2><span class="chip built">Built</span></div>
+  <p>Every invocation, every offer shown and every response is written to Postgres before the model learns, so the log is the source of truth and the options store can be rebuilt from it. The response table's primary key is what makes <code>/response</code> idempotent: the database itself refuses a second row for the same invocation and offer.</p>
+<!-- BEGIN generated:event-schema -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Table</th><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Key</th><th scope="col">Nullable</th></tr></thead>
+<tbody>
+<tr><td><code>invocations</code></td><td><code>invocation_id</code></td><td>VARCHAR(36)</td><td>PK</td><td>no</td></tr>
+<tr><td><code>invocations</code></td><td><code>created_at</code></td><td>DATETIME</td><td></td><td>no</td></tr>
+<tr><td><code>invocations</code></td><td><code>customer_id</code></td><td>VARCHAR(16)</td><td></td><td>no</td></tr>
+<tr><td><code>invocations</code></td><td><code>policy</code></td><td>VARCHAR(64)</td><td></td><td>no</td></tr>
+<tr><td><code>invocations</code></td><td><code>channel</code></td><td>VARCHAR(8)</td><td></td><td>no</td></tr>
+<tr><td><code>invocations</code></td><td><code>segment</code></td><td>VARCHAR(32)</td><td></td><td>no</td></tr>
+<tr><td><code>invocations</code></td><td><code>context</code></td><td>JSON</td><td></td><td>no</td></tr>
+<tr><td><code>impressions</code></td><td><code>invocation_id</code></td><td>VARCHAR(36)</td><td>PK FK</td><td>no</td></tr>
+<tr><td><code>impressions</code></td><td><code>offer_id</code></td><td>VARCHAR(64)</td><td>PK</td><td>no</td></tr>
+<tr><td><code>impressions</code></td><td><code>position</code></td><td>INTEGER</td><td></td><td>no</td></tr>
+<tr><td><code>impressions</code></td><td><code>score</code></td><td>FLOAT</td><td></td><td>no</td></tr>
+<tr><td><code>responses</code></td><td><code>invocation_id</code></td><td>VARCHAR(36)</td><td>PK FK</td><td>no</td></tr>
+<tr><td><code>responses</code></td><td><code>offer_id</code></td><td>VARCHAR(64)</td><td>PK FK</td><td>no</td></tr>
+<tr><td><code>responses</code></td><td><code>outcome</code></td><td>VARCHAR(16)</td><td></td><td>no</td></tr>
+<tr><td><code>responses</code></td><td><code>reward</code></td><td>FLOAT</td><td></td><td>yes</td></tr>
+<tr><td><code>responses</code></td><td><code>value</code></td><td>FLOAT</td><td></td><td>yes</td></tr>
+<tr><td><code>responses</code></td><td><code>created_at</code></td><td>DATETIME</td><td></td><td>no</td></tr>
+</tbody></table></div>
+<!-- END generated:event-schema -->
+  <p class="source">From the SQLAlchemy table definitions in src/recommender/</p>
+</section>
+
+<section aria-labelledby="latency">
+  <div class="section-head"><h2 id="latency">Latency</h2><span class="chip built">Measured</span></div>
+  <p>The brief's target is a p95 under 50 ms locally. <code>make benchmark</code> starts a real uvicorn server against Postgres (in a throwaway schema), sends 1,000 app opens and a response for every offer shown, and reports both what the client saw and what the server measured.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Endpoint</th><th class="num">Requests</th><th class="num">Client p50</th><th class="num">Client p95</th><th class="num">Server p95</th></tr></thead>
+      <tbody>
+        <tr><td><code>POST /invocations</code></td><td class="num">1,000</td><td class="num">7.7 ms</td><td class="num">12.4 ms</td><td class="num">10.1 ms</td></tr>
+        <tr><td><code>POST /response</code></td><td class="num">3,000</td><td class="num">8.0 ms</td><td class="num">13.5 ms</td><td class="num">11.2 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="source">Postgres 18 on the same laptop, sequential client, after 20 warm-up opens · decision A10</p>
+  <p>Every response also carries an <code>X-Response-Time-ms</code> header, each request is logged as one JSON line, and <code>GET /metrics</code> reports a rolling p50 and p95 per endpoint for the running server.</p>
+</section>
+
+<p class="foot">The endpoint table and event-log schema are generated from the code by <code>make docs</code>; the latency figures come from <code>make benchmark</code>.</p>
+</main>
+</div>
+</body>
+</html>

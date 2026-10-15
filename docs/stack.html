@@ -23,6 +23,7 @@
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
+<li><a href="api.html">API</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html" aria-current=page>Tools &amp; quality</a></li>
@@ -31,7 +32,7 @@
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
-<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
@@ -61,7 +62,7 @@
 <thead><tr><th scope="col">Tool</th><th scope="col">Role</th><th scope="col">Version</th><th scope="col">Why this tool</th><th scope="col">Status</th></tr></thead>
 <tbody>
 <tr><td><strong>Python</strong></td><td>Language</td><td>3.11+</td><td>Readable, typed code; the bandit maths is plain Python and NumPy.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>FastAPI</strong></td><td>Real-time API</td><td>0.143.1</td><td>Pydantic validation and OpenAPI docs out of the box. Serves /health today.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>FastAPI</strong></td><td>Real-time API</td><td>0.143.1</td><td>Eight endpoints with Pydantic validation and interactive docs generated at /docs.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Uvicorn</strong></td><td>API server</td><td>0.54.0</td><td>The standard ASGI server for FastAPI (<code>make run</code>).</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Pydantic</strong></td><td>Validation</td><td>2.14.1</td><td>Rejects bad config and offers at load; request schemas in Phase 3.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>PyYAML</strong></td><td>Configuration</td><td>6.0.3</td><td>Offers, settings and the hidden truth stay human-readable.</td><td><span class="chip built">Built</span></td></tr>
@@ -77,7 +78,7 @@
 <tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>Core API only: one code path for Postgres and SQLite, upserts via ON CONFLICT.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>SQLite</strong></td><td>Fallback database</td><td>–</td><td>Used when no Postgres URL is configured, so a clean machine runs with no server.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>python-dotenv</strong></td><td>Local secrets</td><td>1.2.4</td><td>Loads the database URL from a git-ignored <code>.env</code> file.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The simulator and dashboard call the API the way an app would.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The latency benchmark (and later the simulator) call the API as an app would.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards; quick to build five pages.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>Starts the API and dashboard with one command.</td><td><span class="chip planned">Planned</span></td></tr>
@@ -109,6 +110,7 @@
         <tr><td>Learnability guards</td><td>Every favourite (by take-up, revenue and payday week) beats its runner-up by at least ×1.2</td><td>part of <code>make test</code></td></tr>
         <tr><td>Config validation</td><td>Unknown segments or offers, ineligible pairs, bad effect keys, shares that don't sum to 1: all fail at load</td><td>on every load</td></tr>
         <tr><td>Lint and format</td><td>Ruff rules E, F, I, B, UP and SIM; line length 100; formatter check</td><td><code>make lint</code></td></tr>
+        <tr><td>Latency</td><td>p95 under 50 ms end to end: real server, Postgres and HTTP</td><td><code>make benchmark</code></td></tr>
         <tr><td>Docs freshness</td><td>Generated tables match the code; every link between pages resolves</td><td>part of <code>make test</code></td></tr>
       </tbody>
     </table>
@@ -122,8 +124,24 @@
 <div class="table-wrap"><table class="tests">
 <thead><tr><th scope="col">What the test guarantees</th><th scope="col" class="num">Cases</th></tr></thead>
 <tbody>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_api.py</code> · API endpoints</th></tr>
-<tr><td>Health returns ok</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_api.py</code> · API: invocations, responses, idempotency, per-request policy, errors, state and metrics</th></tr>
+<tr><td>Health reports the database</td><td class="num">1</td></tr>
+<tr><td>Every response carries its timing</td><td class="num">1</td></tr>
+<tr><td>Offers and customers</td><td class="num">1</td></tr>
+<tr><td>Schema choices match the domain</td><td class="num">1</td></tr>
+<tr><td>Invocation returns ranked eligible offers</td><td class="num">1</td></tr>
+<tr><td>Default number of offers comes from settings</td><td class="num">1</td></tr>
+<tr><td>Context overrides</td><td class="num">1</td></tr>
+<tr><td>Policy can be chosen per request</td><td class="num">1</td></tr>
+<tr><td>Invalid invocations get clear errors</td><td class="num">6</td></tr>
+<tr><td>Response updates the model immediately</td><td class="num">1</td></tr>
+<tr><td>Duplicate response is rejected</td><td class="num">1</td></tr>
+<tr><td>Ignored offers are logged but do not update the model</td><td class="num">1</td></tr>
+<tr><td>Baselines log responses without learning</td><td class="num">1</td></tr>
+<tr><td>Invalid responses get clear errors</td><td class="num">1</td></tr>
+<tr><td>Policies list marks the active one</td><td class="num">1</td></tr>
+<tr><td>Static policy state shows its frozen table</td><td class="num">1</td></tr>
+<tr><td>Metrics count events and report latency</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_docs.py</code> · These docs: generated blocks are current and every link resolves</th></tr>
 <tr><td>Generated blocks are up to date</td><td class="num">1</td></tr>
 <tr><td>Every link between pages resolves</td><td class="num">1</td></tr>
@@ -214,7 +232,7 @@
 <tr><td>Alpha and beta are computed by the database</td><td class="num">1</td></tr>
 <tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
 </tbody>
-<caption>88 test cases in 83 test functions.</caption></table></div>
+<caption>109 test cases in 99 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>
