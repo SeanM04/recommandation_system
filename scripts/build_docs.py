@@ -53,6 +53,7 @@ PAGES = [
     ("algorithms.html", "Policies"),
     ("api.html", "API"),
     ("results.html", "Results"),
+    ("dashboard.html", "Dashboard"),
     ("workflows.html", "Workflows"),
     ("decisions.html", "Decisions"),
     ("stack.html", "Tools & quality"),
@@ -89,7 +90,7 @@ PHASES = [
     (
         5,
         "Evaluation & dashboard",
-        "planned",
+        "built",
         "Take-up, revenue, regret against an oracle and convergence; a five-page dashboard.",
     ),
     (
@@ -138,10 +139,12 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
      "Loads the database URL from a git-ignored `.env` file."),
     ("Requests", "requests", "HTTP client", "built",
      "The latency benchmark (and later the simulator) call the API as an app would."),
-    ("Streamlit", "streamlit", "Dashboard", "planned",
-     "Python-only dashboards; quick to build five pages."),
-    ("Plotly", "plotly", "Charts", "planned",
-     "Interactive regret, reward and Beta-distribution charts."),
+    ("Streamlit", "streamlit", "Dashboard", "built",
+     "Python-only dashboards: five pages, a live view refreshing every 3 seconds."),
+    ("Plotly", "plotly", "Charts", "built",
+     "Interactive regret, reward and Beta-distribution charts with hover."),
+    ("Playwright", "playwright", "Screenshots", "built",
+     "Drives the installed Chrome or Edge to screenshot the dashboard (dev only)."),
     ("Docker", None, "Packaging", "built",
      "The API image: slim, non-root, health-checked, 4 workers; secrets via --env-file."),
     ("Docker Compose", None, "Packaging", "planned",
@@ -892,6 +895,30 @@ def block_findings(src: Sources, page: str) -> str:
             f"{greedy['regret']:,.0f}, lower in {wins} of {n} seeds: epsilon-greedy keeps "
             f"spending a fixed share of slots on offers it already knows are poor."
         )
+    convergence = data.get("convergence", [])
+    after = {
+        (row["policy"], row["segment"]): row["app_opens"]
+        for row in convergence
+        if row["phase"] == "after the shift"
+    }
+
+    def opens(policy: str, segment: str) -> str:
+        value = after.get((policy, segment))
+        return (
+            "not within the run" if value is None or value != value else f"{value:,.0f} app opens"
+        )
+
+    if ("thompson_segment_decay", "young_professional") in after:
+        items.append(
+            "<strong>Forgetting adapts sooner.</strong> After the shift, with forgetting the "
+            "young professionals' new favourite led within "
+            f"{opens('thompson_segment_decay', 'young_professional')}, against "
+            f"{opens('thompson_segment', 'young_professional')} without; for families, "
+            f"{opens('thompson_segment_decay', 'family')} against "
+            f"{opens('thompson_segment', 'family')}. The static model adapted for neither segment "
+            "(first seed; see the adaptation table)."
+        )
+
     return '<ol class="findings">\n' + "\n".join(f"<li>{item}</li>" for item in items) + "\n</ol>"
 
 
@@ -981,6 +1008,33 @@ def block_regret_chart(src: Sources, page: str) -> str:
     )
 
 
+ADAPTATION_POLICIES = ["thompson_segment_decay", "thompson_segment", "thompson_segment_payday",
+                       "epsilon_greedy_segment", "static"]  # fmt: skip
+
+
+def block_adaptation(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None or "convergence" not in data:
+        return NO_RESULTS
+    rows = {}
+    for row in data["convergence"]:
+        if row["policy"] in ADAPTATION_POLICIES:
+            rows.setdefault((row["phase"], row["segment"]), {})[row["policy"]] = row["app_opens"]
+    policies = [p for p in ADAPTATION_POLICIES if any(p in r for r in rows.values())]
+
+    def cell(value) -> str:
+        return "not within the run" if value is None or value != value else f"{value:,.0f}"
+
+    body = []
+    for phase in ("from the start", "after the shift"):
+        for (row_phase, segment), values in sorted(rows.items()):
+            if row_phase == phase:
+                body.append([escape(phase), f"<code>{segment}</code>"]
+                            + [cell(values.get(p)) for p in policies])  # fmt: skip
+    head = ["When", "Segment", *[f"<code>{p}</code>" for p in policies]]
+    return table(head, body, cls="adaptation", numeric=tuple(range(2, 2 + len(policies))))
+
+
 BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "sidenav": block_sidenav,
     "phases": block_phases,
@@ -1008,6 +1062,7 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "results-table": block_results_table,
     "findings": block_findings,
     "regret-chart": block_regret_chart,
+    "adaptation": block_adaptation,
 }
 
 

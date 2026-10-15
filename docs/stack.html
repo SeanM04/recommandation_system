@@ -25,6 +25,7 @@
 <li><a href="algorithms.html">Policies</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
+<li><a href="dashboard.html">Dashboard</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html" aria-current=page>Tools &amp; quality</a></li>
@@ -35,7 +36,7 @@
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
 <li><span>4 · Simulator</span><span class="chip built">Built</span></li>
-<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
 </ul></div>
 <button class="theme-toggle" type="button">Theme: system</button>
@@ -80,8 +81,9 @@
 <tr><td><strong>SQLite</strong></td><td>Fallback database</td><td>–</td><td>Used when no Postgres URL is configured, so a clean machine runs with no server.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>python-dotenv</strong></td><td>Local secrets</td><td>1.2.4</td><td>Loads the database URL from a git-ignored <code>.env</code> file.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The latency benchmark (and later the simulator) call the API as an app would.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards; quick to build five pages.</td><td><span class="chip planned">Planned</span></td></tr>
-<tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards: five pages, a live view refreshing every 3 seconds.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts with hover.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Playwright</strong></td><td>Screenshots</td><td>1.64.0   # dashboard screenshots (uses the installed Chrome or Edge)</td><td>Drives the installed Chrome or Edge to screenshot the dashboard (dev only).</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Docker</strong></td><td>Packaging</td><td>–</td><td>The API image: slim, non-root, health-checked, 4 workers; secrets via --env-file.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>Starts the API, dashboard and a Postgres container with one command (Phase 6).</td><td><span class="chip planned">Planned</span></td></tr>
 </tbody></table></div>

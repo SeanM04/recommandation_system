@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="The five pages of the Streamlit dashboard, what each shows, where its data comes from and how it is tested.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
+<li><a href="api.html">API</a></li>
+<li><a href="results.html">Results</a></li>
+<li><a href="dashboard.html" aria-current=page>Dashboard</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Dashboard · Phase 5</p>
+  <h1>Watching the recommender learn</h1>
+  <p class="lede">Five Streamlit pages: the live event log, the head-to-head comparison, the beliefs behind each ranking, the behaviour shift, and a page where you play the customer and watch the model update.</p>
+  <ul class="toc">
+    <li><a href="#run">Run it</a></li>
+    <li><a href="#live">Live view</a></li>
+    <li><a href="#comparison">Algorithm comparison</a></li>
+    <li><a href="#beliefs">Explore vs exploit</a></li>
+    <li><a href="#shift">Behaviour shift</a></li>
+    <li><a href="#try">Try it</a></li>
+    <li><a href="#data">Where the data comes from</a></li>
+    <li><a href="#tests">How it is tested</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="run">
+  <div class="section-head"><h2 id="run">Run it</h2><span class="chip built">Built</span></div>
+<pre><code>make install     # once
+make simulate    # customers, a 3-seed comparison, 1,000 app opens through the API
+make dashboard   # http://localhost:8501</code></pre>
+  <p>That is the brief's definition of done, verified on a fresh clone with no <code>.env</code>: everything falls back to a local SQLite file and no API server is needed. <code>make simulate</code> takes about four minutes there. Run <code>make compare</code> instead for the published 10-seed results; every results page says which run it is showing.</p>
+</section>
+
+<section aria-labelledby="live">
+  <h2 id="live">Live view</h2>
+  <p>App opens and their outcomes as they reach the event log, refreshing every 3 seconds, and the serving policy's current top three offers per context. Start a simulation through the API (<code>python scripts/run_simulation.py --mode api</code>) and watch it fill.</p>
+  <figure class="fig"><img src="assets/screenshots/live.png" alt="Live view: counts of app opens and take-ups, the latest app opens with each offer's outcome, and the serving policy's beliefs." loading="lazy"><figcaption><span>Reads the event log and options store in the database.</span></figcaption></figure>
+</section>
+
+<section aria-labelledby="comparison">
+  <h2 id="comparison">Algorithm comparison</h2>
+  <p>The results table, cumulative regret, take-ups and revenue for any set of policies (each keeps one colour on every chart), and convergence: how many app opens each policy needed before each segment's best offer led, from the start and again after the shift.</p>
+  <figure class="fig"><img src="assets/screenshots/comparison.png" alt="Algorithm comparison: the results table and cumulative regret curves per policy, with the behaviour shift marked." loading="lazy"><figcaption><span>Reads results/: comparison.csv, comparison_rounds.parquet, convergence.csv.</span></figcaption></figure>
+</section>
+
+<section aria-labelledby="beliefs">
+  <h2 id="beliefs">Explore vs exploit</h2>
+  <p>Each offer's Beta belief for a chosen policy and context at any point in the run, and how the means moved. Wide curves are offers the policy is still testing; a narrow curve far to the right is one it trusts.</p>
+  <figure class="fig"><img src="assets/screenshots/beliefs.png" alt="Explore vs exploit: Beta density curves per offer for families, with electricity and funeral cover narrow and far right, other offers wide and low." loading="lazy"><figcaption><span>Reads results/comparison_snapshots.parquet (beliefs every 2,500 app opens).</span></figcaption></figure>
+</section>
+
+<section aria-labelledby="shift">
+  <h2 id="shift">Behaviour shift</h2>
+  <p>For young professionals and families, the share of app opens with the new favourite ranked first, take-up per app open, how many app opens each policy needed to adapt, and which offer led over time.</p>
+  <figure class="fig"><img src="assets/screenshots/shift.png" alt="Behaviour shift: share of young-professional app opens with the streaming bundle first; the policy with forgetting jumps to 100 percent about 4,000 app opens before the one without." loading="lazy"><figcaption><span>Reads results/: comparison_rounds.parquet and convergence.csv; the new favourites come from the simulator.</span></figcaption></figure>
+</section>
+
+<section aria-labelledby="try">
+  <h2 id="try">Try it</h2>
+  <p>Pick a segment, a customer, a policy and optionally the moment; open the app; then take up, view or ignore each offer and see the belief for that offer update. It calls the API server if one is running, otherwise the same FastAPI app inside the dashboard, so the code path is identical. Every click is real learning in the database.</p>
+  <figure class="fig"><img src="assets/screenshots/try-it.png" alt="Try it: three ranked offers for a student; the first was taken up and the belief rose from 21.8 percent to 22.1 percent." loading="lazy"><figcaption><span>Calls POST /invocations, POST /response and GET /policies/{name}/state.</span></figcaption></figure>
+</section>
+
+<section aria-labelledby="data">
+  <h2 id="data">Where the data comes from</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Page</th><th>Reads</th><th>Up to date</th></tr></thead>
+      <tbody>
+        <tr><td>Live view</td><td>Event log and options store in the database</td><td>Every 3 seconds</td></tr>
+        <tr><td>Algorithm comparison</td><td><code>results/comparison.csv</code>, <code>comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
+        <tr><td>Explore vs exploit</td><td><code>results/comparison_snapshots.parquet</code></td><td>When a new run is saved</td></tr>
+        <tr><td>Behaviour shift</td><td><code>results/comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
+        <tr><td>Try it</td><td>The API</td><td>Live</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Results files are cached by modification time, so a new <code>make compare</code> or <code>make simulate</code> shows up without restarting the dashboard. Three environment variables redirect everything, which is how the tests isolate it: <code>RECOMMENDER_DATABASE_URL</code>, <code>RECOMMENDER_RESULTS</code> and <code>RECOMMENDER_API_URL</code>.</p>
+</section>
+
+<section aria-labelledby="tests">
+  <h2 id="tests">How it is tested</h2>
+  <ul>
+    <li><strong>Every page renders,</strong> using Streamlit's own test harness, against a throwaway SQLite database (customers plus app opens sent through the API) and a throwaway results folder written exactly as <code>make compare</code> writes it. The real database and results are never touched.</li>
+    <li><strong>Content is checked:</strong> the live view's counts, every configured policy in the comparison, and the "run make simulate" message when there are no results.</li>
+    <li><strong>Try it is clicked through:</strong> open the app, take up the first offer, and assert that the reward and the updated belief are shown.</li>
+    <li><strong>Screenshots</strong> on this page come from <code>make screenshots</code>, which drives the installed Chrome or Edge with Playwright.</li>
+  </ul>
+</section>
+
+<p class="foot">Dashboard code lives in <code>dashboard/</code>; its theme in <code>.streamlit/config.toml</code>.</p>
+</main>
+</div>
+</body>
+</html>

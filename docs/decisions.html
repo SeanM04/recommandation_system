@@ -25,6 +25,7 @@
 <li><a href="algorithms.html">Policies</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
+<li><a href="dashboard.html">Dashboard</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html" aria-current=page>Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -35,7 +36,7 @@
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
 <li><span>4 · Simulator</span><span class="chip built">Built</span></li>
-<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
 </ul></div>
 <button class="theme-toggle" type="button">Theme: system</button>
@@ -331,6 +332,20 @@
 <tr><td>C7</td><td><strong>Results</strong> (50,000 app opens, shift at 25,000, 10 seeds). Per-segment Thompson sampling reached about 92.5% of the oracle and cut regret by 84–85% against random and 80–81% against static, in 10 of 10 seeds; static reached 60.8% and global Thompson 67.7%. The three per-segment Thompson variants are tied overall. Forgetting lowered regret after the shift in 10 of 10 seeds (by 130 take-ups on average) at a cost of 93 before it. Thompson beat epsilon-greedy with the same segments in 8 of 10 seeds.</td><td>The definition of done is met: contextual Thompson sampling beats both baselines in every run and adapts after the shift, while the static model does not.</td></tr>
 <tr><td>C8</td><td><strong>The reward is set per policy</strong> (<code>reward: margin</code> in <code>settings.yaml</code>, defaulting to <code>recommendation.reward</code>), and the comparison, simulator and API all use it. <code>thompson_segment_revenue</code> is the same policy as <code>thompson_segment_decay</code> but learns from margin: 38% more revenue per app open (R13.37 against R9.68, more in 10 of 10 seeds) for 22% fewer take-ups.</td><td>The brief asks for a pluggable reward; the comparison now shows what it changes. Choosing between take-ups and revenue is a business decision the system makes explicit.</td></tr>
 </tbody></table></div>
+<h3 id="log-phase-5-evaluation-and-dashboard">Phase 5: Evaluation and dashboard</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td><strong>Convergence</strong> = app opens until each segment's best offer <em>for the moment</em> (segment and payday week) led in 80% of that segment's last 100 app opens, counted from the start and again from the shift; "not within the run" otherwise.</td><td>Judging against the moment's answer gives payday-aware policies credit for switching, and the after-shift count is the brief's "adaptation speed". The 80% / 100 thresholds are a judgement call, stated wherever the number appears.</td></tr>
+<tr><td>E2</td><td><strong>Selection share</strong> = the share of a segment's app opens in which each offer was ranked first, per block of 1,000 app opens.</td><td>First position gets every customer's attention, so it is the offer the policy is betting on.</td></tr>
+<tr><td>E3</td><td><code>make simulate</code> = customers, a 3-seed comparison (<code>--no-docs</code>, so the published 10-seed results stay as they are), and 1,000 app opens through the real API app in-process (<code>run_simulation.py --mode api --in-process</code>). Verified on a fresh clone with no <code>.env</code> (SQLite): about four minutes, then every dashboard page renders.</td><td><code>make install &amp;&amp; make simulate &amp;&amp; make dashboard</code> works on a clean machine with no API server and no Postgres. The live view still gets real events through the API's code.</td></tr>
+<tr><td>E4</td><td>Results pages read <code>results/</code> files cached by modification time, and say which run they show ("N seeds × M app opens, saved at …").</td><td>A new run appears without a restart, and nobody confuses a quick 3-seed run with the published 10-seed results.</td></tr>
+<tr><td>E5</td><td><strong>Try it</strong> calls the API server if one answers at <code>RECOMMENDER_API_URL</code>, otherwise runs the same FastAPI app inside the dashboard.</td><td>Identical code path either way, and the page works with nothing else running. Every click is real learning in the database.</td></tr>
+<tr><td>E6</td><td>The live view uses plain tables (<code>st.table</code>), not interactive grids.</td><td>Grids re-mount on every 3-second refresh and flash empty; 15 rows read better as a table.</td></tr>
+<tr><td>E7</td><td>Dashboard tests use Streamlit's AppTest against a throwaway SQLite database and results folder, redirected with <code>RECOMMENDER_DATABASE_URL</code>, <code>RECOMMENDER_RESULTS</code> and <code>RECOMMENDER_API_URL</code>. They check content and click through Try it.</td><td>The first version only checked for exceptions and read the real Postgres. Now nothing real is touched (event counts were identical before and after a test run), and the main user flow is proven.</td></tr>
+<tr><td>E8</td><td>One fixed colour per policy on every chart (the docs' categorical palette, in order; a ninth policy is grey), and the shift marked on every time chart.</td><td>Colour follows the policy, never its rank or the chart, so a reader can follow a policy across pages.</td></tr>
+<tr><td>E9</td><td>Screenshots come from <code>make screenshots</code> (Playwright driving the installed Chrome or Edge).</td><td>Reproducible images for the README and docs without a browser download.</td></tr>
+</tbody></table></div>
 <h3 id="log-database">Database</h3>
 <div class="table-wrap"><table class="decision-log">
 <thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
@@ -346,6 +361,7 @@
 <tbody>
 <tr><td>DOC1</td><td>The docs are a static HTML site in <code>docs/</code>: six pages, one stylesheet, no build step and no JavaScript libraries. Diagrams are hand-drawn inline SVG.</td><td>Opens offline straight from the file system, deploys to GitHub Pages unchanged, and follows the reader's light or dark theme. SVG diagrams stay crisp and change in the same diff as the code they describe.</td></tr>
 <tr><td>DOC2</td><td>Every data table in the docs (offers, segments, effects, take-up rates, favourites, this log, tool versions, tests, build status) is generated from the code by <code>scripts/build_docs.py</code> between marker comments. <code>tests/test_docs.py</code> fails if a page is stale, a link or anchor is broken, or an id repeats.</td><td>Docs as code: the numbers a reviewer reads are the numbers the simulator uses, and stale docs fail the build like broken code.</td></tr>
+<tr><td>DOC4</td><td><code>docs/data/</code> is tracked; ignore rules for generated data are anchored to the project root (<code>/data/</code>, <code>/results/</code>).</td><td>The unanchored <code>data/</code> rule also matched <code>docs/data/</code>, so the Results page's data had never been committed and a fresh clone could not rebuild it.</td></tr>
 <tr><td>DOC3</td><td>The README will still carry its own Mermaid architecture diagram (Phase 6).</td><td>GitHub renders Mermaid inside Markdown, and the README is the first thing a reviewer sees.</td></tr>
 </tbody></table></div>
 <!-- END generated:decision-log -->

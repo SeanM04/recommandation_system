@@ -25,6 +25,7 @@
 <li><a href="algorithms.html">Policies</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html" aria-current=page>Results</a></li>
+<li><a href="dashboard.html">Dashboard</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -35,7 +36,7 @@
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
 <li><span>4 · Simulator</span><span class="chip built">Built</span></li>
-<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
 </ul></div>
 <button class="theme-toggle" type="button">Theme: system</button>
@@ -51,6 +52,7 @@
     <li><a href="#findings">Findings</a></li>
     <li><a href="#table">Results table</a></li>
     <li><a href="#regret">Regret over time</a></li>
+    <li><a href="#adaptation">Adaptation speed</a></li>
     <li><a href="#method">Method</a></li>
     <li><a href="#reproduce">Reproduce</a></li>
   </ul>
@@ -67,6 +69,7 @@
 <li><strong>Forgetting trades a little before the shift for more after it.</strong> With forgetting, regret after the shift was lower in 10 of 10 seeds, by 130 take-ups on average; before the shift it cost 93 on average (higher in 8 of 10 seeds). Its value grows with how often, and how sharply, behaviour changes.</li>
 <li><strong>The reward decides the business outcome.</strong> The same policy learning from margin instead of take-up earned 38% more revenue per app open (R13.37 against R9.68, more in 10 of 10 seeds), at the cost of 22% fewer take-ups. Which one is right is a business choice, not a modelling one.</li>
 <li><strong>Thompson sampling explores better than epsilon-greedy.</strong> With the same per-segment statistics, regret was 1,078 against 1,690, lower in 8 of 10 seeds: epsilon-greedy keeps spending a fixed share of slots on offers it already knows are poor.</li>
+<li><strong>Forgetting adapts sooner.</strong> After the shift, with forgetting the young professionals' new favourite led within 1,460 app opens, against 5,601 app opens without; for families, 7,980 app opens against not within the run. The static model adapted for neither segment (first seed; see the adaptation table).</li>
 </ol>
 <!-- END generated:findings -->
 </section>
@@ -144,6 +147,27 @@
 <figcaption><span class="legend"><span><i class="swatch-line" style="background: var(--series-1)"></i>thompson_segment_decay</span><span><i class="swatch-line" style="background: var(--series-2)"></i>static</span><span><i class="swatch-line" style="background: var(--series-3)"></i>random</span><span><i class="swatch-line" style="background: var(--series-4)"></i>thompson</span><span><i class="swatch-line" style="background: var(--series-5)"></i>epsilon_greedy_segment</span></span><span>Expected take-ups lost against an oracle that knows the true probabilities, first seed. The other policies are in the table: the per-segment Thompson variants overlap the blue line.</span></figcaption>
 </figure>
 <!-- END generated:regret-chart -->
+</section>
+
+<section aria-labelledby="adaptation">
+  <h2 id="adaptation">Adaptation speed</h2>
+  <p>App opens until each segment's best offer for the moment (segment and payday week) led in 80% of that segment's last 100 app opens: from the start of the run, and again after the behaviour shift. The first seed; the dashboard's comparison page shows every policy.</p>
+<!-- BEGIN generated:adaptation -->
+<div class="table-wrap"><table class="adaptation">
+<thead><tr><th scope="col">When</th><th scope="col">Segment</th><th scope="col" class=num><code>thompson_segment_decay</code></th><th scope="col" class=num><code>thompson_segment</code></th><th scope="col" class=num><code>thompson_segment_payday</code></th><th scope="col" class=num><code>epsilon_greedy_segment</code></th><th scope="col" class=num><code>static</code></th></tr></thead>
+<tbody>
+<tr><td>from the start</td><td><code>family</code></td><td class=num>1,115</td><td class=num>1,186</td><td class=num>1,764</td><td class=num>2,266</td><td class=num>not within the run</td></tr>
+<tr><td>from the start</td><td><code>pensioner</code></td><td class=num>1,792</td><td class=num>1,398</td><td class=num>1,883</td><td class=num>650</td><td class=num>6,252</td></tr>
+<tr><td>from the start</td><td><code>small_business</code></td><td class=num>5,289</td><td class=num>3,292</td><td class=num>2,246</td><td class=num>1,072</td><td class=num>not within the run</td></tr>
+<tr><td>from the start</td><td><code>student</code></td><td class=num>2,047</td><td class=num>1,525</td><td class=num>4,032</td><td class=num>532</td><td class=num>not within the run</td></tr>
+<tr><td>from the start</td><td><code>young_professional</code></td><td class=num>2,037</td><td class=num>4,144</td><td class=num>2,398</td><td class=num>880</td><td class=num>not within the run</td></tr>
+<tr><td>after the shift</td><td><code>family</code></td><td class=num>7,980</td><td class=num>not within the run</td><td class=num>4,897</td><td class=num>not within the run</td><td class=num>not within the run</td></tr>
+<tr><td>after the shift</td><td><code>pensioner</code></td><td class=num>6,485</td><td class=num>6,416</td><td class=num>785</td><td class=num>6,461</td><td class=num>6,389</td></tr>
+<tr><td>after the shift</td><td><code>small_business</code></td><td class=num>922</td><td class=num>922</td><td class=num>922</td><td class=num>922</td><td class=num>not within the run</td></tr>
+<tr><td>after the shift</td><td><code>student</code></td><td class=num>466</td><td class=num>466</td><td class=num>466</td><td class=num>466</td><td class=num>not within the run</td></tr>
+<tr><td>after the shift</td><td><code>young_professional</code></td><td class=num>1,460</td><td class=num>5,601</td><td class=num>3,365</td><td class=num>1,109</td><td class=num>not within the run</td></tr>
+</tbody></table></div>
+<!-- END generated:adaptation -->
 </section>
 
 <section aria-labelledby="method">
