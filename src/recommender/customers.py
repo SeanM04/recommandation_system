@@ -71,13 +71,17 @@ class CustomerRepository:
         with self.engine.connect() as connection:
             return connection.execute(select(func.count()).select_from(customers_table)).scalar()
 
-    def ids(self, segment: str | None = None, limit: int = 20) -> list[str]:
-        """A few customer ids, optionally from one segment (for the dashboard's picker)."""
-        query = select(customers_table.c.customer_id).order_by(customers_table.c.customer_id)
+    def list_customers(self, segment: str | None = None, limit: int = 20) -> list[tuple[str, str]]:
+        """A few (customer_id, segment) pairs, optionally from one segment, in one query."""
+        query = select(customers_table.c.customer_id, customers_table.c.segment).order_by(
+            customers_table.c.customer_id
+        )
         if segment is not None:
             query = query.where(customers_table.c.segment == segment)
         with self.engine.connect() as connection:
-            return list(connection.execute(query.limit(limit)).scalars())
+            return [
+                (row.customer_id, row.segment) for row in connection.execute(query.limit(limit))
+            ]
 
     def load(self, customers: Iterable[Customer]) -> int:
         """Insert or update profiles. Returns how many rows were written."""

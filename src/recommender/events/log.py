@@ -134,24 +134,26 @@ class EventLog:
         return invocation_id
 
     def get_invocation(self, invocation_id: str) -> LoggedInvocation | None:
+        """The invocation and the offers it showed, in one query."""
+        query = (
+            select(
+                invocations.c.policy,
+                invocations.c.context,
+                impressions.c.offer_id,
+                impressions.c.position,
+            )
+            .select_from(invocations.outerjoin(impressions))
+            .where(invocations.c.invocation_id == invocation_id)
+        )
         with self.engine.connect() as connection:
-            row = connection.execute(
-                select(invocations.c.policy, invocations.c.context).where(
-                    invocations.c.invocation_id == invocation_id
-                )
-            ).first()
-            if row is None:
-                return None
-            shown = connection.execute(
-                select(impressions.c.offer_id, impressions.c.position).where(
-                    impressions.c.invocation_id == invocation_id
-                )
-            ).all()
+            rows = connection.execute(query).all()
+        if not rows:
+            return None
         return LoggedInvocation(
             invocation_id=invocation_id,
-            policy=row.policy,
-            context=Context(**row.context),
-            shown={offer_id: position for offer_id, position in shown},
+            policy=rows[0].policy,
+            context=Context(**rows[0].context),
+            shown={row.offer_id: row.position for row in rows if row.offer_id is not None},
         )
 
     def record_response(
@@ -177,21 +179,27 @@ class EventLog:
                 created_at=datetime.now(UTC),
             )
             .on_conflict_do_nothing(index_elements=["invocation_id", "offer_id"])
+            .returning(responses.c.offer_id)
         )
+        # RETURNING gives back a row only if this insert wrote one. (rowcount is not
+        # reliable here: the Postgres driver reports -1 for ON CONFLICT DO NOTHING.)
         with self.engine.begin() as connection:
-            if connection.execute(statement).rowcount == 0:
+            if connection.execute(statement).first() is None:
                 raise DuplicateResponse(
                     f"a response for offer {offer_id!r} in invocation {invocation_id!r} "
                     "was already recorded"
                 )
 
-    def reward_history(self) -> list[tuple[str, float]]:
-        """Every (offer_id, reward) that updated a model: the static baseline's training data."""
-        query = select(responses.c.offer_id, responses.c.reward).where(
-            responses.c.reward.is_not(None)
+    def average_rewards(self) -> dict[str, float]:
+        """Average reward per offer over every response that updated a model: the static
+        baseline's batch training, done by the database in one aggregate query."""
+        query = (
+            select(responses.c.offer_id, func.avg(responses.c.reward))
+            .where(responses.c.reward.is_not(None))
+            .group_by(responses.c.offer_id)
         )
         with self.engine.connect() as connection:
-            return [(offer_id, reward) for offer_id, reward in connection.execute(query)]
+            return {offer_id: float(average) for offer_id, average in connection.execute(query)}
 
     def summary(self, margins: Mapping[str, float]) -> dict[str, dict]:
         """Per-policy counts, take-up rate and revenue, straight from the log."""

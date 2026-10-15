@@ -1,4 +1,8 @@
-"""Request timing: a response header, a JSON log line, and percentiles for /metrics."""
+"""Request timing: a response header, a JSON log line, and percentiles for /metrics.
+
+Written as plain ASGI middleware rather than FastAPI's ``BaseHTTPMiddleware``, which
+wraps every request in extra tasks and streams and costs noticeably more per request.
+"""
 
 from __future__ import annotations
 
@@ -8,13 +12,14 @@ import time
 from collections import defaultdict, deque
 
 import numpy as np
-from fastapi import FastAPI, Request, Response
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 logger = logging.getLogger("recommender.api")
 
 
 class LatencyTracker:
-    """Keeps the most recent request durations per endpoint."""
+    """Keeps the most recent request durations per endpoint (per server process)."""
 
     def __init__(self, window: int = 5000) -> None:
         self._samples: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=window))
@@ -39,24 +44,36 @@ class LatencyTracker:
         }
 
 
-def add_timing(app: FastAPI, tracker: LatencyTracker) -> None:
-    """Time every request: ``X-Response-Time-ms`` header, a log line, and the tracker."""
+class TimingMiddleware:
+    """Times every HTTP request: ``X-Response-Time-ms`` header, a log line, the tracker."""
 
-    @app.middleware("http")
-    async def time_request(request: Request, call_next) -> Response:
+    def __init__(self, app: ASGIApp, tracker: LatencyTracker) -> None:
+        self.app = app
+        self.tracker = tracker
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
         start = time.perf_counter()
-        response = await call_next(request)
-        milliseconds = (time.perf_counter() - start) * 1000
-        route = request.scope.get("route")
-        endpoint = f"{request.method} {route.path if route else 'unmatched'}"
-        tracker.record(endpoint, milliseconds)
-        response.headers["X-Response-Time-ms"] = f"{milliseconds:.2f}"
-        logger.info(
-            "request",
-            extra={
-                "endpoint": endpoint,
-                "status": response.status_code,
-                "ms": round(milliseconds, 2),
-            },
-        )
-        return response
+        status = 500
+
+        async def send_with_timing(message: Message) -> None:
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+                elapsed = (time.perf_counter() - start) * 1000
+                MutableHeaders(scope=message).append("X-Response-Time-ms", f"{elapsed:.2f}")
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_with_timing)
+        finally:
+            milliseconds = (time.perf_counter() - start) * 1000
+            route = scope.get("route")  # set by the router once the path has matched
+            endpoint = f"{scope['method']} {route.path if route else 'unmatched'}"
+            self.tracker.record(endpoint, milliseconds)
+            logger.info(
+                "request",
+                extra={"endpoint": endpoint, "status": status, "ms": round(milliseconds, 2)},
+            )

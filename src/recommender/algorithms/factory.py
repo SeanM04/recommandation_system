@@ -59,9 +59,14 @@ def build_policies(
     store: OptionsStore,
     *,
     popularity: Mapping[str, float] | None = None,
+    seed: int | None = None,
 ) -> dict[str, Policy]:
-    """Every policy in ``settings.policies``, sharing one options store."""
+    """Every policy in ``settings.policies``, sharing one options store.
+
+    ``seed`` defaults to the configured seed; the API passes one per server process.
+    """
+    seed = settings.seed if seed is None else seed
     return {
-        name: build_policy(name, spec, store, seed=settings.seed, popularity=popularity)
+        name: build_policy(name, spec, store, seed=seed, popularity=popularity)
         for name, spec in settings.policies.items()
     }

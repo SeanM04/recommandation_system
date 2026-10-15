@@ -28,7 +28,7 @@ from recommender.api.schemas import (
     ResponseResult,
 )
 from recommender.api.services import Services
-from recommender.api.timing import LatencyTracker, add_timing
+from recommender.api.timing import LatencyTracker, TimingMiddleware
 from recommender.config import Settings, load_settings
 from recommender.domain import SEGMENTS
 from recommender.events.log import DuplicateResponse
@@ -56,7 +56,7 @@ def create_app(settings: Settings | None = None, database_url: str | None = None
         lifespan=lifespan,
     )
     app.state.latency = LatencyTracker()
-    add_timing(app, app.state.latency)
+    app.add_middleware(TimingMiddleware, tracker=app.state.latency)
     register_routes(app)
     return app
 
@@ -99,8 +99,10 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
         """A few customer ids, for trying the API out."""
         if segment is not None and segment not in SEGMENTS:
             raise not_found(f"unknown segment {segment!r}; expected one of {list(SEGMENTS)}")
-        ids = services.customers.ids(segment=segment, limit=limit)
-        return [CustomerOut(customer_id=i, segment=services.customers.get(i).segment) for i in ids]
+        return [
+            CustomerOut(customer_id=customer_id, segment=customer_segment)
+            for customer_id, customer_segment in services.customers.list_customers(segment, limit)
+        ]
 
     @app.post("/invocations", response_model=InvocationResponse, tags=["recommendations"])
     def invoke(

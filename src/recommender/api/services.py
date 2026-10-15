@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -13,7 +14,6 @@ from sqlalchemy import Engine, text
 from recommender.algorithms.base import Policy
 from recommender.algorithms.factory import build_policies
 from recommender.algorithms.rewards import RewardFn, make_reward
-from recommender.algorithms.static import StaticPolicy
 from recommender.api.schemas import ContextOverrides
 from recommender.config import Settings, load_offers
 from recommender.customers import CustomerRepository, read_customers
@@ -52,8 +52,14 @@ class Services:
         events = EventLog(engine)
         store = SqlOptionsStore(engine)
         # The static baseline is "batch-trained" on everything logged so far, then frozen.
-        popularity = StaticPolicy.fit(events.reward_history()).popularity
-        policies = build_policies(settings, store, popularity=popularity)
+        # Each server process gets its own random stream, so several workers never draw
+        # identical Thompson samples.
+        policies = build_policies(
+            settings,
+            store,
+            popularity=events.average_rewards(),
+            seed=settings.seed + os.getpid(),
+        )
         reward = make_reward(
             settings.recommendation.reward,
             list(offers.values()),

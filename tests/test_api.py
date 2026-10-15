@@ -4,6 +4,7 @@ from typing import get_args
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import postgres_schema
 from recommender.api.main import create_app
 from recommender.api.schemas import Channel, Outcome, TimeOfDay
 from recommender.config import load_offers
@@ -15,15 +16,25 @@ from recommender.simulator.engine import World
 OFFERS = {offer.offer_id: offer for offer in load_offers()}
 
 
-@pytest.fixture(scope="module")
-def client(tmp_path_factory):
-    """The API on a throwaway SQLite database holding the synthetic customers."""
-    url = f"sqlite:///{(tmp_path_factory.mktemp('api') / 'api.db').as_posix()}"
+def _client_for(url: str):
     engine = make_engine(url)
     CustomerRepository(engine).load(World.load().customers)
     engine.dispose()
     with TestClient(create_app(database_url=url)) as test_client:
         yield test_client
+
+
+@pytest.fixture(scope="module", params=["sqlite", "postgres"])
+def client(request, tmp_path_factory):
+    """The API on a throwaway database holding the synthetic customers: a SQLite file,
+    and a Postgres schema when Postgres is configured (the production database)."""
+    if request.param == "sqlite":
+        yield from _client_for(
+            f"sqlite:///{(tmp_path_factory.mktemp('api') / 'api.db').as_posix()}"
+        )
+    else:
+        with postgres_schema("pytest_api") as url:
+            yield from _client_for(url)
 
 
 def invoke(client: TestClient, customer_id="C00001", policy=None, **body) -> dict:
@@ -46,7 +57,7 @@ def respond(client: TestClient, invocation_id: str, offer_id: str, outcome: str)
 def test_health_reports_the_database(client: TestClient) -> None:
     body = client.get("/health").json()
     assert body["status"] == "ok"
-    assert body["database"] == "sqlite"
+    assert body["database"] in ("sqlite", "postgresql")
     assert body["database_ok"] is True
     assert body["active_policy"] == "thompson_segment_decay"
 

@@ -1,10 +1,10 @@
 import threading
 
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 
-from recommender.config import load_settings
+from conftest import postgres_schema
+from recommender.db import make_engine
 from recommender.store.options_store import ArmStats, InMemoryOptionsStore, OptionsStore
 from recommender.store.sql import SqlOptionsStore, copy_options, create_store
 
@@ -12,23 +12,10 @@ PG_TEST_SCHEMA = "pytest_recommender"  # tests never touch the real tables
 
 
 def _postgres_store():
-    """A store in a throwaway schema of the configured Postgres database, if there is one."""
-    url = load_settings().database_url
-    if not url.startswith("postgresql"):
-        pytest.skip("no Postgres configured: set RECOMMENDER_DATABASE_URL in .env")
-    admin = create_engine(url)
-    try:
-        with admin.begin() as connection:
-            connection.execute(text(f"DROP SCHEMA IF EXISTS {PG_TEST_SCHEMA} CASCADE"))
-            connection.execute(text(f"CREATE SCHEMA {PG_TEST_SCHEMA}"))
-    except OperationalError as error:
-        pytest.skip(f"Postgres not reachable: {error.orig}")
-    engine = create_engine(url, connect_args={"options": f"-csearch_path={PG_TEST_SCHEMA}"})
-    yield SqlOptionsStore(engine)
-    engine.dispose()
-    with admin.begin() as connection:
-        connection.execute(text(f"DROP SCHEMA IF EXISTS {PG_TEST_SCHEMA} CASCADE"))
-    admin.dispose()
+    with postgres_schema(PG_TEST_SCHEMA) as url:
+        engine = make_engine(url)
+        yield SqlOptionsStore(engine)
+        engine.dispose()
 
 
 @pytest.fixture(params=["memory", "sqlite", "postgres"])
