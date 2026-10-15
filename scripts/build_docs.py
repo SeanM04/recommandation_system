@@ -97,8 +97,9 @@ PHASES = [
     (
         6,
         "Quality & delivery",
-        "planned",
-        "Docker, JSON logging, README and WRITEUP, and an optional nightly aggregation job.",
+        "built",
+        "docker compose for the whole system, JSON logging, README and WRITEUP, and a "
+        "nightly roll-up of the event log.",
     ),
 ]
 
