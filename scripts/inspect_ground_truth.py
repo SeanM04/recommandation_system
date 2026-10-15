@@ -19,12 +19,19 @@ def _heading(title: str) -> None:
     print(f"\n{title}\n{'-' * len(title)}")
 
 
+def _label(key: str | tuple) -> str:
+    """'segment' or ('segment', is_payday_week) as a readable row label."""
+    if not isinstance(key, tuple):
+        return key
+    segment, payday = key
+    return f"{segment} / {'payday week' if payday else 'rest of month'}"
+
+
 def _favourites(table: pd.DataFrame, value_format: str) -> str:
     best = winners(table)
     lines = [
-        f"  {' / '.join(map(str, key)) if isinstance(key, tuple) else key:<32} "
-        f"{row.best:<22} {format(row.value, value_format):>8}   "
-        f"lead x{row.lead:.2f} over {row.runner_up}"
+        f"  {_label(key):<36} {row.best:<22} {format(row.value, value_format):>8}"
+        f"   lead x{row.lead:.2f} over {row.runner_up}"
         for key, row in best.iterrows()
     ]
     return "\n".join(lines)

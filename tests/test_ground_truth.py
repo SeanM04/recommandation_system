@@ -99,14 +99,41 @@ def test_each_segment_has_the_intended_favourite(tables) -> None:
     before, _ = tables
     assert best_offer(before, "student").startswith("data_")
     assert best_offer(before, "family") == "funeral_cover"
-    assert best_offer(before, "small_business") == "data_20gb"
+    assert best_offer(before, "small_business") == "paylater_voucher"
     assert best_offer(before, "pensioner") == "airtime_r50_bonus"
 
 
+def assert_clear_winners(table: pd.DataFrame, min_lead: float = 1.2) -> None:
+    lead = winners(table)["lead"]
+    assert (lead > min_lead).all(), f"no clear winner: {lead[lead <= min_lead].to_dict()}"
+
+
 def test_best_offer_is_clearly_better_than_runner_up(tables) -> None:
+    before, after = tables
+    assert_clear_winners(before)
+    assert_clear_winners(after)
+
+
+def test_payday_changes_the_favourite_for_pensioners_and_small_businesses(truth, customers) -> None:
+    by_payday = take_up_table(
+        truth, customers, OFFERS, DAYS, by=("segment", "is_payday_week"), samples_per_segment=2000
+    )
+    assert_clear_winners(by_payday)
+    assert best_offer(by_payday, ("pensioner", False)) == "airtime_r50_bonus"
+    assert best_offer(by_payday, ("pensioner", True)) == "electricity_cashback"
+    assert best_offer(by_payday, ("small_business", False)) == "paylater_voucher"
+    assert best_offer(by_payday, ("small_business", True)) == "data_20gb"
+    for segment in ("student", "young_professional", "family"):
+        assert best_offer(by_payday, (segment, False)) == best_offer(by_payday, (segment, True))
+
+
+def test_revenue_favourites_are_clear_and_differ_from_take_up(tables) -> None:
     before, _ = tables
-    lead = winners(before)["lead"]
-    assert (lead > 1.2).all(), f"no clear winner: {lead[lead <= 1.2].to_dict()}"
+    margins = pd.Series({offer.offer_id: offer.margin_zar for offer in OFFERS})
+    revenue = before.mul(margins, axis=1)
+    assert_clear_winners(revenue)
+    assert best_offer(revenue, "student") == "data_5gb"  # take-up favourite is data_1gb
+    assert best_offer(revenue, "pensioner") == "funeral_cover"  # take-up: airtime
 
 
 def test_behaviour_shift_makes_streaming_the_young_professional_favourite(truth, tables) -> None:

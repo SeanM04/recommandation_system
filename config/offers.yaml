@@ -60,7 +60,7 @@ offers:
     name: Family Funeral Cover (R20 000 payout)
     category: insurance
     price_zar: 99
-    margin_zar: 40
+    margin_zar: 50
     eligible_segments: [young_professional, family, small_business, pensioner]
     description: Monthly cover for the main member, spouse and children.
 

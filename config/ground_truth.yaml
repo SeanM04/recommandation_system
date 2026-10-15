@@ -48,7 +48,7 @@ base_take_up:
     streaming_bundle: 0.04
     food_delivery_voucher: 0.05
     roaming_pack: 0.02
-  small_business:               # heavy data and working capital
+  small_business:               # working capital mid-month, heavy data at month-end
     data_1gb: 0.04
     data_5gb: 0.07
     data_20gb: 0.14
@@ -59,11 +59,11 @@ base_take_up:
     device_insurance: 0.06
     savings_pocket: 0.05
     roaming_pack: 0.05
-  pensioner:                    # airtime to stay in touch, cover and electricity
+  pensioner:                    # airtime to stay in touch; electricity in grant week
     data_1gb: 0.05
     data_5gb: 0.02
     airtime_r50_bonus: 0.15
-    electricity_cashback: 0.10
+    electricity_cashback: 0.08
     funeral_cover: 0.10
     savings_pocket: 0.06
 
@@ -76,6 +76,14 @@ effects:
   - name: mid-month cash squeeze
     when: {is_payday_week: false}
     multiply: {credit: 1.2}
+
+  - name: pensioners buy the month's electricity when the SASSA grant lands
+    when: {segment: pensioner, is_payday_week: true}
+    multiply: {electricity_cashback: 2.0}
+
+  - name: small businesses need working capital before month-end
+    when: {segment: small_business, is_payday_week: false}
+    multiply: {paylater_voucher: 2.4}
 
   - name: morning errands
     when: {time_of_day: morning}
