@@ -121,6 +121,18 @@ class Settings(BaseModel):
             )
         return f"sqlite:///{self.paths.database.as_posix()}"
 
+    @property
+    def require_api_key(self) -> bool:
+        """Whether API calls need an ``X-API-Key`` header: ``RECOMMENDER_REQUIRE_API_KEY``
+        in the environment (``.env``). Off by default, so a clean machine runs as is."""
+        return os.environ.get("RECOMMENDER_REQUIRE_API_KEY", "").lower() in ("1", "true", "yes")
+
+
+def api_client_headers() -> dict[str, str]:
+    """Headers for calling the API: the key in ``RECOMMENDER_API_KEY``, if one is set."""
+    key = os.environ.get("RECOMMENDER_API_KEY")
+    return {"X-API-Key": key} if key else {}
+
 
 def postgres_url(*, database: str, user: str, password: str | None, host: str, port: int) -> str:
     """A psycopg URL from its parts; special characters in the password are escaped."""

@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import Engine, text
 
+from recommender.accounts import Accounts
 from recommender.algorithms.base import Policy
 from recommender.algorithms.factory import build_policies
 from recommender.algorithms.rewards import RewardFn
@@ -32,6 +33,8 @@ class Services:
     offers: dict[str, Offer]
     customers: CustomerRepository
     events: EventLog
+    accounts: Accounts
+    require_api_key: bool  # RECOMMENDER_REQUIRE_API_KEY: callers must send X-API-Key
     store: SqlOptionsStore
     policies: dict[str, Policy]
     rewards: dict[str, RewardFn]  # per policy: what it learns from
@@ -50,6 +53,7 @@ class Services:
             logger.info("customers loaded from csv", extra={"customers": loaded})
 
         events = EventLog(engine)
+        accounts = Accounts(engine)
         store = SqlOptionsStore(engine)
         # The static baseline is "batch-trained" on everything logged so far, then frozen.
         # Each server process gets its own random stream, so several workers never draw
@@ -68,6 +72,7 @@ class Services:
                 "customers": customers.count(),
                 "policies": list(policies),
                 "active_policy": settings.recommendation.active_policy,
+                "require_api_key": settings.require_api_key,
             },
         )
         return cls(
@@ -76,6 +81,8 @@ class Services:
             offers=offers,
             customers=customers,
             events=events,
+            accounts=accounts,
+            require_api_key=settings.require_api_key,
             store=store,
             policies=policies,
             rewards=rewards,

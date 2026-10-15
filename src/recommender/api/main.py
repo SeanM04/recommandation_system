@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.security import APIKeyHeader
 
 from recommender import __version__
 from recommender.algorithms.static import StaticPolicy
@@ -68,6 +69,25 @@ def get_services(request: Request) -> Services:
 ServicesDep = Annotated[Services, Depends(get_services)]
 
 
+# Shown as "Authorize" in the interactive docs. Checked only when the API requires keys.
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def check_api_key(
+    services: ServicesDep, key: Annotated[str | None, Depends(api_key_header)]
+) -> None:
+    if services.require_api_key and not services.accounts.api_key_valid(key):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail="missing or invalid API key: send one in the X-API-Key header",
+            headers={"WWW-Authenticate": "APIKey"},
+        )
+
+
+# Every endpoint but /health, which load balancers and the dashboard call without a key.
+PROTECTED = [Depends(check_api_key)]
+
+
 def not_found(message: str) -> HTTPException:
     return HTTPException(status.HTTP_404_NOT_FOUND, detail=message)
 
@@ -85,12 +105,14 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             "active_policy": services.settings.recommendation.active_policy,
         }
 
-    @app.get("/offers", response_model=list[OfferOut], tags=["catalogue"])
+    @app.get("/offers", response_model=list[OfferOut], tags=["catalogue"], dependencies=PROTECTED)
     def list_offers(services: ServicesDep) -> list[OfferOut]:
         """The offer catalogue."""
         return [OfferOut(**offer.model_dump()) for offer in services.offers.values()]
 
-    @app.get("/customers", response_model=list[CustomerOut], tags=["catalogue"])
+    @app.get(
+        "/customers", response_model=list[CustomerOut], tags=["catalogue"], dependencies=PROTECTED
+    )
     def list_customers(
         services: ServicesDep,
         segment: str | None = Query(None, description="Only customers in this segment"),
@@ -104,7 +126,12 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             for customer_id, customer_segment in services.customers.list_customers(segment, limit)
         ]
 
-    @app.post("/invocations", response_model=InvocationResponse, tags=["recommendations"])
+    @app.post(
+        "/invocations",
+        response_model=InvocationResponse,
+        tags=["recommendations"],
+        dependencies=PROTECTED,
+    )
     def invoke(
         body: InvocationRequest,
         services: ServicesDep,
@@ -153,7 +180,9 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             ],
         )
 
-    @app.post("/response", response_model=ResponseResult, tags=["recommendations"])
+    @app.post(
+        "/response", response_model=ResponseResult, tags=["recommendations"], dependencies=PROTECTED
+    )
     def respond(body: ResponseRequest, services: ServicesDep) -> ResponseResult:
         """Record what happened to one shown offer, and update the model immediately.
 
@@ -201,7 +230,9 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             model_updated=model_updated,
         )
 
-    @app.get("/policies", response_model=list[PolicyInfo], tags=["policies"])
+    @app.get(
+        "/policies", response_model=list[PolicyInfo], tags=["policies"], dependencies=PROTECTED
+    )
     def list_policies(services: ServicesDep) -> list[PolicyInfo]:
         """Every configured policy; any of them can serve a request via ?policy=."""
         active = services.settings.recommendation.active_policy
@@ -218,7 +249,12 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             for name, spec in services.settings.policies.items()
         ]
 
-    @app.get("/policies/{name}/state", response_model=PolicyState, tags=["policies"])
+    @app.get(
+        "/policies/{name}/state",
+        response_model=PolicyState,
+        tags=["policies"],
+        dependencies=PROTECTED,
+    )
     def policy_state(
         name: str,
         services: ServicesDep,
@@ -253,7 +289,7 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             popularity=policy.popularity if isinstance(policy, StaticPolicy) else None,
         )
 
-    @app.get("/metrics", response_model=MetricsResponse, tags=["ops"])
+    @app.get("/metrics", response_model=MetricsResponse, tags=["ops"], dependencies=PROTECTED)
     def metrics(request: Request, services: ServicesDep) -> MetricsResponse:
         """Per-policy take-up and revenue from the event log; latency per endpoint."""
         margins = {offer_id: offer.margin_zar for offer_id, offer in services.offers.items()}

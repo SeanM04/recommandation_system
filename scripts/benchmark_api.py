@@ -37,7 +37,7 @@ import requests
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
-from recommender.config import PROJECT_ROOT, load_settings
+from recommender.config import PROJECT_ROOT, api_client_headers, load_settings
 from recommender.customers import CustomerRepository, read_customers
 from recommender.db import make_engine
 
@@ -96,7 +96,8 @@ class LocalServer:
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         self.process = subprocess.Popen(
             command,
-            env=os.environ | {"RECOMMENDER_DATABASE_URL": database_url},
+            env=os.environ
+            | {"RECOMMENDER_DATABASE_URL": database_url, "RECOMMENDER_REQUIRE_API_KEY": "false"},
             stdout=self.log,
             stderr=subprocess.STDOUT,
             creationflags=flags,
@@ -158,6 +159,7 @@ def one_client(base: str, customers: list[str], opens: int, seed: int) -> dict[s
     """App opens one after another, each followed by a response per offer shown."""
     rng = np.random.default_rng(seed)
     session = requests.Session()
+    session.headers.update(api_client_headers())
     timings: dict[str, list[float]] = {endpoint: [] for endpoint in ENDPOINTS}
 
     def timed(endpoint: str, payload: dict) -> dict:
@@ -232,7 +234,12 @@ def main() -> None:
     try:
         health = wait_until_healthy(base)
         print(f"API up ({where}; {health['database']}; policy {health['active_policy']})")
-        customers = [c["customer_id"] for c in requests.get(f"{base}/customers?limit=500").json()]
+        customers = [
+            c["customer_id"]
+            for c in requests.get(
+                f"{base}/customers?limit=500", headers=api_client_headers()
+            ).json()
+        ]
         run_level(base, customers, clients=2, opens=10)  # warm up connections and workers
         results = []
         for clients in levels:

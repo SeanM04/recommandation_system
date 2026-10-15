@@ -11,8 +11,8 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-from recommender.config import PROJECT_ROOT, load_settings
-from recommender.db import make_engine
+from recommender.config import PROJECT_ROOT, api_client_headers, load_settings
+from recommender.db import create_tables, make_engine
 
 # One fixed colour per policy on every chart (categorical palette slots, in order).
 POLICY_COLOURS = {
@@ -40,7 +40,10 @@ def settings():
 
 @st.cache_resource
 def engine():
-    return make_engine(settings().database_url)
+    """The project database, with every table in place (the dashboard may start first)."""
+    connection = make_engine(settings().database_url)
+    create_tables(connection)
+    return connection
 
 
 def results_dir() -> Path:
@@ -119,12 +122,13 @@ class Api:
         try:
             requests.get(f"{self.url}/health", timeout=1).raise_for_status()
             self.client, self.base, self.where = requests.Session(), self.url, self.url
+            self.client.headers.update(api_client_headers())
         except requests.RequestException:
             from fastapi.testclient import TestClient
 
             from recommender.api.main import create_app
 
-            self.client = TestClient(create_app())
+            self.client = TestClient(create_app(), headers=api_client_headers())
             self.client.__enter__()  # run the app's startup: database, policies
             self.base, self.where = "", "in-process (no API server running)"
 

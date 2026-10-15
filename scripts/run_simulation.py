@@ -22,7 +22,7 @@ import requests
 
 from recommender.algorithms.factory import build_policy
 from recommender.algorithms.static import StaticPolicy
-from recommender.config import PROJECT_ROOT, load_settings
+from recommender.config import PROJECT_ROOT, api_client_headers, load_settings
 from recommender.db import make_engine
 from recommender.evaluation.compare import warm_up_history
 from recommender.evaluation.metrics import summarize
@@ -86,9 +86,10 @@ def main() -> None:
 
             from recommender.api.main import create_app
 
-            client_context, base = TestClient(create_app()), ""
+            client_context, base = TestClient(create_app(), headers=api_client_headers()), ""
         else:
             client_context, base = requests.Session(), args.url
+            client_context.headers.update(api_client_headers())
 
         def progress(done: int) -> None:
             if done % 500 == 0 or done == rounds:

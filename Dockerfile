@@ -14,7 +14,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY pyproject.toml ./
+COPY pyproject.toml manage.py ./
 COPY src ./src
 COPY config ./config
 COPY scripts ./scripts

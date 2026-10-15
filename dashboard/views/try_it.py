@@ -4,8 +4,10 @@ import datetime as dt
 
 import streamlit as st
 
+from auth import require_admin
 from shared import api
 
+require_admin()  # every click changes the model
 st.title("Try it")
 client = api()
 st.caption(f"Calling the API: {client.where}. Every click below is real learning in the database.")

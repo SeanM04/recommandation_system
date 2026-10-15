@@ -129,6 +129,13 @@
 <div class="table-wrap"><table class="tests">
 <thead><tr><th scope="col">What the test guarantees</th><th scope="col" class="num">Cases</th></tr></thead>
 <tbody>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_accounts.py</code> · </th></tr>
+<tr><td>Passwords are salted hashes checked exactly</td><td class="num">1</td></tr>
+<tr><td>Sign in with the right password only</td><td class="num">1</td></tr>
+<tr><td>Invalid accounts are refused</td><td class="num">4</td></tr>
+<tr><td>Usernames are unique</td><td class="num">1</td></tr>
+<tr><td>Change password and remove</td><td class="num">1</td></tr>
+<tr><td>Api keys are stored hashed and can be revoked</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_api.py</code> · API: invocations, responses, idempotency, per-request policy, errors, state and metrics</th></tr>
 <tr><td>Health reports the database</td><td class="num">1</td></tr>
 <tr><td>Every response carries its timing</td><td class="num">1</td></tr>
@@ -148,6 +155,16 @@
 <tr><td>Static policy state shows its frozen table</td><td class="num">1</td></tr>
 <tr><td>Metrics count events and report latency</td><td class="num">1</td></tr>
 <tr><td>Revenue policy learns from margin</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_api_keys.py</code> · </th></tr>
+<tr><td>Calls without a valid key are refused</td><td class="num">1</td></tr>
+<tr><td>A valid key is accepted and health needs none</td><td class="num">1</td></tr>
+<tr><td>Keys are off by default</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_cli.py</code> · </th></tr>
+<tr><td>Migrate creates the tables and loads the customers</td><td class="num">1</td></tr>
+<tr><td>Createsuperuser without prompts</td><td class="num">1</td></tr>
+<tr><td>Createuser asks for the password twice</td><td class="num">1</td></tr>
+<tr><td>Createapikey prints a working key</td><td class="num">1</td></tr>
+<tr><td>Runserver refuses a port in use</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_daily.py</code> · </th></tr>
 <tr><td>Day bounds follow the local calendar</td><td class="num">1</td></tr>
 <tr><td>One row per offer with every outcome counted</td><td class="num">1</td></tr>
@@ -160,6 +177,11 @@
 <tr><td>Live view counts the logged app opens</td><td class="num">1</td></tr>
 <tr><td>Comparison lists every policy and says which run</td><td class="num">1</td></tr>
 <tr><td>Try it updates the model</td><td class="num">1</td></tr>
+<tr><td>First run creates the admin and signs in</td><td class="num">1</td></tr>
+<tr><td>Sign in needs the right password</td><td class="num">1</td></tr>
+<tr><td>Repeated failures lock the session</td><td class="num">1</td></tr>
+<tr><td>Viewers cannot use admin pages</td><td class="num">1</td></tr>
+<tr><td>Admins add users</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_docs.py</code> · These docs: generated blocks are current and every link resolves</th></tr>
 <tr><td>Generated blocks are up to date</td><td class="num">1</td></tr>
 <tr><td>Every link between pages resolves</td><td class="num">1</td></tr>
@@ -267,7 +289,7 @@
 <tr><td>Alpha and beta are computed by the database</td><td class="num">1</td></tr>
 <tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
 </tbody>
-<caption>137 test cases in 125 test functions.</caption></table></div>
+<caption>159 test cases in 144 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>
