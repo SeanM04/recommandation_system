@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install db data truth experiment run test lint format docs
+.PHONY: install db data truth experiment run benchmark test lint format docs
 
 install:  ## Install dependencies and the package in editable mode
 	$(PYTHON) -m pip install -r requirements.txt
@@ -18,8 +18,11 @@ truth:  ## Print the hidden take-up table per segment (simulator only)
 experiment:  ## Rerun the forgetting experiment behind decision P9 (about a minute)
 	$(PYTHON) scripts/experiment_forgetting.py
 
-run:  ## Start the recommender API on http://localhost:8000
-	$(PYTHON) -m uvicorn recommender.api.main:app --host 0.0.0.0 --port 8000
+run:  ## Start the recommender API on http://localhost:8000 (docs at /docs)
+	$(PYTHON) -m uvicorn recommender.api.main:app --host 0.0.0.0 --port 8000 --no-access-log
+
+benchmark:  ## Measure API latency end to end (real server, database and HTTP)
+	$(PYTHON) scripts/benchmark_api.py
 
 test:  ## Run the test suite
 	$(PYTHON) -m pytest
