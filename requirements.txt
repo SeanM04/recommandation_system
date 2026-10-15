@@ -1,0 +1,16 @@
+# Runtime
+fastapi==0.143.1
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+pyyaml==6.0.3
+numpy==2.5.4
+pandas==3.0.6
+sqlalchemy==2.1.4
+streamlit==1.66.0
+plotly==7.1.0
+requests==2.34.2
+
+# Dev / test
+pytest==9.1.1
+httpx2==2.13.1
+ruff==0.17.0
