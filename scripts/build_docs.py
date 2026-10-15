@@ -133,6 +133,9 @@ TEST_FILES = {
     "test_ground_truth.py": "Hidden truth, segment stories, payday, revenue, response "
     "model and the architecture guards",
     "test_docs.py": "These docs: generated blocks are current and every link resolves",
+    "test_store.py": "Options store: arm statistics, and identical in-memory and SQLite behaviour",
+    "test_policies.py": "Bandit policies: ranking, learning, context keys, forgetting, convergence",
+    "test_rewards.py": "Reward functions and the policy factory",
 }
 
 CHIP_LABELS = {"built": "Built", "planned": "Planned", "proposed": "Proposed"}
