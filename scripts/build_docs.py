@@ -3,7 +3,8 @@
 Prose and diagrams in ``docs/*.html`` are written by hand. Everything between
 ``<!-- BEGIN generated:NAME -->`` and ``<!-- END generated:NAME -->`` is rebuilt here
 from the source of truth (YAML config, the ground-truth model, DECISIONS.md,
-requirements.txt and the test files), so the docs cannot drift from the code.
+requirements.txt and the test files), so the docs cannot drift from the code. README.md
+and WRITEUP.md get the same treatment for their results tables and findings.
 
 Usage:  python scripts/build_docs.py           rewrite the docs in place
         python scripts/build_docs.py --check   exit 1 if any page is out of date
@@ -794,12 +795,10 @@ def _paired(by_seed: list[dict], a: str, b: str, metric: str) -> list[float]:
     return [values[(a, s)] - values[(b, s)] for s in seeds if (a, s) in values and (b, s) in values]
 
 
-def block_findings(src: Sources, page: str) -> str:
-    """Headline findings. Every comparison is paired by seed and says how many seeds agree,
-    so nothing is claimed that the runs do not support."""
-    data = _results()
-    if data is None:
-        return NO_RESULTS
+def _findings(data: dict) -> list[tuple[str, str]]:
+    """Headline findings as (headline, text), in plain text for HTML and Markdown alike.
+    Every comparison is paired by seed and says how many seeds agree, so nothing is
+    claimed that the runs do not support."""
     by_seed = data.get("by_seed", [])
     for row in by_seed:
         row["regret_before_shift"] = row["regret"] - row["regret_after_shift"]
@@ -818,19 +817,23 @@ def block_findings(src: Sources, page: str) -> str:
         vs_random = lower_in(_paired(by_seed, best["policy"], "random", "regret"))
         uplift = best["take_up_rate"] / static["take_up_rate"] - 1
         items.append(
-            f"<strong>Learning per segment beats both baselines, in every run.</strong> "
-            f"{escape(best['policy'])} reached {best['share_of_oracle']:.1%} of the oracle, with "
-            f"{uplift:.0%} more take-ups per app open than the static batch model "
-            f"({best['take_up_rate']:.3f} against {static['take_up_rate']:.3f}). It cut regret by "
-            f"{best['regret_vs_random']:.0%} against random and {best['regret_vs_static']:.0%} "
-            f"against static: below random's regret in {vs_random} of {n} seeds and below "
-            f"static's in {vs_static} of {n}."
+            (
+                "Learning per segment beats both baselines, in every run.",
+                f"{best['policy']} reached {best['share_of_oracle']:.1%} of the oracle, with "
+                f"{uplift:.0%} more take-ups per app open than the static batch model "
+                f"({best['take_up_rate']:.3f} against {static['take_up_rate']:.3f}). It cut regret by "
+                f"{best['regret_vs_random']:.0%} against random and {best['regret_vs_static']:.0%} "
+                f"against static: below random's regret in {vs_random} of {n} seeds and below "
+                f"static's in {vs_static} of {n}.",
+            )
         )
         items.append(
-            f"<strong>It adapts when behaviour changes; the batch model does not.</strong> After "
-            f"the shift its take-up rose from {best['take_up_before_shift']:.3f} to "
-            f"{best['take_up_after_shift']:.3f} per app open; the static model went from "
-            f"{static['take_up_before_shift']:.3f} to {static['take_up_after_shift']:.3f}."
+            (
+                "It adapts when behaviour changes; the batch model does not.",
+                f"After the shift its take-up rose from {best['take_up_before_shift']:.3f} to "
+                f"{best['take_up_after_shift']:.3f} per app open; the static model went from "
+                f"{static['take_up_before_shift']:.3f} to {static['take_up_after_shift']:.3f}.",
+            )
         )
 
     tied = [
@@ -839,21 +842,25 @@ def block_findings(src: Sources, page: str) -> str:
         if lower_in(_paired(by_seed, best["policy"], policy, "regret")) < 0.8 * n
     ]
     if tied:
-        names = ", ".join(escape(t) for t in tied)
         items.append(
-            f"<strong>The top of the table is a tie.</strong> {escape(best['policy'])} has the "
-            f"lowest mean regret, but {names} had lower regret in at least a fifth of the seeds, "
-            f"so the order among them is within the noise."
+            (
+                "The top of the table is a tie.",
+                f"{best['policy']} has the lowest mean regret, but {', '.join(tied)} had lower "
+                f"regret in at least a fifth of the seeds, so the order among them is within the "
+                f"noise.",
+            )
         )
 
     personal, global_ = table.get("thompson_segment"), table.get("thompson")
     if personal and global_:
         wins = lower_in(_paired(by_seed, "thompson_segment", "thompson", "regret"))
         items.append(
-            f"<strong>Personalisation is the biggest single lever.</strong> Thompson sampling "
-            f"with statistics per segment reached {personal['share_of_oracle']:.1%} of the oracle; "
-            f"one global model reached {global_['share_of_oracle']:.1%} (lower regret per segment "
-            f"in {wins} of {n} seeds)."
+            (
+                "Personalisation is the biggest single lever.",
+                f"Thompson sampling with statistics per segment reached "
+                f"{personal['share_of_oracle']:.1%} of the oracle; one global model reached "
+                f"{global_['share_of_oracle']:.1%} (lower regret per segment in {wins} of {n} seeds).",
+            )
         )
 
     decay = table.get("thompson_segment_decay")
@@ -863,12 +870,14 @@ def block_findings(src: Sources, page: str) -> str:
             by_seed, "thompson_segment_decay", "thompson_segment", "regret_before_shift"
         )
         items.append(
-            f"<strong>Forgetting trades a little before the shift for more after it.</strong> "
-            f"With forgetting, regret after the shift was lower in {lower_in(after)} of {n} seeds, "
-            f"by {-sum(after) / len(after):,.0f} take-ups on average; before the shift it cost "
-            f"{sum(before) / len(before):,.0f} on average (higher in "
-            f"{sum(d > 0 for d in before)} of {n} seeds). Its value grows with how often, and "
-            f"how sharply, behaviour changes."
+            (
+                "Forgetting trades a little before the shift for more after it.",
+                f"With forgetting, regret after the shift was lower in {lower_in(after)} of {n} seeds, "
+                f"by {-sum(after) / len(after):,.0f} take-ups on average; before the shift it cost "
+                f"{sum(before) / len(before):,.0f} on average (higher in "
+                f"{sum(d > 0 for d in before)} of {n} seeds). Its value grows with how often, and "
+                f"how sharply, behaviour changes.",
+            )
         )
 
     revenue = table.get("thompson_segment_revenue")
@@ -879,21 +888,26 @@ def block_findings(src: Sources, page: str) -> str:
         uplift = revenue["revenue_per_open"] / decay["revenue_per_open"] - 1
         drop = 1 - revenue["take_up_rate"] / decay["take_up_rate"]
         items.append(
-            f"<strong>The reward decides the business outcome.</strong> The same policy learning "
-            f"from margin instead of take-up earned {uplift:.0%} more revenue per app open "
-            f"(R{revenue['revenue_per_open']:.2f} against R{decay['revenue_per_open']:.2f}, more "
-            f"in {sum(d > 0 for d in more)} of {n} seeds), at the cost of {drop:.0%} fewer "
-            f"take-ups. Which one is right is a business choice, not a modelling one."
+            (
+                "The reward decides the business outcome.",
+                f"The same policy learning from margin instead of take-up earned {uplift:.0%} more "
+                f"revenue per app open (R{revenue['revenue_per_open']:.2f} against "
+                f"R{decay['revenue_per_open']:.2f}, more in {sum(d > 0 for d in more)} of {n} "
+                f"seeds), at the cost of {drop:.0%} fewer take-ups. Which one is right is a "
+                f"business choice, not a modelling one.",
+            )
         )
 
     greedy = table.get("epsilon_greedy_segment")
     if personal and greedy:
         wins = lower_in(_paired(by_seed, "thompson_segment", "epsilon_greedy_segment", "regret"))
         items.append(
-            f"<strong>Thompson sampling explores better than epsilon-greedy.</strong> With the "
-            f"same per-segment statistics, regret was {personal['regret']:,.0f} against "
-            f"{greedy['regret']:,.0f}, lower in {wins} of {n} seeds: epsilon-greedy keeps "
-            f"spending a fixed share of slots on offers it already knows are poor."
+            (
+                "Thompson sampling explores better than epsilon-greedy.",
+                f"With the same per-segment statistics, regret was {personal['regret']:,.0f} against "
+                f"{greedy['regret']:,.0f}, lower in {wins} of {n} seeds: epsilon-greedy keeps "
+                f"spending a fixed share of slots on offers it already knows are poor.",
+            )
         )
     convergence = data.get("convergence", [])
     after = {
@@ -910,16 +924,74 @@ def block_findings(src: Sources, page: str) -> str:
 
     if ("thompson_segment_decay", "young_professional") in after:
         items.append(
-            "<strong>Forgetting adapts sooner.</strong> After the shift, with forgetting the "
-            "young professionals' new favourite led within "
-            f"{opens('thompson_segment_decay', 'young_professional')}, against "
-            f"{opens('thompson_segment', 'young_professional')} without; for families, "
-            f"{opens('thompson_segment_decay', 'family')} against "
-            f"{opens('thompson_segment', 'family')}. The static model adapted for neither segment "
-            "(first seed; see the adaptation table)."
+            (
+                "Forgetting adapts sooner.",
+                "After the shift, with forgetting the young professionals' new favourite led within "
+                f"{opens('thompson_segment_decay', 'young_professional')}, against "
+                f"{opens('thompson_segment', 'young_professional')} without; for families, "
+                f"{opens('thompson_segment_decay', 'family')} against "
+                f"{opens('thompson_segment', 'family')}. The static model adapted for neither segment "
+                "(first seed; see the adaptation table).",
+            )
         )
+    return items
 
+
+def block_findings(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None:
+        return NO_RESULTS
+    items = [
+        f"<strong>{escape(head, quote=False)}</strong> {escape(text, quote=False)}"
+        for head, text in _findings(data)
+    ]
     return '<ol class="findings">\n' + "\n".join(f"<li>{item}</li>" for item in items) + "\n</ol>"
+
+
+# Markdown blocks, for README.md and WRITEUP.md.
+MD_NO_RESULTS = "_No results yet: run `make compare`, then `make docs`._"
+
+
+def block_md_results(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None:
+        return MD_NO_RESULTS
+    best = data["table"][0]["policy"]
+    lines = [
+        "| Policy | Take-up per app open | Revenue per app open | Regret (take-ups lost) "
+        "| Share of oracle | Regret cut vs random | Regret cut vs static |",
+        "|---|--:|--:|--:|--:|--:|--:|",
+    ]
+    for row in data["table"]:
+        name = f"`{row['policy']}`"
+        lines.append(
+            f"| {f'**{name}**' if row['policy'] == best else name} "
+            f"| {row['take_up_rate']:.3f} | R{row['revenue_per_open']:.2f} "
+            f"| {row['regret']:,.0f} ± {row['regret_sd']:,.0f} | {row['share_of_oracle']:.1%} "
+            f"| {row['regret_vs_random']:.0%} | {row['regret_vs_static']:.0%} |"
+        )
+    lines.append(
+        f"\n_{data['rounds']:,} app opens per run, behaviour shift at {data['shift_round']:,}, "
+        f"mean ± standard deviation over {data['seeds']} seeds. Regret is take-ups lost against "
+        f"an oracle that knows the hidden take-up probabilities._"
+    )
+    return "\n".join(lines)
+
+
+def block_md_findings(src: Sources, page: str) -> str:
+    """All findings as a numbered list (``md-headline``: the first two only)."""
+    data = _results()
+    if data is None:
+        return MD_NO_RESULTS
+    findings = _findings(data)
+    return "\n".join(f"{i}. **{head}** {text}" for i, (head, text) in enumerate(findings, 1))
+
+
+def block_md_headline(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None:
+        return MD_NO_RESULTS
+    return "\n".join(f"- **{head}** {text}" for head, text in _findings(data)[:2])
 
 
 def block_regret_chart(src: Sources, page: str) -> str:
@@ -1063,7 +1135,12 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "findings": block_findings,
     "regret-chart": block_regret_chart,
     "adaptation": block_adaptation,
+    "md-results": block_md_results,
+    "md-findings": block_md_findings,
+    "md-headline": block_md_headline,
 }
+# Markdown pages at the repository root with generated blocks of their own.
+MARKDOWN_PAGES = ["README.md", "WRITEUP.md"]
 
 
 def render(text: str, page: str, src: Sources) -> str:
@@ -1085,8 +1162,10 @@ def main() -> int:
 
     src = Sources()
     stale = []
-    for page, _ in PAGES:
-        path = DOCS / page
+    paths = [DOCS / page for page, _ in PAGES]
+    paths += [PROJECT_ROOT / name for name in MARKDOWN_PAGES if (PROJECT_ROOT / name).exists()]
+    for path in paths:
+        page = path.name
         current = path.read_text(encoding="utf-8")
         updated = render(current, page, src)
         if updated != current:
