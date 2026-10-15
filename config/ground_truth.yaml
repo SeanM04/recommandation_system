@@ -1,0 +1,130 @@
+# HIDDEN GROUND TRUTH: how simulated customers really behave.
+#
+# Read ONLY by the simulator (to draw outcomes) and the offline regret oracle.
+# The recommender never sees these numbers; it has to learn them from responses.
+#
+#   p(take-up) = base_take_up[segment][offer]
+#                x multiplier of every effect whose `when` matches the context
+#                capped at max_probability
+#
+# Effect multipliers are keyed by offer_id or by category (offer_id wins).
+# Offers missing from a segment's base table are not eligible for that segment.
+
+max_probability: 0.9
+
+base_take_up:
+  student:                      # data first, then cheap treats
+    data_1gb: 0.18
+    data_5gb: 0.12
+    data_20gb: 0.04
+    airtime_r50_bonus: 0.10
+    device_insurance: 0.03
+    savings_pocket: 0.02
+    streaming_bundle: 0.08
+    food_delivery_voucher: 0.09
+  young_professional:           # mid-size data, a bit of everything
+    data_1gb: 0.05
+    data_5gb: 0.13
+    data_20gb: 0.07
+    airtime_r50_bonus: 0.04
+    electricity_cashback: 0.05
+    paylater_voucher: 0.05
+    funeral_cover: 0.02
+    device_insurance: 0.05
+    savings_pocket: 0.05
+    streaming_bundle: 0.05
+    food_delivery_voucher: 0.07
+    roaming_pack: 0.03
+  family:                       # protect the household, keep the lights on
+    data_1gb: 0.06
+    data_5gb: 0.07
+    data_20gb: 0.05
+    airtime_r50_bonus: 0.07
+    electricity_cashback: 0.10
+    paylater_voucher: 0.06
+    funeral_cover: 0.15
+    device_insurance: 0.05
+    savings_pocket: 0.05
+    streaming_bundle: 0.04
+    food_delivery_voucher: 0.05
+    roaming_pack: 0.02
+  small_business:               # heavy data and working capital
+    data_1gb: 0.04
+    data_5gb: 0.07
+    data_20gb: 0.14
+    airtime_r50_bonus: 0.06
+    electricity_cashback: 0.08
+    paylater_voucher: 0.09
+    funeral_cover: 0.03
+    device_insurance: 0.06
+    savings_pocket: 0.05
+    roaming_pack: 0.05
+  pensioner:                    # airtime to stay in touch, cover and electricity
+    data_1gb: 0.05
+    data_5gb: 0.02
+    airtime_r50_bonus: 0.15
+    electricity_cashback: 0.10
+    funeral_cover: 0.10
+    savings_pocket: 0.06
+
+effects:
+  - name: payday week, money to spend
+    when: {is_payday_week: true}
+    multiply: {data: 1.25, airtime: 1.15, utilities: 1.3, credit: 0.6, insurance: 1.3,
+               savings: 1.6, entertainment: 1.3, lifestyle: 1.4, travel: 1.3}
+
+  - name: mid-month cash squeeze
+    when: {is_payday_week: false}
+    multiply: {credit: 1.2}
+
+  - name: morning errands
+    when: {time_of_day: morning}
+    multiply: {airtime: 1.15, utilities: 1.15}
+
+  - name: evening downtime
+    when: {time_of_day: evening}
+    multiply: {entertainment: 1.3, lifestyle: 1.4}
+
+  - name: late-night scrolling
+    when: {time_of_day: night}
+    multiply: {data: 1.2, entertainment: 1.25, lifestyle: 0.7}
+
+  - name: weekend
+    when: {is_weekend: true}
+    multiply: {lifestyle: 1.3, entertainment: 1.2, travel: 1.3}
+
+  - name: low-end handset
+    when: {device_tier: low}
+    multiply: {entertainment: 0.6, data_20gb: 0.6, device_insurance: 0.6}
+
+  - name: flagship handset
+    when: {device_tier: high}
+    multiply: {device_insurance: 1.5, entertainment: 1.15, data_20gb: 1.2}
+
+  - name: contract customers already have bundled data and minutes
+    when: {prepaid_vs_contract: contract}
+    multiply: {data: 0.75, airtime: 0.6, insurance: 1.15, travel: 1.4}
+
+  - name: tight budget
+    when: {spend_band: low}
+    multiply: {data_20gb: 0.5, data_5gb: 0.8, roaming_pack: 0.5, paylater_voucher: 0.7}
+
+  - name: big spender
+    when: {spend_band: high}
+    multiply: {data_1gb: 0.7, data_20gb: 1.3, roaming_pack: 1.4}
+
+  - name: border provinces travel more to neighbouring countries
+    when: {province: [Limpopo, Mpumalanga, North West]}
+    multiply: {roaming_pack: 1.5}
+
+# Applied mid-simulation (see Phase 4) to test whether a policy can adapt.
+behaviour_shift:
+  description: >-
+    A new streaming bundle goes viral with young professionals and partly
+    cannibalises their mid-size data bundle.
+  base_take_up:
+    young_professional:
+      streaming_bundle: 0.20
+      data_5gb: 0.08
+    student:
+      streaming_bundle: 0.12
