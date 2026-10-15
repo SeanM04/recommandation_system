@@ -134,6 +134,12 @@ Other endpoints: `GET /offers`, `GET /customers?segment=student`, `GET /policies
 
 Screenshots of every page are on the [dashboard docs page](docs/dashboard.html).
 
+## Running it
+
+- **Logs:** one JSON line per request (endpoint, status, milliseconds) and per startup, ready for any log shipper.
+- **Health and metrics:** `GET /health` checks the database; `GET /metrics` gives app opens, outcomes, take-up and revenue per policy, and p50/p95 latency per endpoint.
+- **Nightly job:** `make nightly` rolls yesterday's event log up into `daily_offer_stats`, one row per day, policy, segment and offer (impressions, times shown first, take-ups, views, ignores, offers with no response yet, revenue), so reports and drift alerts never scan the raw log. Days follow the configured timezone and rerunning a day replaces it, so late responses are picked up by running it again. Schedule it with cron (`5 0 * * * make nightly`) or one Airflow task; `make nightly ARGS=--all` backfills every day in the log. In Docker: `docker compose run --rm simulate python scripts/nightly_aggregate.py --all`.
+
 ## Configuration
 
 | File | What it controls |
@@ -147,12 +153,12 @@ Screenshots of every page are on the [dashboard docs page](docs/dashboard.html).
 
 ## Project layout
 
-```
+```text
 src/recommender/
   domain.py            offers, customers, context (payday week, time of day)
   algorithms/          random, static, epsilon-greedy, Thompson sampling, rewards
   store/               the options store: in memory, or SQL with atomic updates and forgetting
-  events/log.py        the event log: invocations, impressions, responses
+  events/              the event log (invocations, impressions, responses), nightly roll-up
   api/                 FastAPI app, schemas, request timing
   simulator/           population, hidden ground truth, the simulation engine
   evaluation/          regret, convergence, the multi-seed comparison

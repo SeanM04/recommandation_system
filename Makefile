@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help install db data truth simulate compare dashboard screenshots experiment run benchmark docker-build docker-api benchmark-docker up down benchmark-compose test lint format docs
+.PHONY: help install db data truth simulate compare dashboard screenshots experiment nightly run benchmark docker-build docker-api benchmark-docker up down benchmark-compose test lint format docs
 
 help:  ## List the targets
 	@grep -E '^[a-z-]+:.*## ' Makefile | sed -E 's/:.*## /	/' | expand -t 20
@@ -34,6 +34,9 @@ screenshots:  ## Screenshot every dashboard page into docs/assets/screenshots (d
 
 experiment:  ## Rerun the forgetting experiment behind decision P9 (about a minute)
 	$(PYTHON) scripts/experiment_forgetting.py
+
+nightly:  ## Roll yesterday's event log up into daily_offer_stats (cron: 5 0 * * *); ARGS=--all backfills
+	$(PYTHON) scripts/nightly_aggregate.py $(ARGS)
 
 run:  ## Start the recommender API on http://localhost:8000 (docs at /docs)
 	$(PYTHON) -m uvicorn recommender.api.main:app --host 0.0.0.0 --port 8000 --no-access-log

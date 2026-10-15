@@ -42,6 +42,7 @@ def create_tables(engine: Engine) -> list[str]:
     """
     # Importing the modules registers their tables on ``metadata``.
     import recommender.customers  # noqa: F401
+    import recommender.events.daily  # noqa: F401
     import recommender.events.log  # noqa: F401
     import recommender.store.sql  # noqa: F401
 
