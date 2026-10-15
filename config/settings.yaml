@@ -3,6 +3,9 @@
 # separately in simulation.yaml, which the recommender never reads.
 seed: 42
 
+# The API stamps each app open with the local date and time of day.
+timezone: Africa/Johannesburg
+
 # Relative paths are resolved against the project root.
 paths:
   offers: config/offers.yaml
@@ -10,7 +13,8 @@ paths:
   database: data/recommender.db
 
 recommendation:
-  number_of_offers: 3          # offers returned per app open
+  number_of_offers: 3          # offers returned per app open, unless a request asks otherwise
+  max_offers: 5                # most offers one request may ask for
   reward: binary               # binary (take-up) or margin (revenue-aware)
   learn_from_ignored: false    # an ignored offer was probably never seen: no update
   active_policy: thompson_segment_decay

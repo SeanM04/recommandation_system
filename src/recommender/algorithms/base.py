@@ -44,6 +44,7 @@ class Policy(ABC):
     """Ranks offers for an app open, and may learn from the rewards that follow."""
 
     name: str
+    learns = False  # True for policies whose update() changes what they recommend
 
     @abstractmethod
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:
@@ -60,6 +61,8 @@ class BanditPolicy(Policy):
     switches on forgetting: before each update, every offer's evidence in that context
     shrinks by ``decay``, so recent responses outweigh old ones.
     """
+
+    learns = True
 
     def __init__(
         self,

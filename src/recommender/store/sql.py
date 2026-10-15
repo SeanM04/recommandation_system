@@ -1,15 +1,13 @@
 """Options store in a SQL database via SQLAlchemy Core.
 
-Postgres (the ``Telco_Dynamic_Recomender`` database) when ``RECOMMENDER_DATABASE_URL`` is
-set, a local SQLite file otherwise. The same code serves both: the only dialect-specific
-piece is the ``INSERT ... ON CONFLICT DO UPDATE`` upsert, which both databases support.
+Postgres (the ``Telco_Dynamic_Recomender`` database) or a local SQLite file, whichever
+``Settings.database_url`` points at. See ``recommender.db`` for the shared plumbing.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy import (
     Column,
@@ -18,24 +16,20 @@ from sqlalchemy import (
     Engine,
     Float,
     Insert,
-    MetaData,
     String,
     Table,
-    create_engine,
     delete,
     select,
     update,
 )
-from sqlalchemy.dialects import postgresql, sqlite
 
+from recommender.db import make_engine, metadata, upsert_insert
 from recommender.store.options_store import (
     ArmStats,
     InMemoryOptionsStore,
     OptionRow,
     OptionsStore,
 )
-
-metadata = MetaData()
 
 options = Table(
     "options",
@@ -59,18 +53,11 @@ class SqlOptionsStore(OptionsStore):
     """Options store backed by the ``options`` table."""
 
     def __init__(self, engine: Engine | str) -> None:
-        self.engine = (
-            create_engine(engine, pool_pre_ping=True) if isinstance(engine, str) else engine
-        )
-        metadata.create_all(self.engine)
+        self.engine = make_engine(engine) if isinstance(engine, str) else engine
+        options.create(self.engine, checkfirst=True)
 
     def _insert(self) -> Insert:
-        """An INSERT that supports ON CONFLICT for this database."""
-        dialects = {"postgresql": postgresql.insert, "sqlite": sqlite.insert}
-        name = self.engine.dialect.name
-        if name not in dialects:
-            raise NotImplementedError(f"no upsert for {name}; use Postgres or SQLite")
-        return dialects[name](options)
+        return upsert_insert(self.engine, options)
 
     def get_context(self, policy: str, context_key: str) -> dict[str, ArmStats]:
         query = select(options.c.offer_id, options.c.pulls, options.c.total_reward).where(
@@ -178,8 +165,6 @@ def create_store(url: str) -> OptionsStore:
     """``"memory"`` for an in-memory store, otherwise a SQLAlchemy database URL."""
     if url == "memory":
         return InMemoryOptionsStore()
-    if url.startswith("sqlite:///"):
-        Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
     return SqlOptionsStore(url)
 
 

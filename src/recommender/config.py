@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 import yaml
 from dotenv import load_dotenv
@@ -57,6 +58,7 @@ class PolicySpec(BaseModel):
 
 class RecommendationSettings(BaseModel):
     number_of_offers: int = Field(3, ge=1)
+    max_offers: int = Field(5, ge=1)
     reward: Literal["binary", "margin"] = "binary"
     learn_from_ignored: bool = False
     active_policy: str
@@ -64,9 +66,16 @@ class RecommendationSettings(BaseModel):
 
 class Settings(BaseModel):
     seed: int
+    timezone: str = "Africa/Johannesburg"
     paths: PathSettings
     recommendation: RecommendationSettings
     policies: dict[str, PolicySpec]
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_timezone(cls, name: str) -> str:
+        ZoneInfo(name)  # raises for an unknown zone
+        return name
 
     @model_validator(mode="after")
     def _active_policy_is_configured(self) -> Settings:

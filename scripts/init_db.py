@@ -2,17 +2,18 @@
 
 Usage:  python scripts/init_db.py      (make db)
 
-Targets RECOMMENDER_DATABASE_URL from .env (the Postgres database Telco_Dynamic_Recomender),
-or the local SQLite file when it is not set. Safe to run repeatedly.
+Targets the database configured in .env (Postgres: Telco_Dynamic_Recomender), or the local
+SQLite file when none is. Safe to run repeatedly.
 """
 
 from __future__ import annotations
 
-from sqlalchemy import inspect
 from sqlalchemy.engine import make_url
 
 from recommender.config import load_settings
-from recommender.store.sql import copy_options, create_store
+from recommender.customers import CustomerRepository
+from recommender.db import create_tables, make_engine
+from recommender.store.sql import SqlOptionsStore, copy_options, create_store
 
 
 def main() -> None:
@@ -20,17 +21,18 @@ def main() -> None:
     url = settings.database_url
     parsed = make_url(url)
     shown = parsed.database if url.startswith("sqlite") else parsed.render_as_string(True)
-    print(f"Database: {parsed.get_backend_name()} {shown}")
+    print(f"Database:  {parsed.get_backend_name()} {shown}")
 
-    store = create_store(url)  # creates any missing tables
-    print(f"Tables:   {', '.join(sorted(inspect(store.engine).get_table_names()))}")
+    engine = make_engine(url)
+    print(f"Tables:    {', '.join(create_tables(engine))}")
+    store = SqlOptionsStore(engine)
 
     sqlite_file = settings.paths.database
     if not url.startswith("sqlite") and sqlite_file.exists():
-        local = create_store(f"sqlite:///{sqlite_file.as_posix()}")
-        copied = copy_options(local, store)
+        copied = copy_options(create_store(f"sqlite:///{sqlite_file.as_posix()}"), store)
         print(f"Migrated {copied} options rows from {sqlite_file}")
-    print(f"Options rows in the database: {len(store.rows())}")
+    print(f"Customers: {CustomerRepository(engine).count():,}  (run `make data` to load them)")
+    print(f"Options:   {len(store.rows()):,} rows")
 
 
 if __name__ == "__main__":
