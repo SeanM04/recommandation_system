@@ -60,11 +60,13 @@
   <div class="section-head"><h2 id="findings">Findings</h2><span class="chip built">Measured</span></div>
 <!-- BEGIN generated:findings -->
 <ol class="findings">
-<li><strong>thompson_segment_decay wins.</strong> It reached 92.7% of the oracle, with 58% more take-ups per app open than the static batch model (0.263 against 0.167), and cut regret by 85% against random and 82% against static.</li>
-<li><strong>It adapts when behaviour changes; the batch model does not.</strong> After the shift its take-up rose from 0.230 to 0.297 per app open; the static model went from 0.166 to 0.169.</li>
-<li><strong>Personalisation is the biggest single lever.</strong> Thompson sampling with statistics per segment reached 92.4% of the oracle; one global model reached 66.8%.</li>
-<li><strong>Forgetting pays off after the shift.</strong> Regret after the shift fell from 572 to 458 (20% less), and the spread across seeds went from 131 to 68.</li>
-<li><strong>Thompson sampling explores better than epsilon-greedy.</strong> With the same per-segment statistics, regret was 1,082 against 1,822: epsilon-greedy keeps spending 10% of slots on random offers it already knows are poor.</li>
+<li><strong>Learning per segment beats both baselines, in every run.</strong> thompson_segment_decay reached 92.7% of the oracle, with 53% more take-ups per app open than the static batch model (0.263 against 0.172). It cut regret by 85% against random and 81% against static: below random's regret in 10 of 10 seeds and below static's in 10 of 10.</li>
+<li><strong>It adapts when behaviour changes; the batch model does not.</strong> After the shift its take-up rose from 0.231 to 0.295 per app open; the static model went from 0.168 to 0.175.</li>
+<li><strong>The top of the table is a tie.</strong> thompson_segment_decay has the lowest mean regret, but thompson_segment, thompson_segment_payday had lower regret in at least a fifth of the seeds, so the order among them is within the noise.</li>
+<li><strong>Personalisation is the biggest single lever.</strong> Thompson sampling with statistics per segment reached 92.4% of the oracle; one global model reached 67.7% (lower regret per segment in 10 of 10 seeds).</li>
+<li><strong>Forgetting trades a little before the shift for more after it.</strong> With forgetting, regret after the shift was lower in 10 of 10 seeds, by 130 take-ups on average; before the shift it cost 93 on average (higher in 8 of 10 seeds). Its value grows with how often, and how sharply, behaviour changes.</li>
+<li><strong>The reward decides the business outcome.</strong> The same policy learning from margin instead of take-up earned 38% more revenue per app open (R13.37 against R9.68, more in 10 of 10 seeds), at the cost of 22% fewer take-ups. Which one is right is a business choice, not a modelling one.</li>
+<li><strong>Thompson sampling explores better than epsilon-greedy.</strong> With the same per-segment statistics, regret was 1,078 against 1,690, lower in 8 of 10 seeds: epsilon-greedy keeps spending a fixed share of slots on offers it already knows are poor.</li>
 </ol>
 <!-- END generated:findings -->
 </section>
@@ -76,15 +78,16 @@
 <div class="table-wrap"><table class="results-table">
 <thead><tr><th scope="col">Policy</th><th scope="col" class=num>Take-up per open</th><th scope="col" class=num>Before shift</th><th scope="col" class=num>After shift</th><th scope="col" class=num>Revenue per open</th><th scope="col" class=num>Regret</th><th scope="col" class=num>Regret after shift</th><th scope="col" class=num>Share of oracle</th><th scope="col" class=num>Regret cut vs random</th><th scope="col" class=num>Regret cut vs static</th></tr></thead>
 <tbody>
-<tr class="best"><td><code>thompson_segment_decay</code></td><td class=num>0.263</td><td class=num>0.230</td><td class=num>0.297</td><td class=num>R9.86</td><td class=num>1,042 ± 68</td><td class=num>458</td><td class=num>92.7%</td><td class=num>85%</td><td class=num>82%</td></tr>
-<tr><td><code>thompson_segment_payday</code></td><td class=num>0.263</td><td class=num>0.231</td><td class=num>0.294</td><td class=num>R10.35</td><td class=num>1,055 ± 66</td><td class=num>491</td><td class=num>92.6%</td><td class=num>84%</td><td class=num>82%</td></tr>
-<tr><td><code>thompson_segment</code></td><td class=num>0.262</td><td class=num>0.232</td><td class=num>0.292</td><td class=num>R10.30</td><td class=num>1,082 ± 131</td><td class=num>572</td><td class=num>92.4%</td><td class=num>84%</td><td class=num>82%</td></tr>
-<tr><td><code>epsilon_greedy_segment</code></td><td class=num>0.248</td><td class=num>0.232</td><td class=num>0.265</td><td class=num>R9.95</td><td class=num>1,822 ± 583</td><td class=num>1,232</td><td class=num>87.2%</td><td class=num>73%</td><td class=num>69%</td></tr>
-<tr><td><code>thompson</code></td><td class=num>0.190</td><td class=num>0.168</td><td class=num>0.211</td><td class=num>R5.03</td><td class=num>4,704 ± 337</td><td class=num>2,574</td><td class=num>66.8%</td><td class=num>30%</td><td class=num>20%</td></tr>
-<tr><td><code>epsilon_greedy</code></td><td class=num>0.189</td><td class=num>0.169</td><td class=num>0.209</td><td class=num>R5.01</td><td class=num>4,733 ± 498</td><td class=num>2,584</td><td class=num>66.6%</td><td class=num>30%</td><td class=num>19%</td></tr>
-<tr><td><code>static</code></td><td class=num>0.167</td><td class=num>0.166</td><td class=num>0.169</td><td class=num>R4.18</td><td class=num>5,848 ± 831</td><td class=num>3,622</td><td class=num>58.8%</td><td class=num>13%</td><td class=num>0%</td></tr>
-<tr><td><code>random</code></td><td class=num>0.151</td><td class=num>0.143</td><td class=num>0.158</td><td class=num>R5.83</td><td class=num>6,726 ± 29</td><td class=num>3,911</td><td class=num>52.6%</td><td class=num>0%</td><td class=num>-15%</td></tr>
-</tbody><caption>50,000 app opens per run, behaviour shift at 25,000, mean of 3 seeds; the static baseline was fitted on 5,000 warm-up app opens.</caption></table></div>
+<tr class="best"><td><code>thompson_segment_decay</code></td><td class=num>0.263</td><td class=num>0.231</td><td class=num>0.295</td><td class=num>R9.68</td><td class=num>1,041 ± 39</td><td class=num>446</td><td class=num>92.7%</td><td class=num>85%</td><td class=num>81%</td></tr>
+<tr><td><code>thompson_segment</code></td><td class=num>0.261</td><td class=num>0.234</td><td class=num>0.289</td><td class=num>R10.01</td><td class=num>1,078 ± 166</td><td class=num>576</td><td class=num>92.4%</td><td class=num>84%</td><td class=num>81%</td></tr>
+<tr><td><code>thompson_segment_payday</code></td><td class=num>0.261</td><td class=num>0.231</td><td class=num>0.291</td><td class=num>R10.16</td><td class=num>1,099 ± 127</td><td class=num>518</td><td class=num>92.3%</td><td class=num>84%</td><td class=num>80%</td></tr>
+<tr><td><code>epsilon_greedy_segment</code></td><td class=num>0.250</td><td class=num>0.231</td><td class=num>0.269</td><td class=num>R9.94</td><td class=num>1,690 ± 381</td><td class=num>1,085</td><td class=num>88.1%</td><td class=num>75%</td><td class=num>70%</td></tr>
+<tr><td><code>thompson_segment_revenue</code></td><td class=num>0.205</td><td class=num>0.192</td><td class=num>0.218</td><td class=num>R13.37</td><td class=num>3,916 ± 92</td><td class=num>2,349</td><td class=num>72.4%</td><td class=num>42%</td><td class=num>30%</td></tr>
+<tr><td><code>thompson</code></td><td class=num>0.193</td><td class=num>0.168</td><td class=num>0.217</td><td class=num>R5.09</td><td class=num>4,582 ± 274</td><td class=num>2,414</td><td class=num>67.7%</td><td class=num>32%</td><td class=num>18%</td></tr>
+<tr><td><code>epsilon_greedy</code></td><td class=num>0.186</td><td class=num>0.169</td><td class=num>0.204</td><td class=num>R4.97</td><td class=num>4,836 ± 359</td><td class=num>2,688</td><td class=num>65.9%</td><td class=num>28%</td><td class=num>13%</td></tr>
+<tr><td><code>static</code></td><td class=num>0.172</td><td class=num>0.168</td><td class=num>0.175</td><td class=num>R4.42</td><td class=num>5,563 ± 703</td><td class=num>3,418</td><td class=num>60.8%</td><td class=num>17%</td><td class=num>0%</td></tr>
+<tr><td><code>random</code></td><td class=num>0.149</td><td class=num>0.142</td><td class=num>0.157</td><td class=num>R5.80</td><td class=num>6,728 ± 17</td><td class=num>3,909</td><td class=num>52.6%</td><td class=num>0%</td><td class=num>-21%</td></tr>
+</tbody><caption>50,000 app opens per run, behaviour shift at 25,000, mean of 10 seeds; the static baseline was fitted on 5,000 warm-up app opens.</caption></table></div>
 <!-- END generated:results-table -->
 </section>
 
@@ -150,13 +153,14 @@
     <li><strong>An oracle for scoring.</strong> For every app open, the oracle ranks the eligible offers by their true probability. Regret is the oracle's expected take-ups minus the policy's expected take-ups for the list it actually showed, using the response model. Expected values measure the choice, not the luck of one draw.</li>
     <li><strong>A fair batch baseline.</strong> The static policy is fitted on a warm-up month of 5,000 app opens gathered by a random policy before the experiment, then frozen. The learning policies start with no data at all.</li>
     <li><strong>The behaviour shift.</strong> Halfway through, streaming becomes the young professionals' favourite and electricity the families'. See the <a href="simulation.html#shift">simulated world</a>.</li>
-    <li><strong>Several seeds.</strong> The whole comparison runs on several seeds; the table reports the mean and spread. The chart shows the first seed.</li>
+    <li><strong>Ten seeds, compared in pairs.</strong> The whole comparison runs on ten seeds and the table reports the mean and spread. Within a seed every policy sees the same app opens, so two policies can be compared seed by seed: each finding says in how many seeds a difference holds, and calls a tie a tie. The chart shows the first seed.</li>
+    <li><strong>Two objectives.</strong> Most policies learn from take-ups. <code>thompson_segment_revenue</code> learns from margin, so it is judged by revenue per app open rather than by take-up regret.</li>
   </ul>
 </section>
 
 <section aria-labelledby="reproduce">
   <h2 id="reproduce">Reproduce</h2>
-<pre><code>make compare     # every policy, 3 seeds, 50,000 app opens each (about 2 minutes)
+<pre><code>make compare     # every policy, 10 seeds, 50,000 app opens each (about 7 minutes)
 make docs        # rebuild this page from docs/data/comparison.json</code></pre>
   <p>Full outputs land in <code>results/</code>: the headline table as CSV and Markdown, one row per policy and seed, every app open of the first seed as Parquet, and the learning policies' beliefs over time for the dashboard.</p>
 </section>

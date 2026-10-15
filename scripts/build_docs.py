@@ -778,22 +778,45 @@ def block_results_table(src: Sources, page: str) -> str:
     )
 
 
+def _paired(by_seed: list[dict], a: str, b: str, metric: str) -> list[float]:
+    """Per seed, ``metric`` of policy ``a`` minus that of ``b``. Seeds are paired: both
+    policies faced the identical app opens, so the difference is theirs alone."""
+    values = {(row["policy"], row["seed"]): row[metric] for row in by_seed}
+    seeds = sorted({row["seed"] for row in by_seed})
+    return [values[(a, s)] - values[(b, s)] for s in seeds if (a, s) in values and (b, s) in values]
+
+
 def block_findings(src: Sources, page: str) -> str:
+    """Headline findings. Every comparison is paired by seed and says how many seeds agree,
+    so nothing is claimed that the runs do not support."""
     data = _results()
     if data is None:
         return NO_RESULTS
+    by_seed = data.get("by_seed", [])
+    for row in by_seed:
+        row["regret_before_shift"] = row["regret"] - row["regret_after_shift"]
     table = {row["policy"]: row for row in data["table"]}
-    best = data["table"][0]
+    n = data["seeds"]
     items = []
+
+    def lower_in(diffs: list[float]) -> int:
+        return sum(d < 0 for d in diffs)
+
+    learning = [r["policy"] for r in data["table"] if r["policy"] not in ("random", "static")]
+    best = data["table"][0]
     static, random_ = table.get("static"), table.get("random")
     if static and random_:
+        vs_static = lower_in(_paired(by_seed, best["policy"], "static", "regret"))
+        vs_random = lower_in(_paired(by_seed, best["policy"], "random", "regret"))
         uplift = best["take_up_rate"] / static["take_up_rate"] - 1
         items.append(
-            f"<strong>{escape(best['policy'])} wins.</strong> It reached "
-            f"{best['share_of_oracle']:.1%} of the oracle, with {uplift:.0%} more take-ups per "
-            f"app open than the static batch model ({best['take_up_rate']:.3f} against "
-            f"{static['take_up_rate']:.3f}), and cut regret by {best['regret_vs_random']:.0%} "
-            f"against random and {best['regret_vs_static']:.0%} against static."
+            f"<strong>Learning per segment beats both baselines, in every run.</strong> "
+            f"{escape(best['policy'])} reached {best['share_of_oracle']:.1%} of the oracle, with "
+            f"{uplift:.0%} more take-ups per app open than the static batch model "
+            f"({best['take_up_rate']:.3f} against {static['take_up_rate']:.3f}). It cut regret by "
+            f"{best['regret_vs_random']:.0%} against random and {best['regret_vs_static']:.0%} "
+            f"against static: below random's regret in {vs_random} of {n} seeds and below "
+            f"static's in {vs_static} of {n}."
         )
         items.append(
             f"<strong>It adapts when behaviour changes; the batch model does not.</strong> After "
@@ -801,29 +824,68 @@ def block_findings(src: Sources, page: str) -> str:
             f"{best['take_up_after_shift']:.3f} per app open; the static model went from "
             f"{static['take_up_before_shift']:.3f} to {static['take_up_after_shift']:.3f}."
         )
+
+    tied = [
+        policy
+        for policy in learning[1:]
+        if lower_in(_paired(by_seed, best["policy"], policy, "regret")) < 0.8 * n
+    ]
+    if tied:
+        names = ", ".join(escape(t) for t in tied)
+        items.append(
+            f"<strong>The top of the table is a tie.</strong> {escape(best['policy'])} has the "
+            f"lowest mean regret, but {names} had lower regret in at least a fifth of the seeds, "
+            f"so the order among them is within the noise."
+        )
+
     personal, global_ = table.get("thompson_segment"), table.get("thompson")
     if personal and global_:
+        wins = lower_in(_paired(by_seed, "thompson_segment", "thompson", "regret"))
         items.append(
             f"<strong>Personalisation is the biggest single lever.</strong> Thompson sampling "
-            f"with statistics per segment reached {personal['share_of_oracle']:.1%} of the "
-            f"oracle; one global model reached {global_['share_of_oracle']:.1%}."
+            f"with statistics per segment reached {personal['share_of_oracle']:.1%} of the oracle; "
+            f"one global model reached {global_['share_of_oracle']:.1%} (lower regret per segment "
+            f"in {wins} of {n} seeds)."
         )
+
     decay = table.get("thompson_segment_decay")
     if personal and decay:
-        reduction = 1 - decay["regret_after_shift"] / personal["regret_after_shift"]
-        items.append(
-            f"<strong>Forgetting pays off after the shift.</strong> Regret after the shift fell "
-            f"from {personal['regret_after_shift']:,.0f} to {decay['regret_after_shift']:,.0f} "
-            f"({reduction:.0%} less), and the spread across seeds went from "
-            f"{personal['regret_sd']:,.0f} to {decay['regret_sd']:,.0f}."
+        after = _paired(by_seed, "thompson_segment_decay", "thompson_segment", "regret_after_shift")
+        before = _paired(
+            by_seed, "thompson_segment_decay", "thompson_segment", "regret_before_shift"
         )
+        items.append(
+            f"<strong>Forgetting trades a little before the shift for more after it.</strong> "
+            f"With forgetting, regret after the shift was lower in {lower_in(after)} of {n} seeds, "
+            f"by {-sum(after) / len(after):,.0f} take-ups on average; before the shift it cost "
+            f"{sum(before) / len(before):,.0f} on average (higher in "
+            f"{sum(d > 0 for d in before)} of {n} seeds). Its value grows with how often, and "
+            f"how sharply, behaviour changes."
+        )
+
+    revenue = table.get("thompson_segment_revenue")
+    if revenue and decay:
+        more = _paired(
+            by_seed, "thompson_segment_revenue", "thompson_segment_decay", "revenue_per_open"
+        )
+        uplift = revenue["revenue_per_open"] / decay["revenue_per_open"] - 1
+        drop = 1 - revenue["take_up_rate"] / decay["take_up_rate"]
+        items.append(
+            f"<strong>The reward decides the business outcome.</strong> The same policy learning "
+            f"from margin instead of take-up earned {uplift:.0%} more revenue per app open "
+            f"(R{revenue['revenue_per_open']:.2f} against R{decay['revenue_per_open']:.2f}, more "
+            f"in {sum(d > 0 for d in more)} of {n} seeds), at the cost of {drop:.0%} fewer "
+            f"take-ups. Which one is right is a business choice, not a modelling one."
+        )
+
     greedy = table.get("epsilon_greedy_segment")
     if personal and greedy:
+        wins = lower_in(_paired(by_seed, "thompson_segment", "epsilon_greedy_segment", "regret"))
         items.append(
             f"<strong>Thompson sampling explores better than epsilon-greedy.</strong> With the "
             f"same per-segment statistics, regret was {personal['regret']:,.0f} against "
-            f"{greedy['regret']:,.0f}: epsilon-greedy keeps spending 10% of slots on random "
-            f"offers it already knows are poor."
+            f"{greedy['regret']:,.0f}, lower in {wins} of {n} seeds: epsilon-greedy keeps "
+            f"spending a fixed share of slots on offers it already knows are poor."
         )
     return '<ol class="findings">\n' + "\n".join(f"<li>{item}</li>" for item in items) + "\n</ol>"
 

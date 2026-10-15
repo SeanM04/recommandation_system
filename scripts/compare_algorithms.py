@@ -1,6 +1,6 @@
 """Compare every configured policy on the same simulated world and save the results.
 
-Usage:  python scripts/compare_algorithms.py [--rounds 50000] [--seeds 3]    (make compare)
+Usage:  python scripts/compare_algorithms.py [--rounds 50000] [--seeds 10]   (make compare)
 
 Writes to results/:
     comparison.csv / comparison.md   one row per policy, mean over seeds (the headline table)
@@ -48,7 +48,7 @@ def to_markdown(table: pd.DataFrame) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--rounds", type=int, default=50_000)
-    parser.add_argument("--seeds", type=int, default=3)
+    parser.add_argument("--seeds", type=int, default=10)
     parser.add_argument("--warm-up", type=int, default=5000, help="static baseline's history")
     parser.add_argument("--no-shift", action="store_true", help="keep behaviour stable")
     args = parser.parse_args()
@@ -89,7 +89,8 @@ def main() -> None:
         "seeds": args.seeds,
         "shift_round": shift_round,
         "warm_up_rounds": args.warm_up,
-        "table": table.reset_index().round(4).to_dict("records"),
+        "table": table.reset_index().round(6).to_dict("records"),
+        "by_seed": comparison.summary.round(6).to_dict("records"),  # for paired comparisons
         "regret_curves": curves,
     }
     (docs_data / "comparison.json").write_text(json.dumps(payload, indent=1), encoding="utf-8")

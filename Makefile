@@ -18,7 +18,7 @@ truth:  ## Print the hidden take-up table per segment (simulator only)
 simulate:  ## Simulate 50,000 app opens through the active policy (fast mode; --mode api to use the API)
 	$(PYTHON) scripts/run_simulation.py
 
-compare:  ## Compare every policy on the same world, 3 seeds; results to results/ and the docs
+compare:  ## Compare every policy on the same world, 10 seeds (~7 min); results to results/ and the docs
 	$(PYTHON) scripts/compare_algorithms.py
 
 experiment:  ## Rerun the forgetting experiment behind decision P9 (about a minute)
