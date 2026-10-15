@@ -34,7 +34,8 @@ from recommender.domain import IGNORED, OUTCOMES, SEGMENTS, TAKEN_UP, Context, C
 from recommender.simulator.ground_truth import GroundTruth, take_up_table, winners
 from recommender.simulator.population import SEGMENT_PROFILES, generate_customers
 from recommender.simulator.settings import load_simulation_settings
-from recommender.store.options_store import ArmStats
+from recommender.store.options_store import ArmStats, InMemoryOptionsStore
+from recommender.store.sql import SqlOptionsStore
 
 DOCS = PROJECT_ROOT / "docs"
 BLOCK = re.compile(
@@ -121,10 +122,16 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
      "Small, logical commits for each step."),
     ("Make", None, "Task runner", "built",
      "One entry point for every command; each target is a plain command."),
+    ("PostgreSQL", None, "Project database", "built",
+     "Telco_Dynamic_Recomender (Postgres 18) holds the options store; `make db` sets it up."),
+    ("psycopg 3", "psycopg", "Postgres driver", "built",
+     "The modern Postgres driver for Python, used through SQLAlchemy."),
     ("SQLAlchemy", "sqlalchemy", "Database access", "built",
-     "Core API only: the options store runs on SQLite locally, Postgres by URL."),
-    ("SQLite", None, "Options store, event log", "built",
-     "Zero-setup file database for local runs; holds the options store today."),
+     "Core API only: one code path for Postgres and SQLite, upserts via ON CONFLICT."),
+    ("SQLite", None, "Fallback database", "built",
+     "Used when no Postgres URL is configured, so a clean machine runs with no server."),
+    ("python-dotenv", "python-dotenv", "Local secrets", "built",
+     "Loads the database URL from a git-ignored `.env` file."),
     ("Requests", "requests", "HTTP client", "planned",
      "The simulator and dashboard call the API the way an app would."),
     ("Streamlit", "streamlit", "Dashboard", "planned",
@@ -143,7 +150,8 @@ TEST_FILES = {
     "test_ground_truth.py": "Hidden truth, segment stories, payday, revenue, response "
     "model and the architecture guards",
     "test_docs.py": "These docs: generated blocks are current and every link resolves",
-    "test_store.py": "Options store: arm statistics, and identical in-memory and SQLite behaviour",
+    "test_store.py": "Options store: arm statistics, atomic learning under concurrency, "
+    "and identical behaviour in memory, SQLite and Postgres",
     "test_policies.py": "Bandit policies: ranking, learning, context keys, forgetting, convergence",
     "test_rewards.py": "Reward functions and the policy factory",
 }
@@ -598,7 +606,10 @@ def block_code_egreedy(src: Sources, page: str) -> str:
 
 
 def block_code_update(src: Sources, page: str) -> str:
-    return _code(BanditPolicy.update)
+    return "\n".join(
+        _code(method)
+        for method in (BanditPolicy.update, InMemoryOptionsStore.learn, SqlOptionsStore.learn)
+    )
 
 
 def block_code_static(src: Sources, page: str) -> str:

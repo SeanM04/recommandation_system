@@ -184,23 +184,72 @@ def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list
 
 <section aria-labelledby="learning">
   <div class="section-head"><h2 id="learning">Learning and forgetting</h2><span class="chip built">Built</span></div>
-  <p>Both bandits share one update. With forgetting switched on, every offer in the context first loses a sliver of its evidence, then the new reward is added. Old evidence fades, so a change in behaviour shows through within a few thousand responses instead of being outvoted by months of history. The <a href="decisions.html#learning">update-rule tree</a> shows the same flow as a diagram.</p>
+  <p>Both bandits share one update, and the store performs it atomically. With forgetting switched on, every offer in the context first loses a sliver of its evidence, then the new reward is added. Old evidence fades, so a change in behaviour shows through within a few thousand responses instead of being outvoted by months of history. The <a href="decisions.html#learning">update-rule tree</a> shows the same flow as a diagram.</p>
 <!-- BEGIN generated:code-update -->
 <pre><code>def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
-    &quot;&quot;&quot;Forget a little (if decay is on), then add the new evidence.&quot;&quot;&quot;
+    &quot;&quot;&quot;Forget a little (if decay is on), then add the new evidence.
+
+    The store does both in one atomic step, so concurrent requests never overwrite
+    each other&#x27;s learning.
+    &quot;&quot;&quot;
     if not 0 &lt;= reward &lt;= 1:
         raise ValueError(f&quot;reward must be in [0, 1], got {reward}&quot;)
-    key = self.key(context)
-    arms = self.store.get_context(self.name, key)
-    if self.decay &lt; 1:
-        arms = {offer: stats.decayed(self.decay) for offer, stats in arms.items()}
-    arms[offer_id] = arms.get(offer_id, ArmStats()).updated(reward)
-    changed = arms if self.decay &lt; 1 else {offer_id: arms[offer_id]}
-    self.store.put(self.name, key, changed)</code></pre>
+    self.store.learn(self.name, self.key(context), offer_id, reward, decay=self.decay)</code></pre>
 <p class="source">src/recommender/algorithms/base.py</p>
+<pre><code>def learn(
+    self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
+) -&gt; None:
+    now = datetime.now(UTC)
+    with self._lock:
+        rows = self._rows.setdefault((policy, context_key), {})
+        if decay &lt; 1:
+            for other, (stats, _) in list(rows.items()):
+                rows[other] = (stats.decayed(decay), now)
+        stats, _ = rows.get(offer_id, (ArmStats(), now))
+        rows[offer_id] = (stats.updated(reward), now)</code></pre>
+<p class="source">src/recommender/store/options_store.py</p>
+<pre><code>def learn(
+    self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
+) -&gt; None:
+    now = datetime.now(UTC)
+    forget = (
+        update(options)
+        .where(options.c.policy == policy, options.c.context_key == context_key)
+        .values(
+            pulls=options.c.pulls * decay,
+            total_reward=options.c.total_reward * decay,
+            updated_at=now,
+        )
+    )
+    add = (
+        self._insert()
+        .values(
+            policy=policy,
+            context_key=context_key,
+            offer_id=offer_id,
+            pulls=1.0,
+            total_reward=reward,
+            updated_at=now,
+        )
+        .on_conflict_do_update(
+            index_elements=KEY_COLUMNS,
+            set_={
+                &quot;pulls&quot;: options.c.pulls + 1.0,
+                &quot;total_reward&quot;: options.c.total_reward + reward,
+                &quot;updated_at&quot;: now,
+            },
+        )
+    )
+    # One transaction. Each statement computes from the row&#x27;s current value inside
+    # the database, so two requests running at once cannot overwrite each other.
+    with self.engine.begin() as connection:
+        if decay &lt; 1:
+            connection.execute(forget)
+        connection.execute(add)</code></pre>
+<p class="source">src/recommender/store/sql.py</p>
 <!-- END generated:code-update -->
   <div class="note">
-    <p><strong>Why the default is γ = 0.9998.</strong> In a 50,000-app-open experiment, forgetting made no difference to a new hit offer, because Thompson sampling keeps testing offers it has rarely shown. It made a large difference when an offer the model was confident about changed: after the families' favourite switched, the policy without forgetting still ranked the old one first most of the time. 0.9998 had the best trade-off. Full numbers are in <a href="decisions.html#log-phase-2-algorithms">decision P9</a>.</p>
+    <p><strong>Why the default is γ = 0.9998.</strong> Forgetting matters little for a new hit offer, because Thompson sampling keeps testing offers it has rarely shown. It matters a lot when an offer the model is confident about changes. Over 5 seeds, after families' favourite switched, the policy without forgetting ranked the new favourite first in 15% of their app opens; at γ = 0.9998 it was 74%. <code>make experiment</code> reruns it; full numbers are in <a href="decisions.html#log-phase-2-algorithms">decision P9</a>.</p>
   </div>
 </section>
 

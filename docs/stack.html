@@ -72,8 +72,11 @@
 <tr><td><strong>Ruff</strong></td><td>Lint and format</td><td>0.17.0</td><td>One fast tool for style, import order and common bugs.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Git</strong></td><td>Version control</td><td>–</td><td>Small, logical commits for each step.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Make</strong></td><td>Task runner</td><td>–</td><td>One entry point for every command; each target is a plain command.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>Core API only: the options store runs on SQLite locally, Postgres by URL.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>SQLite</strong></td><td>Options store, event log</td><td>–</td><td>Zero-setup file database for local runs; holds the options store today.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>PostgreSQL</strong></td><td>Project database</td><td>–</td><td>Telco_Dynamic_Recomender (Postgres 18) holds the options store; <code>make db</code> sets it up.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>psycopg 3</strong></td><td>Postgres driver</td><td>3.3.6</td><td>The modern Postgres driver for Python, used through SQLAlchemy.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>Core API only: one code path for Postgres and SQLite, upserts via ON CONFLICT.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>SQLite</strong></td><td>Fallback database</td><td>–</td><td>Used when no Postgres URL is configured, so a clean machine runs with no server.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>python-dotenv</strong></td><td>Local secrets</td><td>1.2.4</td><td>Loads the database URL from a git-ignored <code>.env</code> file.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The simulator and dashboard call the API the way an app would.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards; quick to build five pages.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts.</td><td><span class="chip planned">Planned</span></td></tr>
@@ -90,6 +93,7 @@
     <li><strong>Editable install.</strong> <code>make install</code> installs the pinned requirements and the <code>recommender</code> package with <code>pip install -e .</code>, so scripts and tests import the same code.</li>
     <li><strong>Virtual environment outside OneDrive.</strong> On Windows, OneDrive locks files inside a project <code>.venv</code> and <code>pip</code> fails with <code>WinError 32</code>. Create it elsewhere, for example <code>%USERPROFILE%\.venvs\telco-recommender</code>, and select it as the editor's interpreter.</li>
     <li><strong>Make on Windows.</strong> <code>make</code> is the documented interface, but every target is one plain command. Without it, run the command from the <code>Makefile</code> directly, or install it with <code>winget install ezwinports.make</code>.</li>
+    <li><strong>Database.</strong> Postgres 18 with the <code>Telco_Dynamic_Recomender</code> database. Copy <code>.env.example</code> to <code>.env</code> and set the password; without it the project uses a local SQLite file. Tests use a throwaway <code>pytest_recommender</code> schema and never touch the real tables.</li>
     <li><strong>Line endings.</strong> <code>.gitattributes</code> keeps LF line endings in the repository so the Makefile and Docker files behave the same on every platform.</li>
   </ul>
 </section>
@@ -174,6 +178,7 @@
 <tr><td>Invalid arguments are rejected</td><td class="num">1</td></tr>
 <tr><td>Learning survives a restart with the sql store</td><td class="num">1</td></tr>
 <tr><td>Contextual thompson learns each segment favourite in the simulated world</td><td class="num">1</td></tr>
+<tr><td>Simulation log has one row per app open and applies the shift</td><td class="num">1</td></tr>
 <tr><td>Every bandit policy shares the update rule</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_population.py</code> · Synthetic population: reproducibility, realism, CSV round trip</th></tr>
 <tr><td>Same seed gives same population</td><td class="num">1</td></tr>
@@ -192,17 +197,23 @@
 <tr><td>Static policy gets its batch trained table</td><td class="num">1</td></tr>
 <tr><td>Each policy has its own reproducible random stream</td><td class="num">1</td></tr>
 <tr><td>Settings reject bad policy config</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_store.py</code> · Options store: arm statistics, and identical in-memory and SQLite behaviour</th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_store.py</code> · Options store: arm statistics, atomic learning under concurrency, and identical behaviour in memory, SQLite and Postgres</th></tr>
 <tr><td>New arm is the uniform prior</td><td class="num">1</td></tr>
 <tr><td>Update adds reward to alpha and the rest to beta</td><td class="num">1</td></tr>
 <tr><td>Decay shrinks evidence towards the prior</td><td class="num">1</td></tr>
 <tr><td>Unknown offers get the prior</td><td class="num">1</td></tr>
 <tr><td>Put then get round trip</td><td class="num">1</td></tr>
+<tr><td>Learn adds one reward</td><td class="num">1</td></tr>
+<tr><td>Learn with decay forgets every offer in the context first</td><td class="num">1</td></tr>
+<tr><td>Concurrent learning loses nothing</td><td class="num">1</td></tr>
+<tr><td>Concurrent learning with decay matches the sequential result</td><td class="num">1</td></tr>
 <tr><td>Policies and context keys are isolated</td><td class="num">1</td></tr>
 <tr><td>Rows and reset</td><td class="num">1</td></tr>
 <tr><td>Sqlite store persists across connections</td><td class="num">1</td></tr>
+<tr><td>Alpha and beta are computed by the database</td><td class="num">1</td></tr>
+<tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
 </tbody>
-<caption>80 test cases in 75 test functions.</caption></table></div>
+<caption>87 test cases in 82 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>

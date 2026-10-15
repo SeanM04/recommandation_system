@@ -59,7 +59,7 @@
   <p>Every step is a <code>make</code> target that runs one plain command, so the same steps work by hand where <code>make</code> isn't installed. The top row runs left to right on a clean machine; the bottom row can run at any time.</p>
   <figure class="fig">
     <div class="fig-scroll">
-      <svg class="dg" viewBox="0 0 1000 310" style="min-width: 820px" role="img" aria-label="Command pipeline. make install, then make data which writes data/customers.csv, then make truth which prints the hidden take-up report, then make simulate which writes results and the database, then make dashboard which reads them. Separately, make test, lint, docs, run and format can run at any time.">
+      <svg class="dg" viewBox="0 0 1000 310" style="min-width: 820px" role="img" aria-label="Command pipeline. make install, then make data which writes data/customers.csv, then make truth which prints the hidden take-up report, then make simulate which writes results and the database, then make dashboard which reads them. Separately, make test, lint, docs, run and db can run at any time.">
         <defs>
           <marker id="w1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
           <marker id="w1-ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
@@ -115,12 +115,12 @@
         <text class="t mono" x="700" y="266" text-anchor="middle">make run</text>
         <text class="s" x="700" y="284" text-anchor="middle">API on port 8000</text>
         <rect class="box built" x="820" y="242" width="160" height="56" rx="6"/>
-        <text class="t mono" x="900" y="266" text-anchor="middle">make format</text>
-        <text class="s" x="900" y="284" text-anchor="middle">auto-fix style</text>
+        <text class="t mono" x="900" y="266" text-anchor="middle">make db</text>
+        <text class="s" x="900" y="284" text-anchor="middle">tables in Postgres</text>
       </svg>
     </div>
     <figcaption>
-      <span>Generated files land in <code>data/</code> and <code>results/</code>, which are git-ignored and rebuilt from the seed. <code>make truth</code> is for reviewers only; the recommender never runs it.</span>
+      <span>Generated files land in <code>data/</code> and <code>results/</code>, which are git-ignored and rebuilt from the seed. <code>make truth</code> is for reviewers only; the recommender never runs it. <code>make experiment</code> reruns the forgetting experiment behind decision P9.</span>
       <span class="legend"><span><i></i>built</span><span><i class="dash"></i>planned</span></span>
     </figcaption>
   </figure>

@@ -100,11 +100,11 @@
 
         <rect class="box built store" x="388" y="426" width="244" height="60" rx="6"/>
         <text class="t" x="404" y="451">Options store</text>
-        <text class="s" x="404" y="471">α, β, pulls per context key · SQLite</text>
+        <text class="s" x="404" y="471">α, β, pulls per context key · Postgres</text>
 
         <rect class="box planned store" x="740" y="206" width="244" height="60" rx="6"/>
         <text class="t" x="756" y="231">Event log</text>
-        <text class="s" x="756" y="251">invocations + responses · SQLite</text>
+        <text class="s" x="756" y="251">invocations + responses · Postgres</text>
 
         <rect class="box planned" x="740" y="316" width="244" height="60" rx="6"/>
         <text class="t" x="756" y="341">Evaluation (offline)</text>
@@ -324,7 +324,8 @@
 │   ├── events/              event log                                  Phase 3
 │   ├── simulator/           population, ground truth, settings         hidden
 │   └── evaluation/          metrics and regret                         Phase 5
-├── scripts/                 generate_customers, inspect_ground_truth, build_docs
+├── scripts/                 generate_customers, inspect_ground_truth, init_db,
+│                            experiment_forgetting, build_docs
 ├── tests/                   pytest suite, including the architecture guards
 ├── docs/                    these pages
 ├── dashboard/               Streamlit app                              Phase 5
@@ -338,7 +339,8 @@
     <table>
       <thead><tr><th>File</th><th>Contains</th><th>Read by</th><th>Hidden</th></tr></thead>
       <tbody>
-        <tr><td><code>config/settings.yaml</code></td><td>Global seed; paths to the offers, customers and database</td><td>Recommender, scripts</td><td>No</td></tr>
+        <tr><td><code>config/settings.yaml</code></td><td>Global seed, file paths (including the SQLite fallback), recommendation settings and every named policy</td><td>Recommender, scripts</td><td>No</td></tr>
+        <tr><td><code>.env</code></td><td><code>RECOMMENDER_DATABASE_URL</code> for Postgres, password included; git-ignored, with a template in <code>.env.example</code></td><td>Recommender, scripts, tests</td><td>Secret</td></tr>
         <tr><td><code>config/offers.yaml</code></td><td>Offer catalogue: price, margin and the segments each offer may be shown to</td><td>Recommender, simulator</td><td>No</td></tr>
         <tr><td><code>config/simulation.yaml</code></td><td>Population size and segment mix, path to the truth, simulated calendar</td><td>Simulator</td><td><span class="chip hidden">Hidden</span></td></tr>
         <tr><td><code>config/ground_truth.yaml</code></td><td>Base take-up rates, context effects, response model, behaviour shift</td><td>Simulator, offline evaluation</td><td><span class="chip hidden">Hidden</span></td></tr>
@@ -350,7 +352,12 @@
 
 <section aria-labelledby="storage">
   <div class="section-head"><h2 id="storage">Storage design</h2><span class="chip built">Options store built</span><span class="chip planned">Event log in Phase 3</span></div>
-  <p>SQLite through SQLAlchemy, so the same code runs on Postgres by changing the connection URL. The options store is the model; the event log is the audit trail it can be rebuilt from.</p>
+  <p>Postgres, in the <code>Telco_Dynamic_Recomender</code> database, through SQLAlchemy Core. When no database URL is configured the same code runs on a local SQLite file, so a clean machine needs no server. The options store is the model; the event log is the audit trail it can be rebuilt from.</p>
+  <ul>
+    <li><strong>Learning is atomic.</strong> One transaction shrinks the context's evidence and adds the new reward, each computed from the row's current value inside the database, so simultaneous requests can't overwrite each other. A first version lost 74% of updates under four concurrent threads; see decision <a href="decisions.html#log-phase-2-algorithms">P11</a>.</li>
+    <li><strong>The database keeps the belief consistent.</strong> <code>alpha</code> and <code>beta</code> are generated columns computed from <code>pulls</code> and <code>total_reward</code>.</li>
+    <li><strong>Setup is one command.</strong> <code>make db</code> creates missing tables and copies a local SQLite model into Postgres if one exists.</li>
+  </ul>
   <div class="grid-2">
     <div class="table-wrap">
       <table>
@@ -360,7 +367,7 @@
           <tr><td class="id">policy</td><td>Which policy owns the row, such as <code>thompson_contextual</code></td></tr>
           <tr><td class="id">context_key</td><td>Slice of context, such as <code>family</code> or <code>family|payday</code></td></tr>
           <tr><td class="id">offer_id</td><td>The offer (arm)</td></tr>
-          <tr><td class="id">alpha, beta</td><td>Beta belief about the take-up rate</td></tr>
+          <tr><td class="id">alpha, beta</td><td>Beta belief about the take-up rate; generated columns computed by the database</td></tr>
           <tr><td class="id">pulls</td><td>Rewards seen; an effective count once forgetting shrinks it</td></tr>
           <tr><td class="id">total_reward</td><td>Sum of rewards; alpha and beta are derived from these two</td></tr>
           <tr><td class="id">updated_at</td><td>Last update time</td></tr>
