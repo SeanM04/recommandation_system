@@ -162,17 +162,21 @@ curl http://localhost:8000/metrics</code></pre>
 
 <section aria-labelledby="latency">
   <div class="section-head"><h2 id="latency">Latency</h2><span class="chip built">Measured</span></div>
-  <p>The brief's target is a p95 under 50 ms locally. <code>make benchmark</code> starts a real uvicorn server against Postgres (in a throwaway schema), sends 1,000 app opens and a response for every offer shown, and reports both what the client saw and what the server measured.</p>
+  <p>The brief's target is a p95 under 50 ms locally. <code>make benchmark</code> starts a real uvicorn server against Postgres (in a throwaway schema) and, for each level of concurrency, sends app opens with a response for every offer shown.</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Endpoint</th><th class="num">Requests</th><th class="num">Client p50</th><th class="num">Client p95</th><th class="num">Server p95</th></tr></thead>
+      <thead><tr><th class="num">Concurrent clients</th><th class="num">/invocations p95</th><th class="num">/response p95</th><th class="num">Requests per second</th><th>Target met</th></tr></thead>
       <tbody>
-        <tr><td><code>POST /invocations</code></td><td class="num">1,000</td><td class="num">7.7 ms</td><td class="num">12.4 ms</td><td class="num">10.1 ms</td></tr>
-        <tr><td><code>POST /response</code></td><td class="num">3,000</td><td class="num">8.0 ms</td><td class="num">13.5 ms</td><td class="num">11.2 ms</td></tr>
+        <tr><td class="num">1</td><td class="num">11.4 ms</td><td class="num">11.5 ms</td><td class="num">113</td><td>Yes</td></tr>
+        <tr><td class="num">4</td><td class="num">31.6 ms</td><td class="num">28.4 ms</td><td class="num">189</td><td>Yes</td></tr>
+        <tr><td class="num">8</td><td class="num">120.1 ms</td><td class="num">105.8 ms</td><td class="num">158</td><td>No</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="source">Postgres 18 on the same laptop, sequential client, after 20 warm-up opens · decision A10</p>
+  <p class="source">One uvicorn worker and Postgres 18 on the same laptop, 150 app opens per client · decision A16</p>
+  <div class="note warn">
+    <p><strong>Where the limit is.</strong> Server-side timings match the client's, and turning off synchronous commits changed nothing, so the database and disk are not the bottleneck. One Python process is CPU-bound at about 5 ms of work per request. The way to scale is more worker processes. The Docker image runs 4, but on this Windows laptop Docker Desktop made things slower, because every database call crosses from its Linux VM to Postgres on Windows. On Linux, with the database on the same network, more workers is the standard answer; Phase 6 measures it with docker-compose.</p>
+  </div>
   <p>Every response also carries an <code>X-Response-Time-ms</code> header, each request is logged as one JSON line, and <code>GET /metrics</code> reports a rolling p50 and p95 per endpoint for the running server.</p>
 </section>
 
