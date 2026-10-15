@@ -51,26 +51,25 @@ make dashboard   # http://localhost:8501
 flowchart LR
     app["Customer app<br/>(or the simulator)"]
     subgraph api["Real-time API · FastAPI"]
-        inv["POST /invocations<br/>context → rank offers"]
+        inv["POST /invocations<br/>context → rank → top 3"]
         resp["POST /response<br/>outcome → reward → learn"]
     end
     subgraph db["Postgres (or SQLite)"]
         store[("Options store<br/>Beta belief per<br/>segment × offer")]
         log[("Event log<br/>invocations · impressions<br/>· responses")]
     end
-    dash["Streamlit dashboard"]
     eval["Offline evaluation<br/>9 policies × 10 seeds"]
+    dash["Streamlit dashboard"]
 
     app -- "app open" --> inv
+    app -- "taken up / viewed / ignored" --> resp
     inv -- "draw from beliefs" --> store
     inv -- "log what was shown" --> log
-    inv -- "top 3 offers" --> app
-    app -- "taken up / viewed / ignored" --> resp
     resp -- "log once (idempotent)" --> log
     resp -- "update belief, forget a little" --> store
-    dash -. "reads" .-> log
-    dash -. "reads" .-> store
     eval -. "results/" .-> dash
+    dash -. "reads" .-> store
+    dash -. "reads" .-> log
 ```
 
 1. **An app open** arrives with a customer ID. The API builds the context (segment, device, spend, time of day, payday week) and asks the active policy for a ranking of the offers that customer is eligible for.
