@@ -93,7 +93,7 @@
     <li><strong>Editable install.</strong> <code>make install</code> installs the pinned requirements and the <code>recommender</code> package with <code>pip install -e .</code>, so scripts and tests import the same code.</li>
     <li><strong>Virtual environment outside OneDrive.</strong> On Windows, OneDrive locks files inside a project <code>.venv</code> and <code>pip</code> fails with <code>WinError 32</code>. Create it elsewhere, for example <code>%USERPROFILE%\.venvs\telco-recommender</code>, and select it as the editor's interpreter.</li>
     <li><strong>Make on Windows.</strong> <code>make</code> is the documented interface, but every target is one plain command. Without it, run the command from the <code>Makefile</code> directly, or install it with <code>winget install ezwinports.make</code>.</li>
-    <li><strong>Database.</strong> Postgres 18 with the <code>Telco_Dynamic_Recomender</code> database. Copy <code>.env.example</code> to <code>.env</code> and set the password; without it the project uses a local SQLite file. Tests use a throwaway <code>pytest_recommender</code> schema and never touch the real tables.</li>
+    <li><strong>Database.</strong> Postgres 18 with the <code>Telco_Dynamic_Recomender</code> database. Copy <code>.env.example</code> to <code>.env</code> and fill in <code>DB_PASSWORD</code> (and the other <code>DB_*</code> values if they differ); without them the project uses a local SQLite file. Tests use a throwaway <code>pytest_recommender</code> schema and never touch the real tables.</li>
     <li><strong>Line endings.</strong> <code>.gitattributes</code> keeps LF line endings in the repository so the Makefile and Docker files behave the same on every platform.</li>
   </ul>
 </section>
@@ -138,6 +138,7 @@
 <tr><td>Time of day for hour</td><td class="num">6</td></tr>
 <tr><td>Payday week salaried vs pensioner</td><td class="num">1</td></tr>
 <tr><td>Context build derives calendar fields</td><td class="num">1</td></tr>
+<tr><td>Database url precedence</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_ground_truth.py</code> · Hidden truth, segment stories, payday, revenue, response model and the architecture guards</th></tr>
 <tr><td>Probabilities are valid and respect eligibility</td><td class="num">1</td></tr>
 <tr><td>Payday boosts insurance and reduces credit</td><td class="num">1</td></tr>
@@ -213,7 +214,7 @@
 <tr><td>Alpha and beta are computed by the database</td><td class="num">1</td></tr>
 <tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
 </tbody>
-<caption>87 test cases in 82 test functions.</caption></table></div>
+<caption>88 test cases in 83 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>

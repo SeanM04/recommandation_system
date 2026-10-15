@@ -9,6 +9,7 @@ from typing import Any, Literal
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy.engine import URL
 
 from recommender.domain import CONTEXT_MODES, Offer
 
@@ -77,9 +78,37 @@ class Settings(BaseModel):
 
     @property
     def database_url(self) -> str:
-        """``$RECOMMENDER_DATABASE_URL`` (Postgres, set in .env), else the local SQLite file."""
-        default = f"sqlite:///{self.paths.database.as_posix()}"
-        return os.environ.get("RECOMMENDER_DATABASE_URL", default)
+        """Where the database is, from the environment (normally ``.env``). First match wins:
+
+        1. ``RECOMMENDER_DATABASE_URL``, a full SQLAlchemy URL;
+        2. ``DB_NAME`` and ``DB_USER`` (plus ``DB_PASSWORD``, ``DB_HOST``, ``DB_PORT``):
+           Postgres, e.g. the ``Telco_Dynamic_Recomender`` database;
+        3. the local SQLite file in ``paths.database``.
+        """
+        if url := os.environ.get("RECOMMENDER_DATABASE_URL"):
+            return url
+        if os.environ.get("DB_NAME") and os.environ.get("DB_USER"):
+            return postgres_url(
+                database=os.environ["DB_NAME"],
+                user=os.environ["DB_USER"],
+                password=os.environ.get("DB_PASSWORD"),
+                host=os.environ.get("DB_HOST") or "localhost",
+                port=int(os.environ.get("DB_PORT") or 5432),
+            )
+        return f"sqlite:///{self.paths.database.as_posix()}"
+
+
+def postgres_url(*, database: str, user: str, password: str | None, host: str, port: int) -> str:
+    """A psycopg URL from its parts; special characters in the password are escaped."""
+    url = URL.create(
+        "postgresql+psycopg",
+        username=user,
+        password=password,
+        host=host,
+        port=port,
+        database=database,
+    )
+    return url.render_as_string(hide_password=False)
 
 
 def read_yaml(path: Path) -> Any:

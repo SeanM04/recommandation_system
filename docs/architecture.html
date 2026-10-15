@@ -340,7 +340,7 @@
       <thead><tr><th>File</th><th>Contains</th><th>Read by</th><th>Hidden</th></tr></thead>
       <tbody>
         <tr><td><code>config/settings.yaml</code></td><td>Global seed, file paths (including the SQLite fallback), recommendation settings and every named policy</td><td>Recommender, scripts</td><td>No</td></tr>
-        <tr><td><code>.env</code></td><td><code>RECOMMENDER_DATABASE_URL</code> for Postgres, password included; git-ignored, with a template in <code>.env.example</code></td><td>Recommender, scripts, tests</td><td>Secret</td></tr>
+        <tr><td><code>.env</code></td><td>Postgres connection: <code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, <code>DB_HOST</code>, <code>DB_PORT</code> (or one <code>RECOMMENDER_DATABASE_URL</code>); git-ignored, with a template in <code>.env.example</code></td><td>Recommender, scripts, tests</td><td>Secret</td></tr>
         <tr><td><code>config/offers.yaml</code></td><td>Offer catalogue: price, margin and the segments each offer may be shown to</td><td>Recommender, simulator</td><td>No</td></tr>
         <tr><td><code>config/simulation.yaml</code></td><td>Population size and segment mix, path to the truth, simulated calendar</td><td>Simulator</td><td><span class="chip hidden">Hidden</span></td></tr>
         <tr><td><code>config/ground_truth.yaml</code></td><td>Base take-up rates, context effects, response model, behaviour shift</td><td>Simulator, offline evaluation</td><td><span class="chip hidden">Hidden</span></td></tr>

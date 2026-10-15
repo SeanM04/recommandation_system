@@ -119,3 +119,32 @@ def test_context_build_derives_calendar_fields() -> None:
     assert context.is_payday_week
     assert context.spend_band == "low"
     assert context.channel == "app"
+
+
+# --- database location ----------------------------------------------------------------
+
+DB_VARIABLES = (
+    "RECOMMENDER_DATABASE_URL",
+    "DB_NAME",
+    "DB_USER",
+    "DB_PASSWORD",
+    "DB_HOST",
+    "DB_PORT",
+)
+
+
+def test_database_url_precedence(monkeypatch) -> None:
+    for name in DB_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+    settings = load_settings()
+    assert settings.database_url.startswith("sqlite:///")  # nothing configured
+
+    monkeypatch.setenv("DB_NAME", "Telco_Dynamic_Recomender")
+    monkeypatch.setenv("DB_USER", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "p@ss:w/rd")
+    assert settings.database_url == (
+        "postgresql+psycopg://postgres:p%40ss%3Aw%2Frd@localhost:5432/Telco_Dynamic_Recomender"
+    )
+
+    monkeypatch.setenv("RECOMMENDER_DATABASE_URL", "sqlite:///elsewhere.db")
+    assert settings.database_url == "sqlite:///elsewhere.db"  # a full URL wins
