@@ -4,7 +4,7 @@ import pytest
 
 from conftest import postgres_schema
 from recommender.algorithms.base import ScoredOffer
-from recommender.db import make_engine
+from recommender.db import create_tables, make_engine
 from recommender.domain import Context
 from recommender.events.log import DuplicateResponse, EventLog
 
@@ -89,3 +89,27 @@ def test_average_rewards_per_offer(log: EventLog) -> None:
         )
         log.record_response(invocation_id=invocation_id, offer_id="b", outcome="viewed", reward=0.0)
     assert log.average_rewards() == {"a": 0.5, "b": 0.0}  # ignored rows are left out
+
+
+def test_table_creation_is_safe_when_workers_start_together() -> None:
+    """Several API processes starting at once on an empty database must not collide."""
+    with postgres_schema("pytest_startup") as url:
+        engines = [make_engine(url) for _ in range(6)]
+        errors: list[Exception] = []
+        start = threading.Barrier(len(engines))
+
+        def boot(engine) -> None:
+            start.wait()
+            try:
+                create_tables(engine)
+            except Exception as error:  # noqa: BLE001 - any failure fails the test
+                errors.append(error)
+
+        threads = [threading.Thread(target=boot, args=(engine,)) for engine in engines]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        for engine in engines:
+            engine.dispose()
+        assert errors == []

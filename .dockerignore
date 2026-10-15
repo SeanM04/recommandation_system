@@ -1,0 +1,19 @@
+# Secrets and local state never go into the image.
+.env
+data/
+results/
+*.db
+
+# Not needed at runtime.
+.git/
+.github/
+.venv/
+docs/
+tests/
+notebooks/
+dashboard/
+scripts/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.md

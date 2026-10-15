@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import Engine, Insert, MetaData, Table, create_engine
+from sqlalchemy import Engine, Insert, MetaData, Table, create_engine, text
 from sqlalchemy.dialects import postgresql, sqlite
 
 metadata = MetaData()
@@ -30,12 +30,23 @@ def upsert_insert(engine: Engine, table: Table) -> Insert:
     return dialects[name](table)
 
 
+SCHEMA_LOCK_KEY = 820_551  # any constant; identifies "creating this project's tables"
+
+
 def create_tables(engine: Engine) -> list[str]:
-    """Create every table the project defines, if missing. Returns their names."""
+    """Create every table the project defines, if missing. Returns their names.
+
+    Safe when several API worker processes start at once on an empty database: on
+    Postgres, a transaction-level advisory lock lets one process create the tables while
+    the others wait, then find them already there.
+    """
     # Importing the modules registers their tables on ``metadata``.
     import recommender.customers  # noqa: F401
     import recommender.events.log  # noqa: F401
     import recommender.store.sql  # noqa: F401
 
-    metadata.create_all(engine)
+    with engine.begin() as connection:
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": SCHEMA_LOCK_KEY})
+        metadata.create_all(connection)
     return sorted(metadata.tables)

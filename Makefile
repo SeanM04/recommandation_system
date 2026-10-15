@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install db data truth experiment run benchmark test lint format docs
+.PHONY: install db data truth experiment run benchmark docker-build docker-api benchmark-docker test lint format docs
 
 install:  ## Install dependencies and the package in editable mode
 	$(PYTHON) -m pip install -r requirements.txt
@@ -22,7 +22,16 @@ run:  ## Start the recommender API on http://localhost:8000 (docs at /docs)
 	$(PYTHON) -m uvicorn recommender.api.main:app --host 0.0.0.0 --port 8000 --no-access-log
 
 benchmark:  ## Measure API latency end to end (real server, database and HTTP)
-	$(PYTHON) scripts/benchmark_api.py
+	$(PYTHON) scripts/benchmark_api.py --clients 1,4,8
+
+docker-build:  ## Build the image (API now; the dashboard joins it in Phase 5)
+	docker build -t telco-recommender:latest .
+
+docker-api:  ## Run the API in Docker on port 8000 (4 workers), using the database in .env
+	docker run --rm -p 8000:8000 --env-file .env -e DB_HOST=host.docker.internal telco-recommender:latest
+
+benchmark-docker:  ## Latency at 1, 4, 8 and 16 concurrent clients against the API in Docker
+	$(PYTHON) scripts/benchmark_api.py --docker --workers 4 --clients 1,4,8,16
 
 test:  ## Run the test suite
 	$(PYTHON) -m pytest
