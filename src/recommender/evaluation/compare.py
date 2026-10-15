@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -157,3 +158,18 @@ def convergence_table(rounds: pd.DataFrame, world: World, shift_round: int | Non
                 for segment, opens in reached.items()
             )
     return pd.DataFrame(rows)
+
+
+def save_results(
+    comparison: Comparison, world: World, shift_round: int | None, out: Path
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Write the files the dashboard reads; returns the headline and convergence tables."""
+    out.mkdir(parents=True, exist_ok=True)
+    table = comparison_table(comparison.summary)
+    convergence = convergence_table(comparison.rounds, world, shift_round)
+    comparison.summary.to_csv(out / "comparison_by_seed.csv", index=False)
+    table.to_csv(out / "comparison.csv")
+    comparison.rounds.to_parquet(out / "comparison_rounds.parquet", index=False)
+    comparison.snapshots.to_parquet(out / "comparison_snapshots.parquet", index=False)
+    convergence.to_csv(out / "convergence.csv", index=False)
+    return table, convergence

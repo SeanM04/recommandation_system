@@ -22,9 +22,8 @@ import pandas as pd
 from recommender.config import PROJECT_ROOT, load_settings
 from recommender.evaluation.compare import (
     HEADLINE,
-    comparison_table,
-    convergence_table,
     run_comparison,
+    save_results,
 )
 from recommender.evaluation.metrics import cumulative
 from recommender.simulator.engine import World
@@ -76,14 +75,7 @@ def main() -> None:
     print(f"done in {time.perf_counter() - start:.0f}s\n")
 
     out = PROJECT_ROOT / "results"
-    out.mkdir(exist_ok=True)
-    table = comparison_table(comparison.summary)
-    comparison.summary.to_csv(out / "comparison_by_seed.csv", index=False)
-    table.to_csv(out / "comparison.csv")
-    comparison.rounds.to_parquet(out / "comparison_rounds.parquet", index=False)
-    comparison.snapshots.to_parquet(out / "comparison_snapshots.parquet", index=False)
-    convergence = convergence_table(comparison.rounds, world, shift_round)
-    convergence.to_csv(out / "convergence.csv", index=False)
+    table, convergence = save_results(comparison, world, shift_round, out)
     markdown = to_markdown(table)
     (out / "comparison.md").write_text(markdown + "\n", encoding="utf-8")
     print(markdown)

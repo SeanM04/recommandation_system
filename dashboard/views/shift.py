@@ -6,7 +6,7 @@ import streamlit as st
 from recommender.evaluation.compare import moment_favourites
 from recommender.evaluation.metrics import selection_share
 from recommender.simulator.engine import World
-from shared import colour, mark_shift, need_results, results_file, style
+from shared import colour, mark_shift, need_results, provenance, results_file, style
 
 st.title("Behaviour shift")
 st.caption(
@@ -19,6 +19,7 @@ rounds = results_file("comparison_rounds.parquet")
 convergence = results_file("convergence.csv")
 if not need_results(rounds, convergence):
     st.stop()
+provenance()
 shift_round = int(rounds.loc[rounds["shifted"], "round"].min())
 
 

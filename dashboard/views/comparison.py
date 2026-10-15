@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from recommender.evaluation.metrics import cumulative
-from shared import KEY_POLICIES, colour, mark_shift, need_results, results_file, style
+from shared import KEY_POLICIES, colour, mark_shift, need_results, provenance, results_file, style
 
 st.title("Algorithm comparison")
 table = results_file("comparison.csv")
@@ -20,6 +20,7 @@ st.caption(
     "take-ups lost to the oracle: lower is better, and a flattening curve means learning."
 )
 
+provenance()
 st.subheader("Results (mean over seeds)")
 st.dataframe(
     table.set_index("policy")[

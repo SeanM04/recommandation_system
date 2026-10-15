@@ -15,10 +15,10 @@ data:  ## Generate the synthetic customer population (data/customers.csv)
 truth:  ## Print the hidden take-up table per segment (simulator only)
 	$(PYTHON) scripts/inspect_ground_truth.py
 
-simulate:  ## Everything the dashboard shows: customers, a 3-seed comparison, 2,000 app opens through the API
+simulate:  ## Everything the dashboard shows: customers, a 3-seed comparison, 1,000 app opens through the API
 	$(PYTHON) scripts/generate_customers.py
 	$(PYTHON) scripts/compare_algorithms.py --seeds 3 --no-docs
-	$(PYTHON) scripts/run_simulation.py --mode api --in-process --rounds 2000
+	$(PYTHON) scripts/run_simulation.py --mode api --in-process --rounds 1000
 
 compare:  ## Compare every policy on the same world, 10 seeds (~7 min); results to results/ and the docs
 	$(PYTHON) scripts/compare_algorithms.py

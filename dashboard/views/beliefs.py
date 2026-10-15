@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
-from shared import mark_shift, need_results, results_file, style
+from shared import mark_shift, need_results, provenance, results_file, style
 
 st.title("Explore vs exploit")
 st.caption(
@@ -20,6 +20,7 @@ snapshots = results_file("comparison_snapshots.parquet")
 rounds = results_file("comparison_rounds.parquet")
 if not need_results(snapshots, rounds):
     st.stop()
+provenance()
 
 HIGHLIGHT = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]  # top four offers; the rest grey
 OTHER = "#9aa5ad"

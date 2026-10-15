@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import os
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -11,8 +13,6 @@ import streamlit as st
 
 from recommender.config import PROJECT_ROOT, load_settings
 from recommender.db import make_engine
-
-RESULTS = PROJECT_ROOT / "results"
 
 # One fixed colour per policy on every chart (categorical palette slots, in order).
 POLICY_COLOURS = {
@@ -43,13 +43,21 @@ def engine():
     return make_engine(settings().database_url)
 
 
+def results_dir() -> Path:
+    """Where the simulation results are: results/, or $RECOMMENDER_RESULTS."""
+    return Path(os.environ.get("RECOMMENDER_RESULTS", PROJECT_ROOT / "results"))
+
+
 @st.cache_data
+def _read(path: str, modified: float) -> pd.DataFrame:
+    # ``modified`` is part of the cache key, so a new run is picked up without a restart.
+    return pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
+
+
 def results_file(name: str) -> pd.DataFrame | None:
-    """A file from results/, or None if make simulate has not produced it yet."""
-    path = RESULTS / name
-    if not path.exists():
-        return None
-    return pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
+    """A results file, or None if make simulate has not produced it yet."""
+    path = results_dir() / name
+    return _read(str(path), path.stat().st_mtime) if path.exists() else None
 
 
 def need_results(*frames: pd.DataFrame | None) -> bool:
@@ -58,6 +66,22 @@ def need_results(*frames: pd.DataFrame | None) -> bool:
         st.info("No simulation results yet. Run `make simulate` (or `make compare`), then reload.")
         return False
     return True
+
+
+def provenance() -> None:
+    """Say which run the page is showing: seeds, app opens and when it was saved."""
+    by_seed, rounds = (
+        results_file("comparison_by_seed.csv"),
+        results_file("comparison_rounds.parquet"),
+    )
+    if by_seed is None or rounds is None:
+        return
+    saved = dt.datetime.fromtimestamp((results_dir() / "comparison.csv").stat().st_mtime)
+    st.caption(
+        f"Showing a run of {by_seed['seed'].nunique()} seeds × {rounds['round'].max() + 1:,} "
+        f"app opens, saved {saved:%Y-%m-%d %H:%M}. `make compare` produces the published "
+        "10-seed results; `make simulate` a quicker 3-seed run."
+    )
 
 
 def style(figure: go.Figure, height: int = 420) -> go.Figure:
