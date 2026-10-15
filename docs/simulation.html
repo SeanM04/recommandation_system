@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulated Telco World</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Offers, synthetic customers and the hidden behaviour model the recommender is tested against.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html" aria-current=page>Simulated world</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Simulated world · Phase 1</p>
+  <h1>Customers, offers and the behaviour the recommender must discover</h1>
+  <p class="lede">The recommender is tested against a world whose true behaviour we control. This page documents that world: what can be offered, who the customers are, how likely each one is to take each offer, and how they react to a ranked list.</p>
+  <div class="note warn"><p>Everything below the offer catalogue and customer profiles is <strong>hidden from the recommender</strong>. It is shown here for reviewers, and is used only by the simulator and the offline regret calculation.</p></div>
+  <ul class="toc">
+    <li><a href="#offers">Offer catalogue</a></li>
+    <li><a href="#customers">Customers</a></li>
+    <li><a href="#context">Context of an app open</a></li>
+    <li><a href="#probability">How a take-up probability is set</a></li>
+    <li><a href="#favourites">What each segment prefers</a></li>
+    <li><a href="#shift">Behaviour shift</a></li>
+    <li><a href="#response">How customers respond to a list</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="offers">
+  <div class="section-head"><h2 id="offers">Offer catalogue</h2><span class="chip built">Built</span></div>
+  <p>South African telco and fintech products. The margin is the expected contribution per take-up and drives the revenue-aware reward. Eligibility is a business guardrail that the recommender is allowed to use: an offer is never shown outside its segments.</p>
+<!-- BEGIN generated:offers -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Offer id</th><th scope="col">Offer</th><th scope="col">Category</th><th scope="col" class=num>Price</th><th scope="col" class=num>Margin</th><th scope="col">Shown to</th></tr></thead>
+<tbody>
+<tr><td><code>data_1gb</code></td><td>1GB Data Bundle (30 days)</td><td>data</td><td class=num>R85</td><td class=num>R30</td><td>all five</td></tr>
+<tr><td><code>data_5gb</code></td><td>5GB Data Bundle (30 days)</td><td>data</td><td class=num>R199</td><td class=num>R70</td><td>all five</td></tr>
+<tr><td><code>data_20gb</code></td><td>20GB Data Bundle (30 days)</td><td>data</td><td class=num>R449</td><td class=num>R150</td><td>student, young professional, family, small business</td></tr>
+<tr><td><code>airtime_r50_bonus</code></td><td>R50 Airtime + 10% Bonus</td><td>airtime</td><td class=num>R50</td><td class=num>R4</td><td>all five</td></tr>
+<tr><td><code>electricity_cashback</code></td><td>Prepaid Electricity with 5% Cashback</td><td>utilities</td><td class=num>R300</td><td class=num>R9</td><td>young professional, family, small business, pensioner</td></tr>
+<tr><td><code>paylater_voucher</code></td><td>Pay Later &quot;Buy Now&quot; R500 Voucher</td><td>credit</td><td class=num>R500</td><td class=num>R45</td><td>young professional, family, small business</td></tr>
+<tr><td><code>funeral_cover</code></td><td>Family Funeral Cover (R20 000 payout)</td><td>insurance</td><td class=num>R99</td><td class=num>R50</td><td>young professional, family, small business, pensioner</td></tr>
+<tr><td><code>device_insurance</code></td><td>Smartphone Insurance</td><td>insurance</td><td class=num>R79</td><td class=num>R30</td><td>student, young professional, family, small business</td></tr>
+<tr><td><code>savings_pocket</code></td><td>Savings Pocket (7.5% interest)</td><td>savings</td><td class=num>R100</td><td class=num>R15</td><td>all five</td></tr>
+<tr><td><code>streaming_bundle</code></td><td>Music + Video Streaming Bundle (incl. 3GB)</td><td>entertainment</td><td class=num>R129</td><td class=num>R35</td><td>student, young professional, family</td></tr>
+<tr><td><code>food_delivery_voucher</code></td><td>R100 Food Delivery Voucher</td><td>lifestyle</td><td class=num>R100</td><td class=num>R12</td><td>student, young professional, family</td></tr>
+<tr><td><code>roaming_pack</code></td><td>SADC Roaming Pack (1GB + 30 min)</td><td>travel</td><td class=num>R249</td><td class=num>R90</td><td>young professional, family, small business</td></tr>
+</tbody></table></div>
+<!-- END generated:offers -->
+  <p class="source">From config/offers.yaml · prices and margins are illustrative</p>
+</section>
+
+<section aria-labelledby="customers">
+  <div class="section-head"><h2 id="customers">Customers</h2><span class="chip built">Built</span></div>
+  <p>A seeded generator creates the population, so the same seed always produces the same customers. Each segment has its own mix of handsets, contract share, monthly spend (log-normal around the median) and usual time of day; provinces follow approximate South African population shares.</p>
+<!-- BEGIN generated:segments -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Segment</th><th scope="col" class=num>Target share</th><th scope="col" class=num>Customers</th><th scope="col" class=num>Median spend / month</th><th scope="col" class=num>On contract</th><th scope="col">Handsets</th><th scope="col">Most common time</th></tr></thead>
+<tbody>
+<tr><td><code>student</code></td><td class=num>22%</td><td class=num>1,127</td><td class=num>R146</td><td class=num>7%</td><td>low 45%, mid 45%, high 10%</td><td>night</td></tr>
+<tr><td><code>young_professional</code></td><td class=num>28%</td><td class=num>1,418</td><td class=num>R439</td><td class=num>50%</td><td>low 10%, mid 50%, high 40%</td><td>evening</td></tr>
+<tr><td><code>family</code></td><td class=num>25%</td><td class=num>1,215</td><td class=num>R358</td><td class=num>31%</td><td>low 35%, mid 50%, high 15%</td><td>evening</td></tr>
+<tr><td><code>small_business</code></td><td class=num>10%</td><td class=num>495</td><td class=num>R881</td><td class=num>52%</td><td>low 15%, mid 50%, high 35%</td><td>morning</td></tr>
+<tr><td><code>pensioner</code></td><td class=num>15%</td><td class=num>745</td><td class=num>R126</td><td class=num>11%</td><td>low 70%, mid 25%, high 5%</td><td>morning</td></tr>
+</tbody></table></div>
+<!-- END generated:segments -->
+  <p class="source">From src/recommender/simulator/population.py and config/simulation.yaml</p>
+</section>
+
+<section aria-labelledby="context">
+  <h2 id="context">Context of an app open</h2>
+  <p>A customer's profile stays fixed; the moment changes every time they open the app. The two are combined into one <code>Context</code> when the app is opened, and that context is all the recommender knows.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Comes from</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td class="id list">segment<br>device_tier<br>prepaid_vs_contract<br>avg_monthly_spend<br>province</td><td>The customer's profile in <code>data/customers.csv</code></td><td><code>family</code>, <code>mid</code>, <code>contract</code>, R420, Gauteng</td></tr>
+        <tr><td class="id">time_of_day</td><td>The customer's usual time on 70% of opens, any time otherwise (morning 05–12, afternoon 12–17, evening 17–22, night 22–05)</td><td><code>evening</code></td></tr>
+        <tr><td class="id">day_of_week</td><td>The calendar day</td><td><code>saturday</code></td></tr>
+        <tr><td class="id">is_payday_week</td><td>Calendar day and segment: salaries from the 25th to month end, SASSA grants for pensioners on days 1–7</td><td><code>true</code></td></tr>
+        <tr><td class="id">channel</td><td>Where the request came from: <code>app</code>, <code>ussd</code> or <code>sms</code></td><td><code>app</code></td></tr>
+        <tr><td class="id">is_weekend, spend_band</td><td>Derived: Saturday or Sunday; spend under R200 is <code>low</code>, over R600 is <code>high</code></td><td><code>true</code>, <code>medium</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="probability">
+  <div class="section-head"><h2 id="probability">How a take-up probability is set</h2><span class="chip hidden">Hidden</span></div>
+  <p>Every segment has a base rate per offer. Named context effects then nudge it up or down, and the result is capped. One readable table plus a short list of effects describes the whole behaviour model.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 230" style="min-width: 760px" role="img" aria-label="How a true take-up probability is computed. If the offer is not eligible for the customer's segment, the probability is zero. Otherwise start from the segment's base rate for the offer, multiply by every context effect that matches, and cap the result.">
+        <defs>
+          <marker id="s1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <rect class="box built" x="16" y="62" width="150" height="56" rx="6"/>
+        <text class="t" x="91" y="86" text-anchor="middle">Context + offer</text>
+        <text class="s" x="91" y="104" text-anchor="middle">one app open</text>
+
+        <polygon class="diamond" points="270,42 345,90 270,138 195,90"/>
+        <text class="t" x="270" y="86" text-anchor="middle">Eligible for</text>
+        <text class="t" x="270" y="102" text-anchor="middle">segment?</text>
+
+        <rect class="box built secret" x="380" y="62" width="200" height="56" rx="6"/>
+        <text class="t" x="480" y="86" text-anchor="middle">Base rate</text>
+        <text class="s mono" x="480" y="104" text-anchor="middle">base[segment][offer]</text>
+
+        <rect class="box built secret" x="610" y="62" width="180" height="56" rx="6"/>
+        <text class="t" x="700" y="86" text-anchor="middle">× each matching effect</text>
+        <text class="s" x="700" y="104" text-anchor="middle">payday · time · device · …</text>
+
+        <rect class="box built secret" x="820" y="62" width="164" height="56" rx="6"/>
+        <text class="t" x="902" y="86" text-anchor="middle">Cap at 90%</text>
+        <text class="s" x="902" y="104" text-anchor="middle">true take-up p</text>
+
+        <rect class="box term" x="200" y="174" width="140" height="44" rx="6"/>
+        <text class="t" x="270" y="193" text-anchor="middle">p = 0</text>
+        <text class="s" x="270" y="209" text-anchor="middle">never shown</text>
+
+        <path class="edge strong" d="M166 90H193" marker-end="url(#s1-ah)"/>
+        <path class="edge strong" d="M345 90H378" marker-end="url(#s1-ah)"/>
+        <text class="yes" x="361" y="82" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M580 90H608" marker-end="url(#s1-ah)"/>
+        <path class="edge strong" d="M790 90H818" marker-end="url(#s1-ah)"/>
+        <path class="edge strong" d="M270 138V172" marker-end="url(#s1-ah)"/>
+        <text class="no" x="280" y="160">no</text>
+      </svg>
+    </div>
+    <figcaption><span>Effects are keyed by offer id or by category; an offer id wins over its category. Multipliers stack, so a contract customer in payday week gets both nudges.</span></figcaption>
+  </figure>
+
+  <h3>Worked example</h3>
+  <p>A family customer on contract, mid-range handset, R420 a month, opening the app on a Saturday evening in payday week, shown funeral cover:</p>
+<!-- BEGIN generated:example -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Step</th><th scope="col" class=num>Factor</th><th scope="col" class=num>Probability</th></tr></thead>
+<tbody>
+<tr><td>Base rate for <code>family</code> × <code>funeral_cover</code></td><td class=num></td><td class=num>15.0%</td></tr>
+<tr><td>Payday week, money to spend</td><td class=num>×1.3</td><td class=num>19.5%</td></tr>
+<tr><td>Contract customers already have bundled data and minutes</td><td class=num>×1.15</td><td class=num>22.4%</td></tr>
+<tr><td>Cap at 90%, final probability</td><td class=num></td><td class=num><strong>22.4%</strong></td></tr>
+</tbody></table></div>
+<p class="source">Also matched this context but do not touch insurance: evening downtime, weekend.</p>
+<!-- END generated:example -->
+
+  <h3>All context effects</h3>
+<!-- BEGIN generated:effects -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Effect</th><th scope="col">Applies when</th><th scope="col">Multiplies take-up of</th></tr></thead>
+<tbody>
+<tr><td>Payday week, money to spend</td><td><code>is_payday_week</code> = true</td><td>data&nbsp;×1.25, airtime&nbsp;×1.15, utilities&nbsp;×1.3, credit&nbsp;×0.6, insurance&nbsp;×1.3, savings&nbsp;×1.6, entertainment&nbsp;×1.3, lifestyle&nbsp;×1.4, travel&nbsp;×1.3</td></tr>
+<tr><td>Mid-month cash squeeze</td><td><code>is_payday_week</code> = false</td><td>credit&nbsp;×1.2</td></tr>
+<tr><td>Pensioners buy the month&#x27;s electricity when the SASSA grant lands</td><td><code>segment</code> = pensioner<br><code>is_payday_week</code> = true</td><td>electricity_cashback&nbsp;×2</td></tr>
+<tr><td>Small businesses need working capital before month-end</td><td><code>segment</code> = small_business<br><code>is_payday_week</code> = false</td><td>paylater_voucher&nbsp;×2.4</td></tr>
+<tr><td>Morning errands</td><td><code>time_of_day</code> = morning</td><td>airtime&nbsp;×1.15, utilities&nbsp;×1.15</td></tr>
+<tr><td>Evening downtime</td><td><code>time_of_day</code> = evening</td><td>entertainment&nbsp;×1.3, lifestyle&nbsp;×1.4</td></tr>
+<tr><td>Late-night scrolling</td><td><code>time_of_day</code> = night</td><td>data&nbsp;×1.2, entertainment&nbsp;×1.25, lifestyle&nbsp;×0.7</td></tr>
+<tr><td>Weekend</td><td><code>is_weekend</code> = true</td><td>lifestyle&nbsp;×1.3, entertainment&nbsp;×1.2, travel&nbsp;×1.3</td></tr>
+<tr><td>Low-end handset</td><td><code>device_tier</code> = low</td><td>entertainment&nbsp;×0.6, data_20gb&nbsp;×0.6, device_insurance&nbsp;×0.6</td></tr>
+<tr><td>Flagship handset</td><td><code>device_tier</code> = high</td><td>device_insurance&nbsp;×1.5, entertainment&nbsp;×1.15, data_20gb&nbsp;×1.2</td></tr>
+<tr><td>Contract customers already have bundled data and minutes</td><td><code>prepaid_vs_contract</code> = contract</td><td>data&nbsp;×0.75, airtime&nbsp;×0.6, insurance&nbsp;×1.15, travel&nbsp;×1.4</td></tr>
+<tr><td>Tight budget</td><td><code>spend_band</code> = low</td><td>data_20gb&nbsp;×0.5, data_5gb&nbsp;×0.8, roaming_pack&nbsp;×0.5, paylater_voucher&nbsp;×0.7</td></tr>
+<tr><td>Big spender</td><td><code>spend_band</code> = high</td><td>data_1gb&nbsp;×0.7, data_20gb&nbsp;×1.3, roaming_pack&nbsp;×1.4</td></tr>
+<tr><td>Border provinces travel more to neighbouring countries</td><td><code>province</code> in Limpopo, Mpumalanga, North West</td><td>roaming_pack&nbsp;×1.5</td></tr>
+</tbody></table></div>
+<!-- END generated:effects -->
+  <p class="source">From config/ground_truth.yaml</p>
+</section>
+
+<section aria-labelledby="favourites">
+  <div class="section-head"><h2 id="favourites">What each segment prefers</h2><span class="chip hidden">Hidden</span></div>
+  <p>This is the answer key. Each cell is the average true take-up when the offer is shown first, over realistic customers, days and times of day. A good policy should end up recommending each segment's outlined favourite without ever seeing this table.</p>
+<!-- BEGIN generated:heatmap -->
+<div class="table-wrap">
+<table class="heat">
+<thead><tr><th scope="col">Take-up %</th><th scope="col">student</th><th scope="col">young professional</th><th scope="col">family</th><th scope="col">small business</th><th scope="col">pensioner</th></tr></thead>
+<tbody>
+<tr><th scope="row">data_1gb</th><td class="cell hot best" style="--v:0.908" title="student · data_1gb: 19.9%">19.9</td><td class="cell" style="--v:0.201" title="young_professional · data_1gb: 4.4%">4.4</td><td class="cell" style="--v:0.261" title="family · data_1gb: 5.7%">5.7</td><td class="cell" style="--v:0.128" title="small_business · data_1gb: 2.8%">2.8</td><td class="cell" style="--v:0.239" title="pensioner · data_1gb: 5.2%">5.2</td></tr>
+<tr><th scope="row">data_5gb</th><td class="cell" style="--v:0.519" title="student · data_5gb: 11.4%">11.4</td><td class="cell hot best" style="--v:0.559" title="young_professional · data_5gb: 12.2%">12.2</td><td class="cell" style="--v:0.311" title="family · data_5gb: 6.8%">6.8</td><td class="cell" style="--v:0.297" title="small_business · data_5gb: 6.5%">6.5</td><td class="cell" style="--v:0.079" title="pensioner · data_5gb: 1.7%">1.7</td></tr>
+<tr><th scope="row">data_20gb</th><td class="cell" style="--v:0.108" title="student · data_20gb: 2.4%">2.4</td><td class="cell" style="--v:0.333" title="young_professional · data_20gb: 7.3%">7.3</td><td class="cell" style="--v:0.198" title="family · data_20gb: 4.3%">4.3</td><td class="cell hot" style="--v:0.750" title="small_business · data_20gb: 16.4%">16.4</td><td class="na" title="data_20gb is not shown to pensioner">–</td></tr>
+<tr><th scope="row">airtime_r50_bonus</th><td class="cell" style="--v:0.467" title="student · airtime_r50_bonus: 10.2%">10.2</td><td class="cell" style="--v:0.156" title="young_professional · airtime_r50_bonus: 3.4%">3.4</td><td class="cell" style="--v:0.299" title="family · airtime_r50_bonus: 6.5%">6.5</td><td class="cell" style="--v:0.234" title="small_business · airtime_r50_bonus: 5.1%">5.1</td><td class="cell hot best" style="--v:0.722" title="pensioner · airtime_r50_bonus: 15.8%">15.8</td></tr>
+<tr><th scope="row">electricity_cashback</th><td class="na" title="electricity_cashback is not shown to student">–</td><td class="cell" style="--v:0.252" title="young_professional · electricity_cashback: 5.5%">5.5</td><td class="cell" style="--v:0.503" title="family · electricity_cashback: 11.0%">11.0</td><td class="cell" style="--v:0.408" title="small_business · electricity_cashback: 8.9%">8.9</td><td class="cell" style="--v:0.531" title="pensioner · electricity_cashback: 11.6%">11.6</td></tr>
+<tr><th scope="row">paylater_voucher</th><td class="na" title="paylater_voucher is not shown to student">–</td><td class="cell" style="--v:0.243" title="young_professional · paylater_voucher: 5.3%">5.3</td><td class="cell" style="--v:0.287" title="family · paylater_voucher: 6.3%">6.3</td><td class="cell hot best" style="--v:1.000" title="small_business · paylater_voucher: 21.9%">21.9</td><td class="na" title="paylater_voucher is not shown to pensioner">–</td></tr>
+<tr><th scope="row">funeral_cover</th><td class="na" title="funeral_cover is not shown to student">–</td><td class="cell" style="--v:0.104" title="young_professional · funeral_cover: 2.3%">2.3</td><td class="cell hot best" style="--v:0.760" title="family · funeral_cover: 16.6%">16.6</td><td class="cell" style="--v:0.157" title="small_business · funeral_cover: 3.4%">3.4</td><td class="cell" style="--v:0.496" title="pensioner · funeral_cover: 10.9%">10.9</td></tr>
+<tr><th scope="row">device_insurance</th><td class="cell" style="--v:0.125" title="student · device_insurance: 2.7%">2.7</td><td class="cell" style="--v:0.304" title="young_professional · device_insurance: 6.7%">6.7</td><td class="cell" style="--v:0.236" title="family · device_insurance: 5.2%">5.2</td><td class="cell" style="--v:0.353" title="small_business · device_insurance: 7.7%">7.7</td><td class="na" title="device_insurance is not shown to pensioner">–</td></tr>
+<tr><th scope="row">savings_pocket</th><td class="cell" style="--v:0.102" title="student · savings_pocket: 2.2%">2.2</td><td class="cell" style="--v:0.256" title="young_professional · savings_pocket: 5.6%">5.6</td><td class="cell" style="--v:0.255" title="family · savings_pocket: 5.6%">5.6</td><td class="cell" style="--v:0.256" title="small_business · savings_pocket: 5.6%">5.6</td><td class="cell" style="--v:0.312" title="pensioner · savings_pocket: 6.8%">6.8</td></tr>
+<tr><th scope="row">streaming_bundle</th><td class="cell" style="--v:0.394" title="student · streaming_bundle: 8.6%">8.6</td><td class="cell" style="--v:0.300" title="young_professional · streaming_bundle: 6.6%">6.6</td><td class="cell" style="--v:0.204" title="family · streaming_bundle: 4.5%">4.5</td><td class="na" title="streaming_bundle is not shown to small_business">–</td><td class="na" title="streaming_bundle is not shown to pensioner">–</td></tr>
+<tr><th scope="row">food_delivery_voucher</th><td class="cell" style="--v:0.480" title="student · food_delivery_voucher: 10.5%">10.5</td><td class="cell" style="--v:0.406" title="young_professional · food_delivery_voucher: 8.9%">8.9</td><td class="cell" style="--v:0.291" title="family · food_delivery_voucher: 6.4%">6.4</td><td class="na" title="food_delivery_voucher is not shown to small_business">–</td><td class="na" title="food_delivery_voucher is not shown to pensioner">–</td></tr>
+<tr><th scope="row">roaming_pack</th><td class="na" title="roaming_pack is not shown to student">–</td><td class="cell" style="--v:0.228" title="young_professional · roaming_pack: 5.0%">5.0</td><td class="cell" style="--v:0.132" title="family · roaming_pack: 2.9%">2.9</td><td class="cell" style="--v:0.472" title="small_business · roaming_pack: 10.3%">10.3</td><td class="na" title="roaming_pack is not shown to pensioner">–</td></tr>
+</tbody></table>
+<div class="heat-legend"><div class="ramp"><div class="ramp-bar"></div><div class="ramp-ticks"><span style="left:0.0%">0%</span><span style="left:22.9%">5%</span><span style="left:45.7%">10%</span><span style="left:68.6%">15%</span><span style="left:91.4%">20%</span></div></div><span><i class="swatch best"></i>segment favourite</span><span><i class="swatch na"></i>not shown to this segment</span></div></div>
+<!-- END generated:heatmap -->
+  <p class="source">Monte Carlo over the simulated calendar, 4,000 app opens per segment · seed from config/settings.yaml</p>
+
+  <h3>Favourites by objective and by moment</h3>
+  <p>The lead (×) is how much better the favourite is than the runner-up; tests require at least ×1.2 everywhere, so every favourite is learnable. Highlighted ids differ from the take-up favourite in the same row.</p>
+<!-- BEGIN generated:favourites -->
+<div class="table-wrap"><table class="favourites">
+<thead><tr><th scope="col">Segment</th><th scope="col">By take-up</th><th scope="col">By revenue</th><th scope="col">Rest of month</th><th scope="col">Payday week</th><th scope="col">After the shift</th></tr></thead>
+<tbody>
+<tr><td>student</td><td><span><code>data_1gb</code></span><br>19.9% <small>×1.75</small></td><td><span class="changed"><code>data_5gb</code></span><br>R7.95 <small>×1.33</small></td><td><span><code>data_1gb</code></span><br>18.9% <small>×1.75</small></td><td><span><code>data_1gb</code></span><br>23.9% <small>×1.74</small></td><td><span><code>data_1gb</code></span><br>19.9% <small>×1.54</small></td></tr>
+<tr><td>young professional</td><td><span><code>data_5gb</code></span><br>12.2% <small>×1.38</small></td><td><span class="changed"><code>data_20gb</code></span><br>R10.93 <small>×1.28</small></td><td><span><code>data_5gb</code></span><br>11.6% <small>×1.41</small></td><td><span><code>data_5gb</code></span><br>14.6% <small>×1.30</small></td><td><span class="changed"><code>streaming_bundle</code></span><br>26.2% <small>×2.96</small></td></tr>
+<tr><td>family</td><td><span><code>funeral_cover</code></span><br>16.6% <small>×1.51</small></td><td><span><code>funeral_cover</code></span><br>R8.31 <small>×1.28</small></td><td><span><code>funeral_cover</code></span><br>15.7% <small>×1.51</small></td><td><span><code>funeral_cover</code></span><br>20.4% <small>×1.52</small></td><td><span><code>funeral_cover</code></span><br>16.6% <small>×1.51</small></td></tr>
+<tr><td>small business</td><td><span><code>paylater_voucher</code></span><br>21.9% <small>×1.33</small></td><td><span class="changed"><code>data_20gb</code></span><br>R24.62 <small>×2.50</small></td><td><span><code>paylater_voucher</code></span><br>25.9% <small>×1.65</small></td><td><span class="changed"><code>data_20gb</code></span><br>19.3% <small>×1.52</small></td><td><span><code>paylater_voucher</code></span><br>21.9% <small>×1.33</small></td></tr>
+<tr><td>pensioner</td><td><span><code>airtime_r50_bonus</code></span><br>15.8% <small>×1.36</small></td><td><span class="changed"><code>funeral_cover</code></span><br>R5.43 <small>×3.47</small></td><td><span><code>airtime_r50_bonus</code></span><br>15.3% <small>×1.50</small></td><td><span class="changed"><code>electricity_cashback</code></span><br>22.1% <small>×1.26</small></td><td><span><code>airtime_r50_bonus</code></span><br>15.8% <small>×1.36</small></td></tr>
+</tbody></table></div>
+<!-- END generated:favourites -->
+  <ul>
+    <li><strong>Revenue changes the answer.</strong> Optimising margin × take-up moves students to 5GB, young professionals and small businesses to 20GB, and pensioners to funeral cover. The reward function is a business choice, not a detail.</li>
+    <li><strong>Payday changes the answer for two segments.</strong> Pensioners buy airtime for most of the month and electricity in SASSA grant week. Small businesses want pay-later in the mid-month cash squeeze and 20GB data in payday week. A policy with segment × payday statistics can learn both; a per-segment policy can only learn the average.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="shift">
+  <div class="section-head"><h2 id="shift">Behaviour shift</h2><span class="chip hidden">Hidden</span></div>
+  <p>Halfway through a simulation the world changes: a streaming bundle goes viral with young professionals and partly cannibalises their 5GB data bundle. Their favourite flips, and the old favourite also gets worse, which punishes a model that never forgets.</p>
+<!-- BEGIN generated:shift -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Segment</th><th scope="col">Offer</th><th scope="col" class=num>Base before</th><th scope="col" class=num>Base after</th><th scope="col" class=num>Segment take-up before</th><th scope="col" class=num>Segment take-up after</th></tr></thead>
+<tbody>
+<tr><td><code>young_professional</code></td><td><code>streaming_bundle</code></td><td class=num>5.0%</td><td class=num>20.0%</td><td class=num>6.6%</td><td class=num>26.2%</td></tr>
+<tr><td><code>young_professional</code></td><td><code>data_5gb</code></td><td class=num>13.0%</td><td class=num>8.0%</td><td class=num>12.2%</td><td class=num>7.5%</td></tr>
+<tr><td><code>student</code></td><td><code>streaming_bundle</code></td><td class=num>8.0%</td><td class=num>12.0%</td><td class=num>8.6%</td><td class=num>12.9%</td></tr>
+</tbody></table></div>
+<!-- END generated:shift -->
+  <p class="source">From behaviour_shift in config/ground_truth.yaml</p>
+</section>
+
+<section aria-labelledby="response">
+  <div class="section-head"><h2 id="response">How customers respond to a list</h2><span class="chip hidden">Hidden</span></div>
+  <p>The API returns several offers in order. The customer scans from the top, may not notice lower positions, and stops after taking one up. This gives the three outcomes the API accepts a precise meaning, and it makes ranking order matter.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 760 476" style="min-width: 600px" role="img" aria-label="Decision tree for each offer in the list, top to bottom. If the customer already took an offer this visit, the offer is ignored. Otherwise, if they don't notice it, it is ignored. If they notice it and take it up, the outcome is taken up and the visit ends. If they notice it and don't take it, it is viewed. Then the next position is considered.">
+        <defs>
+          <marker id="s2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <rect class="box built" x="280" y="16" width="200" height="40" rx="6"/>
+        <text class="t" x="380" y="41" text-anchor="middle">Offer at position k</text>
+
+        <polygon class="diamond" points="380,84 500,120 380,156 260,120"/>
+        <text class="t" x="380" y="116" text-anchor="middle">Already took an offer</text>
+        <text class="t" x="380" y="132" text-anchor="middle">this visit?</text>
+
+        <polygon class="diamond" points="380,196 500,232 380,268 260,232"/>
+        <text class="t" x="380" y="228" text-anchor="middle">Notices it?</text>
+        <text class="s mono" x="380" y="246" text-anchor="middle">chance = attention[k]</text>
+
+        <polygon class="diamond" points="380,308 500,344 380,380 260,344"/>
+        <text class="t" x="380" y="340" text-anchor="middle">Takes it up?</text>
+        <text class="s mono" x="380" y="358" text-anchor="middle">chance = true p</text>
+
+        <rect class="box term" x="560" y="98" width="180" height="44" rx="6"/>
+        <text class="t mono" x="650" y="117" text-anchor="middle">ignored</text>
+        <text class="s" x="650" y="133" text-anchor="middle">rest of the list</text>
+        <rect class="box term" x="560" y="210" width="180" height="44" rx="6"/>
+        <text class="t mono" x="650" y="229" text-anchor="middle">ignored</text>
+        <text class="s" x="650" y="245" text-anchor="middle">never noticed</text>
+        <rect class="box term good" x="560" y="322" width="180" height="44" rx="6"/>
+        <text class="t mono" x="650" y="341" text-anchor="middle">taken_up</text>
+        <text class="s" x="650" y="357" text-anchor="middle">the visit ends</text>
+        <rect class="box term" x="300" y="418" width="160" height="44" rx="6"/>
+        <text class="t mono" x="380" y="437" text-anchor="middle">viewed</text>
+        <text class="s" x="380" y="453" text-anchor="middle">noticed, not taken</text>
+
+        <path class="edge strong" d="M380 56V82" marker-end="url(#s2-ah)"/>
+        <path class="edge strong" d="M500 120H558" marker-end="url(#s2-ah)"/>
+        <text class="yes" x="529" y="112" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M380 156V194" marker-end="url(#s2-ah)"/>
+        <text class="no" x="390" y="180">no</text>
+        <path class="edge strong" d="M500 232H558" marker-end="url(#s2-ah)"/>
+        <text class="no" x="529" y="224" text-anchor="middle">no</text>
+        <path class="edge strong" d="M380 268V306" marker-end="url(#s2-ah)"/>
+        <text class="yes" x="390" y="292">yes</text>
+        <path class="edge strong" d="M500 344H558" marker-end="url(#s2-ah)"/>
+        <text class="yes" x="529" y="336" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M380 380V416" marker-end="url(#s2-ah)"/>
+        <text class="no" x="390" y="402">no</text>
+        <path class="edge" d="M300 440H140V36H278" marker-end="url(#s2-ah)"/>
+        <text class="lbl" x="150" y="300">next position, k + 1</text>
+      </svg>
+    </div>
+    <figcaption><span>Every outcome moves on to the next position; only one loop is drawn. At most one offer is taken up per app open.</span></figcaption>
+  </figure>
+<!-- BEGIN generated:attention -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Position in the list</th><th scope="col" class=num>#1</th><th scope="col" class=num>#2</th><th scope="col" class=num>#3</th><th scope="col" class=num>#4</th><th scope="col" class=num>#5</th></tr></thead>
+<tbody>
+<tr><td>Chance the customer notices it</td><td class=num>100%</td><td class=num>60%</td><td class=num>40%</td><td class=num>25%</td><td class=num>15%</td></tr>
+</tbody></table></div>
+<!-- END generated:attention -->
+  <p>Because the model is this simple, the expected reward of any ranked list can be computed exactly: each position adds <em>P(nothing taken above it) × attention × p × value</em>. The regret oracle in Phase 5 uses that formula with the true probabilities.</p>
+  <div class="note"><p><strong>Consequence for learning (Phase 2).</strong> An <code>ignored</code> offer was usually never seen, so it says little about how appealing the offer is. The proposed rule learns from <code>taken_up</code> and <code>viewed</code> and skips <code>ignored</code>; see the <a href="decisions.html#learning">update rule</a>.</p></div>
+</section>
+
+<p class="foot">Tables on this page are rebuilt from the simulator and config by <code>make docs</code>.</p>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Components of the dynamic offer recommender, the life of one request, and how the hidden truth is kept away from the recommender.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html" aria-current=page>Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Architecture</p>
+  <h1>How the pieces fit together</h1>
+  <p class="lede">Two worlds share one repository: the recommender, which has to learn, and the simulated world, which knows the answers. Everything here is designed so the first can never peek at the second.</p>
+  <ul class="toc">
+    <li><a href="#overview">System overview</a></li>
+    <li><a href="#lifecycle">Life of one request</a></li>
+    <li><a href="#boundary">Keeping the truth hidden</a></li>
+    <li><a href="#layout">Code layout</a></li>
+    <li><a href="#config">Configuration files</a></li>
+    <li><a href="#storage">Storage design</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="overview">
+  <h2 id="overview">System overview</h2>
+  <p>The simulator plays the part of the app and its customers. It calls the recommender over HTTP exactly as a real app would, so the API, policies and stores are exercised the same way in a simulation run as they would be in production.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 510" style="min-width: 820px" role="img" aria-label="System overview. Inside the hidden simulated world, a customer generator writes customer profiles to a CSV file, the ground truth draws outcomes, and the simulation loop calls the recommender API. The API looks up profiles, asks bandit policies to rank and update, and logs every call. Policies read and write the options store. Evaluation reads the event log and the dashboard shows metrics and posteriors.">
+        <defs>
+          <marker id="a1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+          <marker id="a1-ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+
+        <rect class="zone" x="16" y="40" width="244" height="460" rx="10"/>
+        <text class="zone-label" x="32" y="62">SIMULATED WORLD</text>
+        <text class="s hidden-text" x="32" y="78">hidden from the recommender</text>
+
+        <rect class="box built" x="32" y="96" width="212" height="60" rx="6"/>
+        <text class="t" x="48" y="121">Customer generator</text>
+        <text class="s" x="48" y="141">population.py · seeded</text>
+
+        <rect class="box planned" x="32" y="206" width="212" height="60" rx="6"/>
+        <text class="t" x="48" y="231">Simulation loop</text>
+        <text class="s" x="48" y="251">run_simulation.py · Phase 4</text>
+
+        <rect class="box built secret" x="32" y="316" width="212" height="60" rx="6"/>
+        <text class="t" x="48" y="341">Ground truth</text>
+        <text class="s" x="48" y="361">true take-up · response model</text>
+
+        <rect class="box built secret" x="32" y="426" width="212" height="60" rx="6"/>
+        <text class="t" x="48" y="451">Hidden config</text>
+        <text class="s mono" x="48" y="471">simulation · ground_truth.yaml</text>
+
+        <rect class="box built store" x="388" y="96" width="244" height="60" rx="6"/>
+        <text class="t mono" x="404" y="121">data/customers.csv</text>
+        <text class="s" x="404" y="141">profiles the business already holds</text>
+
+        <rect class="box planned" x="388" y="206" width="244" height="60" rx="6"/>
+        <text class="t" x="404" y="231">Recommender API</text>
+        <text class="s" x="404" y="251">FastAPI · Phase 3 · /health is live</text>
+
+        <rect class="box planned" x="388" y="316" width="244" height="60" rx="6"/>
+        <text class="t" x="404" y="341">Bandit policies</text>
+        <text class="s" x="404" y="361">random · static · ε-greedy · Thompson</text>
+
+        <rect class="box planned store" x="388" y="426" width="244" height="60" rx="6"/>
+        <text class="t" x="404" y="451">Options store</text>
+        <text class="s" x="404" y="471">α, β, pulls per context key · SQLite</text>
+
+        <rect class="box planned store" x="740" y="206" width="244" height="60" rx="6"/>
+        <text class="t" x="756" y="231">Event log</text>
+        <text class="s" x="756" y="251">invocations + responses · SQLite</text>
+
+        <rect class="box planned" x="740" y="316" width="244" height="60" rx="6"/>
+        <text class="t" x="756" y="341">Evaluation (offline)</text>
+        <text class="s hidden-text" x="756" y="361">regret against an oracle on the truth</text>
+
+        <rect class="box planned" x="740" y="426" width="244" height="60" rx="6"/>
+        <text class="t" x="756" y="451">Dashboard</text>
+        <text class="s" x="756" y="471">Streamlit · Phase 5</text>
+
+        <path class="edge strong" d="M244 126H386" marker-end="url(#a1-ahs)"/>
+        <text class="lbl" x="315" y="118" text-anchor="middle">writes</text>
+        <path class="edge planned" d="M138 156V204" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="146" y="184">samples customers</text>
+        <path class="edge planned" d="M138 316V268" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="146" y="296">draws outcomes</text>
+        <path class="edge strong" d="M138 426V378" marker-end="url(#a1-ahs)"/>
+        <text class="lbl" x="146" y="406">loads</text>
+        <path class="edge planned" d="M246 236H386" marker-start="url(#a1-ah)" marker-end="url(#a1-ah)"/>
+        <text class="lbl mono" x="316" y="228" text-anchor="middle">/invocations</text>
+        <text class="lbl mono" x="316" y="252" text-anchor="middle">/response</text>
+        <path class="edge planned" d="M510 156V204" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="518" y="184">profile lookup</text>
+        <path class="edge planned" d="M510 266V314" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="518" y="294">rank · update</text>
+        <path class="edge planned" d="M510 378V424" marker-start="url(#a1-ah)" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="518" y="404">reads · writes</text>
+        <path class="edge planned" d="M632 236H738" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="686" y="228" text-anchor="middle">logs every call</text>
+        <path class="edge planned" d="M862 266V314" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="870" y="294">events</text>
+        <path class="edge planned" d="M862 376V424" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="870" y="404">metrics</text>
+        <path class="edge planned" d="M632 456H738" marker-end="url(#a1-ah)"/>
+        <text class="lbl" x="686" y="448" text-anchor="middle">posteriors</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>The amber zone is the simulated world. Only customer profiles leave it, because a real business holds those too. Evaluation is the one other reader of the truth, offline, to compute regret.</span>
+      <span class="legend"><span><i></i>built</span><span><i class="dash"></i>planned</span><span><i class="zone"></i>hidden from the recommender</span></span>
+    </figcaption>
+  </figure>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Component</th><th>Responsibility</th><th>Where</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Domain model</td><td>Offer, Customer and Context types, outcome names, calendar rules (time of day, payday week)</td><td><code>src/recommender/domain.py</code></td><td><span class="chip built">Built</span></td></tr>
+        <tr><td>Configuration</td><td>Loads and validates settings and the offer catalogue</td><td><code>src/recommender/config.py</code></td><td><span class="chip built">Built</span></td></tr>
+        <tr><td>Customer table</td><td>Reads and validates customer profiles</td><td><code>src/recommender/customers.py</code></td><td><span class="chip built">Built</span></td></tr>
+        <tr><td>Simulator</td><td>Synthetic population, hidden ground truth, response model, behaviour shift</td><td><code>src/recommender/simulator/</code></td><td><span class="chip built">Built</span></td></tr>
+        <tr><td>Bandit policies</td><td>Rank offers and learn from rewards; contextual keys; forgetting</td><td><code>src/recommender/algorithms/</code></td><td><span class="chip planned">Phase 2</span></td></tr>
+        <tr><td>Options store</td><td>Persist arm statistics per policy, context key and offer</td><td><code>src/recommender/store/</code></td><td><span class="chip planned">Phase 2</span></td></tr>
+        <tr><td>API and event log</td><td>/invocations, /response, idempotency, logging every event</td><td><code>src/recommender/api/</code>, <code>events/</code></td><td><span class="chip planned">Phase 3</span></td></tr>
+        <tr><td>Simulation loop</td><td>Drive 50,000 app opens and apply the behaviour shift</td><td><code>scripts/run_simulation.py</code></td><td><span class="chip planned">Phase 4</span></td></tr>
+        <tr><td>Evaluation and dashboard</td><td>Take-up, revenue, regret, convergence; five dashboard pages</td><td><code>evaluation/</code>, <code>dashboard/</code></td><td><span class="chip planned">Phase 5</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="lifecycle">
+  <div class="section-head"><h2 id="lifecycle">Life of one request</h2><span class="chip planned">Phases 2–3</span></div>
+  <p>Ranking and learning happen inside the request path. There is no nightly retrain: the statistics a policy uses for the next customer already include the last customer's response. The target is a p95 latency under 50 ms locally.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 610" style="min-width: 820px" role="img" aria-label="Sequence of one request. The app posts an invocation; the API builds the context, asks the policy to rank eligible offers, the policy reads statistics from the options store, the API logs the invocation and returns ranked offers. After the customer reacts, the app posts a response; the API checks for duplicates, asks the policy to update, the policy applies decay and updates alpha and beta in the options store, and the API logs the response.">
+        <defs>
+          <marker id="a2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <rect class="box built" x="25" y="16" width="150" height="40" rx="6"/>
+        <text class="t" x="100" y="41" text-anchor="middle">App (simulator)</text>
+        <rect class="box built" x="255" y="16" width="150" height="40" rx="6"/>
+        <text class="t" x="330" y="41" text-anchor="middle">Recommender API</text>
+        <rect class="box built" x="485" y="16" width="150" height="40" rx="6"/>
+        <text class="t" x="560" y="41" text-anchor="middle">Policy</text>
+        <rect class="box built store" x="685" y="16" width="150" height="40" rx="6"/>
+        <text class="t" x="760" y="41" text-anchor="middle">Options store</text>
+        <rect class="box built store" x="845" y="16" width="150" height="40" rx="6"/>
+        <text class="t" x="920" y="41" text-anchor="middle">Event log</text>
+
+        <line class="lifeline" x1="100" y1="56" x2="100" y2="600"/>
+        <line class="lifeline" x1="330" y1="56" x2="330" y2="600"/>
+        <line class="lifeline" x1="560" y1="56" x2="560" y2="600"/>
+        <line class="lifeline" x1="760" y1="56" x2="760" y2="600"/>
+        <line class="lifeline" x1="920" y1="56" x2="920" y2="600"/>
+        <rect class="act" x="325" y="86" width="10" height="252"/>
+        <rect class="act" x="325" y="408" width="10" height="180"/>
+
+        <path class="edge strong" d="M100 96H323" marker-end="url(#a2-ah)"/>
+        <text class="lbl mono" x="212" y="90" text-anchor="middle">POST /invocations</text>
+        <path class="edge strong" d="M335 120H372V136H337" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="380" y="132">look up profile, build context</text>
+        <path class="edge strong" d="M335 168H558" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="446" y="162" text-anchor="middle">rank(context, eligible offers, n)</text>
+        <path class="edge strong" d="M560 200H758" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="660" y="194" text-anchor="middle">read stats for the context key</text>
+        <path class="edge planned" d="M760 232H562" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="660" y="226" text-anchor="middle">α, β per offer</text>
+        <path class="edge planned" d="M560 264H337" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="446" y="258" text-anchor="middle">ranked offers + scores</text>
+        <path class="edge strong" d="M335 296H918" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="660" y="290" text-anchor="middle">log invocation</text>
+        <path class="edge planned" d="M325 330H102" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="212" y="324" text-anchor="middle">invocation_id + offers</text>
+
+        <rect class="box term" x="25" y="352" width="150" height="44" rx="6"/>
+        <text class="t" x="100" y="371" text-anchor="middle">Customer reacts</text>
+        <text class="s mono" x="100" y="387" text-anchor="middle">taken_up · viewed · ignored</text>
+
+        <path class="edge strong" d="M100 418H323" marker-end="url(#a2-ah)"/>
+        <text class="lbl mono" x="212" y="412" text-anchor="middle">POST /response</text>
+        <path class="edge strong" d="M335 450H918" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="660" y="444" text-anchor="middle">already recorded? reply 409</text>
+        <path class="edge strong" d="M335 482H558" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="446" y="476" text-anchor="middle">update(context, offer, reward)</text>
+        <path class="edge strong" d="M560 514H758" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="660" y="508" text-anchor="middle">decay, then α += r, β += 1 − r</text>
+        <path class="edge strong" d="M335 546H918" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="660" y="540" text-anchor="middle">log response</text>
+        <path class="edge planned" d="M325 578H102" marker-end="url(#a2-ah)"/>
+        <text class="lbl" x="212" y="572" text-anchor="middle">200 OK</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>One invocation, then one response per shown offer. The duplicate check makes <code>/response</code> idempotent on <code>invocation_id</code> + <code>offer_id</code>, so a retried request can't count a take-up twice.</span>
+      <span class="legend"><span><i></i>call</span><span><i class="dash"></i>reply</span></span>
+    </figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="boundary">
+  <div class="section-head"><h2 id="boundary">Keeping the truth hidden</h2><span class="chip built">Built</span></div>
+  <p>A recommender that could read the true probabilities would look perfect and prove nothing. Three layers stop that from happening by accident:</p>
+  <ul>
+    <li><strong>Separate files.</strong> The recommender's <code>settings.yaml</code> has no path to the truth. The simulated world is configured in <code>simulation.yaml</code> and <code>ground_truth.yaml</code>, which only <code>recommender.simulator</code> loads.</li>
+    <li><strong>An import guard.</strong> A test parses every recommender module and fails if any imports <code>recommender.simulator</code>.</li>
+    <li><strong>A text guard.</strong> A second test fails if any recommender module so much as mentions <code>ground_truth</code> or <code>simulation.yaml</code>, which catches a file read that an import check would miss.</li>
+  </ul>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 492" style="min-width: 820px" role="img" aria-label="Who reads which configuration file. The recommender reads settings.yaml and offers.yaml. The simulator reads offers.yaml, simulation.yaml and ground_truth.yaml. Offline evaluation reads ground_truth.yaml. A path from ground_truth.yaml to the recommender is blocked by tests.">
+        <defs>
+          <marker id="a3-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+          <marker id="a3-ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+          <marker id="a3-ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah blocked"/></marker>
+        </defs>
+
+        <rect class="zone" x="30" y="222" width="960" height="262" rx="10"/>
+        <text class="zone-label" x="46" y="242">SIMULATED WORLD · READ ONLY BY THE SIMULATOR AND OFFLINE EVALUATION</text>
+
+        <rect class="box built" x="40" y="56" width="230" height="52" rx="6"/>
+        <text class="t mono" x="56" y="78">settings.yaml</text>
+        <text class="s" x="56" y="97">seed · file paths</text>
+        <rect class="box built" x="40" y="128" width="230" height="52" rx="6"/>
+        <text class="t mono" x="56" y="150">offers.yaml</text>
+        <text class="s" x="56" y="169">catalogue · eligibility</text>
+        <rect class="box built secret" x="40" y="252" width="230" height="52" rx="6"/>
+        <text class="t mono" x="56" y="274">simulation.yaml</text>
+        <text class="s" x="56" y="293">population · calendar</text>
+        <rect class="box built secret" x="40" y="324" width="230" height="52" rx="6"/>
+        <text class="t mono" x="56" y="346">ground_truth.yaml</text>
+        <text class="s" x="56" y="365">true take-up · shift · attention</text>
+
+        <rect class="box built" x="700" y="56" width="260" height="124" rx="6"/>
+        <text class="t" x="716" y="82">Recommender</text>
+        <text class="s mono" x="716" y="104">api · algorithms · store · events</text>
+        <text class="s mono" x="716" y="122">domain · config · customers</text>
+        <rect class="box built" x="700" y="252" width="260" height="124" rx="6"/>
+        <text class="t" x="716" y="278">Simulator</text>
+        <text class="s mono" x="716" y="300">population · ground_truth</text>
+        <text class="s mono" x="716" y="318">settings · loop (Phase 4)</text>
+        <rect class="box planned" x="700" y="420" width="260" height="52" rx="6"/>
+        <text class="t" x="716" y="442">Evaluation (offline)</text>
+        <text class="s" x="716" y="461">regret oracle · Phase 5</text>
+
+        <path class="edge strong" d="M270 82H698" marker-end="url(#a3-ah)"/>
+        <text class="lbl" x="484" y="74" text-anchor="middle">reads</text>
+        <path class="edge strong" d="M270 146H698" marker-end="url(#a3-ah)"/>
+        <text class="lbl" x="484" y="138" text-anchor="middle">reads</text>
+        <path class="edge strong" d="M270 166H600V268H698" marker-end="url(#a3-ah)"/>
+        <text class="lbl" x="592" y="202" text-anchor="end">validates against offers</text>
+        <path class="edge strong" d="M270 288H698" marker-end="url(#a3-ah)"/>
+        <text class="lbl" x="484" y="280" text-anchor="middle">reads</text>
+        <path class="edge strong" d="M270 350H698" marker-end="url(#a3-ah)"/>
+        <text class="lbl" x="484" y="342" text-anchor="middle">reads</text>
+        <path class="edge planned" d="M155 376V446H698" marker-end="url(#a3-ahp)"/>
+        <text class="lbl" x="426" y="438" text-anchor="middle">reads offline to score regret</text>
+
+        <path class="edge blocked" d="M40 350H22V24H830V54" marker-end="url(#a3-ahb)"/>
+        <line class="cross" x1="420" y1="16" x2="436" y2="32"/>
+        <line class="cross" x1="420" y1="32" x2="436" y2="16"/>
+        <text class="lbl hidden-text" x="448" y="46">blocked by tests: no simulator imports, no mention of the truth</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>The crossed path is the one that must never exist. Both guards live in <code>tests/test_ground_truth.py</code> and run with every <code>make test</code>.</span>
+      <span class="legend"><span><i></i>reads</span><span><i class="blocked"></i>blocked by tests</span><span><i class="zone"></i>simulated world</span></span>
+    </figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="layout">
+  <h2 id="layout">Code layout</h2>
+<pre><code>recommandation/
+├── config/
+│   ├── settings.yaml        recommender settings: seed, file paths
+│   ├── offers.yaml          offer catalogue
+│   ├── simulation.yaml      simulated world: population, calendar      hidden
+│   └── ground_truth.yaml    true take-up, effects, response, shift     hidden
+├── src/recommender/
+│   ├── domain.py            Offer, Customer, Context, outcomes, calendar rules
+│   ├── config.py            loads settings.yaml and offers.yaml
+│   ├── customers.py         reads and validates the customer table
+│   ├── api/main.py          FastAPI app (/health now, full API in Phase 3)
+│   ├── algorithms/          bandit policies                            Phase 2
+│   ├── store/               options store                              Phase 2
+│   ├── events/              event log                                  Phase 3
+│   ├── simulator/           population, ground truth, settings         hidden
+│   └── evaluation/          metrics and regret                         Phase 5
+├── scripts/                 generate_customers, inspect_ground_truth, build_docs
+├── tests/                   pytest suite, including the architecture guards
+├── docs/                    these pages
+├── dashboard/               Streamlit app                              Phase 5
+├── DECISIONS.md             decision log
+└── BUILD_PROMPT.md          the original brief</code></pre>
+</section>
+
+<section aria-labelledby="config">
+  <h2 id="config">Configuration files</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>File</th><th>Contains</th><th>Read by</th><th>Hidden</th></tr></thead>
+      <tbody>
+        <tr><td><code>config/settings.yaml</code></td><td>Global seed; paths to the offers, customers and database</td><td>Recommender, scripts</td><td>No</td></tr>
+        <tr><td><code>config/offers.yaml</code></td><td>Offer catalogue: price, margin and the segments each offer may be shown to</td><td>Recommender, simulator</td><td>No</td></tr>
+        <tr><td><code>config/simulation.yaml</code></td><td>Population size and segment mix, path to the truth, simulated calendar</td><td>Simulator</td><td><span class="chip hidden">Hidden</span></td></tr>
+        <tr><td><code>config/ground_truth.yaml</code></td><td>Base take-up rates, context effects, response model, behaviour shift</td><td>Simulator, offline evaluation</td><td><span class="chip hidden">Hidden</span></td></tr>
+        <tr><td><code>data/customers.csv</code></td><td>Generated customer profiles (git-ignored, rebuilt from the seed)</td><td>Recommender, simulator</td><td>No</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="storage">
+  <div class="section-head"><h2 id="storage">Storage design</h2><span class="chip planned">Phases 2–3</span></div>
+  <p>SQLite through SQLAlchemy, so the same code runs on Postgres by changing the connection URL. The options store is the model; the event log is the audit trail it can be rebuilt from.</p>
+  <div class="grid-2">
+    <div class="table-wrap">
+      <table>
+        <caption>Options store, one row per policy × context key × offer. The primary key is the first three columns.</caption>
+        <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="id">policy</td><td>Which policy owns the row, such as <code>thompson_contextual</code></td></tr>
+          <tr><td class="id">context_key</td><td>Slice of context, such as <code>family</code> or <code>family|payday</code></td></tr>
+          <tr><td class="id">offer_id</td><td>The offer (arm)</td></tr>
+          <tr><td class="id">alpha, beta</td><td>Beta belief about the take-up rate</td></tr>
+          <tr><td class="id">pulls</td><td>Times the offer was shown and counted</td></tr>
+          <tr><td class="id">total_reward</td><td>Sum of rewards, for epsilon-greedy means</td></tr>
+          <tr><td class="id">updated_at</td><td>Last update time</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption>Event log. Responses are unique on invocation_id + offer_id, which makes /response idempotent.</caption>
+        <thead><tr><th>Table</th><th>Holds</th></tr></thead>
+        <tbody>
+          <tr><td class="id">invocations</td><td>invocation_id, customer, policy, context, ranked offers with scores, time</td></tr>
+          <tr><td class="id">responses</td><td>invocation_id, offer_id, outcome, reward, time</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<p class="foot">Diagrams are drawn by hand from the code as it stands; dashed shapes are planned and will be redrawn solid as each phase lands.</p>
+</main>
+</div>
+</body>
+</html>

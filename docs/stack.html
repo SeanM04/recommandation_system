@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Tools and Quality</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Tools, versions and quality gates for the dynamic offer recommender, with the full test inventory.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html" aria-current=page>Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Tools &amp; quality</p>
+  <h1>Tools and quality checks</h1>
+  <p class="lede">A deliberately small stack that runs on a laptop with one command, with no heavy ML frameworks: the bandit algorithms are written by hand so the logic stays visible.</p>
+  <ul class="toc">
+    <li><a href="#tools">Tools</a></li>
+    <li><a href="#environment">Development environment</a></li>
+    <li><a href="#gates">Quality gates</a></li>
+    <li><a href="#tests">Test inventory</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="tools">
+  <h2 id="tools">Tools</h2>
+  <p>Versions are pinned exactly in <code>requirements.txt</code> so a clean machine installs what was tested.</p>
+<!-- BEGIN generated:tools -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Tool</th><th scope="col">Role</th><th scope="col">Version</th><th scope="col">Why this tool</th><th scope="col">Status</th></tr></thead>
+<tbody>
+<tr><td><strong>Python</strong></td><td>Language</td><td>3.11+</td><td>Readable, typed code; the bandit maths is plain Python and NumPy.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>FastAPI</strong></td><td>Real-time API</td><td>0.143.1</td><td>Pydantic validation and OpenAPI docs out of the box. Serves /health today.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Uvicorn</strong></td><td>API server</td><td>0.54.0</td><td>The standard ASGI server for FastAPI (<code>make run</code>).</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Pydantic</strong></td><td>Validation</td><td>2.14.1</td><td>Rejects bad config and offers at load; request schemas in Phase 3.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>PyYAML</strong></td><td>Configuration</td><td>6.0.3</td><td>Offers, settings and the hidden truth stay human-readable.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>NumPy</strong></td><td>Random draws, maths</td><td>2.5.4</td><td>One seeded generator makes every run reproducible; Beta sampling in Phase 2.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>pandas</strong></td><td>Tables</td><td>3.0.6</td><td>Customer table, take-up tables and, later, metrics.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>pytest</strong></td><td>Tests</td><td>9.1.1</td><td>Plain asserts and fixtures; every phase ships with tests.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>HTTPX 2</strong></td><td>Test client</td><td>2.13.1</td><td>Powers FastAPI's TestClient; replaces the deprecated httpx.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Ruff</strong></td><td>Lint and format</td><td>0.17.0</td><td>One fast tool for style, import order and common bugs.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Git</strong></td><td>Version control</td><td>–</td><td>Small, logical commits for each step.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Make</strong></td><td>Task runner</td><td>–</td><td>One entry point for every command; each target is a plain command.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>SQLite locally; Postgres by changing the connection URL.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>SQLite</strong></td><td>Options store, event log</td><td>–</td><td>Zero-setup file database for local runs.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The simulator and dashboard call the API the way an app would.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards; quick to build five pages.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>Starts the API and dashboard with one command.</td><td><span class="chip planned">Planned</span></td></tr>
+</tbody></table></div>
+<!-- END generated:tools -->
+  <p class="source">Versions from requirements.txt · rebuilt by make docs</p>
+</section>
+
+<section aria-labelledby="environment">
+  <h2 id="environment">Development environment</h2>
+  <ul>
+    <li><strong>Python 3.11 or newer.</strong> Developed on 3.12; <code>pyproject.toml</code> declares <code>&gt;=3.11</code>.</li>
+    <li><strong>Editable install.</strong> <code>make install</code> installs the pinned requirements and the <code>recommender</code> package with <code>pip install -e .</code>, so scripts and tests import the same code.</li>
+    <li><strong>Virtual environment outside OneDrive.</strong> On Windows, OneDrive locks files inside a project <code>.venv</code> and <code>pip</code> fails with <code>WinError 32</code>. Create it elsewhere, for example <code>%USERPROFILE%\.venvs\telco-recommender</code>, and select it as the editor's interpreter.</li>
+    <li><strong>Make on Windows.</strong> <code>make</code> is the documented interface, but every target is one plain command. Without it, run the command from the <code>Makefile</code> directly, or install it with <code>winget install ezwinports.make</code>.</li>
+    <li><strong>Line endings.</strong> <code>.gitattributes</code> keeps LF line endings in the repository so the Makefile and Docker files behave the same on every platform.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="gates">
+  <h2 id="gates">Quality gates</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Gate</th><th>What it checks</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>Unit and integration tests</td><td>Behaviour of every module, from config validation to the response model</td><td><code>make test</code></td></tr>
+        <tr><td>Architecture guards</td><td>No recommender module imports the simulator or mentions the hidden config</td><td>part of <code>make test</code></td></tr>
+        <tr><td>Learnability guards</td><td>Every favourite (by take-up, revenue and payday week) beats its runner-up by at least ×1.2</td><td>part of <code>make test</code></td></tr>
+        <tr><td>Config validation</td><td>Unknown segments or offers, ineligible pairs, bad effect keys, shares that don't sum to 1: all fail at load</td><td>on every load</td></tr>
+        <tr><td>Lint and format</td><td>Ruff rules E, F, I, B, UP and SIM; line length 100; formatter check</td><td><code>make lint</code></td></tr>
+        <tr><td>Docs freshness</td><td>Generated tables match the code; every link between pages resolves</td><td>part of <code>make test</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="tests">
+  <h2 id="tests">Test inventory</h2>
+  <p>Test names are written as the guarantee they check, so the list below doubles as a specification.</p>
+<!-- BEGIN generated:tests -->
+<div class="table-wrap"><table class="tests">
+<thead><tr><th scope="col">What the test guarantees</th><th scope="col" class="num">Cases</th></tr></thead>
+<tbody>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_api.py</code> · API endpoints</th></tr>
+<tr><td>Health returns ok</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_docs.py</code> · These docs: generated blocks are current and every link resolves</th></tr>
+<tr><td>Generated blocks are up to date</td><td class="num">1</td></tr>
+<tr><td>Every link between pages resolves</td><td class="num">1</td></tr>
+<tr><td>Element ids are unique within each page</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_domain.py</code> · Configuration, offer validation, calendar and context helpers</th></tr>
+<tr><td>Settings load and resolve paths</td><td class="num">1</td></tr>
+<tr><td>Offer catalogue is valid</td><td class="num">1</td></tr>
+<tr><td>Offer rejects unknown segment</td><td class="num">1</td></tr>
+<tr><td>Offer rejects margin above price</td><td class="num">1</td></tr>
+<tr><td>Simulation settings are separate from recommender settings</td><td class="num">1</td></tr>
+<tr><td>Segment mix must sum to one</td><td class="num">1</td></tr>
+<tr><td>Time of day for hour</td><td class="num">6</td></tr>
+<tr><td>Payday week salaried vs pensioner</td><td class="num">1</td></tr>
+<tr><td>Context build derives calendar fields</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_ground_truth.py</code> · Hidden truth, segment stories, payday, revenue, response model and the architecture guards</th></tr>
+<tr><td>Probabilities are valid and respect eligibility</td><td class="num">1</td></tr>
+<tr><td>Payday boosts insurance and reduces credit</td><td class="num">1</td></tr>
+<tr><td>Probability is capped</td><td class="num">1</td></tr>
+<tr><td>Effect with list condition</td><td class="num">1</td></tr>
+<tr><td>Each segment has the intended favourite</td><td class="num">1</td></tr>
+<tr><td>Best offer is clearly better than runner up</td><td class="num">1</td></tr>
+<tr><td>Payday changes the favourite for pensioners and small businesses</td><td class="num">1</td></tr>
+<tr><td>Revenue favourites are clear and differ from take up</td><td class="num">1</td></tr>
+<tr><td>Behaviour shift makes streaming the young professional favourite</td><td class="num">1</td></tr>
+<tr><td>Validation rejects ineligible offer</td><td class="num">1</td></tr>
+<tr><td>Validation rejects unknown effect key</td><td class="num">1</td></tr>
+<tr><td>Recommender code never imports the simulator</td><td class="num">1</td></tr>
+<tr><td>Recommender code never mentions the hidden config</td><td class="num">1</td></tr>
+<tr><td>Payday context flows from calendar</td><td class="num">1</td></tr>
+<tr><td>Response model is loaded from yaml</td><td class="num">1</td></tr>
+<tr><td>Top offer taken ends the visit</td><td class="num">1</td></tr>
+<tr><td>Noticed but not taken is viewed and unnoticed is ignored</td><td class="num">1</td></tr>
+<tr><td>At most one take up per visit</td><td class="num">1</td></tr>
+<tr><td>Simulated take ups match expected value</td><td class="num">1</td></tr>
+<tr><td>Expected value weights by value and position</td><td class="num">1</td></tr>
+<tr><td>Response model rejects bad input</td><td class="num">1</td></tr>
+<tr><td>Respond maps outcomes to offer ids</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_population.py</code> · Synthetic population: reproducibility, realism, CSV round trip</th></tr>
+<tr><td>Same seed gives same population</td><td class="num">1</td></tr>
+<tr><td>Population has valid attributes</td><td class="num">1</td></tr>
+<tr><td>Segment shares follow config</td><td class="num">1</td></tr>
+<tr><td>Segment profiles are realistic</td><td class="num">1</td></tr>
+<tr><td>Csv round trip</td><td class="num">1</td></tr>
+<tr><td>Read customers rejects bad values</td><td class="num">1</td></tr>
+<tr><td>Sample context mostly follows habit</td><td class="num">1</td></tr>
+</tbody>
+<caption>47 test cases in 42 test functions.</caption></table></div>
+<!-- END generated:tests -->
+  <p class="source">Collected from tests/ · rebuilt by make docs</p>
+</section>
+
+<p class="foot">Planned tools turn to Built in the table above when the phase that uses them lands.</p>
+</main>
+</div>
+</body>
+</html>

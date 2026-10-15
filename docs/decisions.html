@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Design Decisions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Decision trees and the full decision log for the dynamic offer recommender.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html" aria-current=page>Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Decisions</p>
+  <h1>Why it is built this way</h1>
+  <p class="lede">The trees show the reasoning behind the main design choices. The log records every place the brief was ambiguous, the default picked and why, so a reviewer can disagree with a specific line rather than with the whole build.</p>
+  <ul class="toc">
+    <li><a href="#approach">Choosing the learning approach</a></li>
+    <li><a href="#learning">The update rule</a></li>
+    <li><a href="#keys">Context keys</a></li>
+    <li><a href="#log">Decision log</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="approach">
+  <div class="section-head"><h2 id="approach">Choosing the learning approach</h2><span class="chip planned">Phase 2</span></div>
+  <p>The first two questions explain why a batch-trained model falls short in a telco app. The bottom row explains the variants that Phase 2 builds: each question is answered both ways, and Phase 4 runs every combination on the same seed so the comparison is fair.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 510" style="min-width: 820px" role="img" aria-label="Decision tree. If the best offer never changes, a static batch model is enough. If it changes but we cannot learn from each response, we retrain in batches and lag behind. Otherwise use a multi-armed bandit, then decide three things: explore in proportion to uncertainty (Thompson sampling) or at a fixed rate (epsilon-greedy); keep statistics per segment (contextual) or shared; and forget old evidence or keep it all. The highlighted combination is Thompson sampling, contextual, with forgetting.">
+        <defs>
+          <marker id="t0-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <polygon class="diamond" points="500,16 670,56 500,96 330,56"/>
+        <text class="t" x="500" y="52" text-anchor="middle">Does the best offer change</text>
+        <text class="t" x="500" y="68" text-anchor="middle">by moment or over time?</text>
+        <rect class="box term" x="40" y="34" width="220" height="44" rx="6"/>
+        <text class="t" x="150" y="53" text-anchor="middle">Static batch model</text>
+        <text class="s" x="150" y="69" text-anchor="middle">the Static baseline</text>
+        <path class="edge strong" d="M330 56H262" marker-end="url(#t0-ah)"/>
+        <text class="no" x="296" y="48" text-anchor="middle">no</text>
+        <path class="edge strong" d="M500 96V126" marker-end="url(#t0-ah)"/>
+        <text class="yes" x="510" y="115">yes</text>
+
+        <polygon class="diamond" points="500,128 670,168 500,208 330,168"/>
+        <text class="t" x="500" y="164" text-anchor="middle">Can we learn from each</text>
+        <text class="t" x="500" y="180" text-anchor="middle">response as it arrives?</text>
+        <rect class="box term" x="40" y="146" width="220" height="44" rx="6"/>
+        <text class="t" x="150" y="165" text-anchor="middle">Retrain in batches</text>
+        <text class="s" x="150" y="181" text-anchor="middle">always a step behind</text>
+        <path class="edge strong" d="M330 168H262" marker-end="url(#t0-ah)"/>
+        <text class="no" x="296" y="160" text-anchor="middle">no</text>
+        <path class="edge strong" d="M500 208V238" marker-end="url(#t0-ah)"/>
+        <text class="yes" x="510" y="227">yes</text>
+
+        <rect class="box pick" x="340" y="240" width="320" height="48" rx="6"/>
+        <text class="t" x="500" y="260" text-anchor="middle">Multi-armed bandit</text>
+        <text class="s" x="500" y="277" text-anchor="middle">learns from every response · Random is the floor</text>
+
+        <path class="edge strong" d="M500 288V310M170 310H830"/>
+        <path class="edge strong" d="M170 310V330" marker-end="url(#t0-ah)"/>
+        <path class="edge strong" d="M500 310V330" marker-end="url(#t0-ah)"/>
+        <path class="edge strong" d="M830 310V330" marker-end="url(#t0-ah)"/>
+
+        <polygon class="diamond" points="170,332 320,372 170,412 20,372"/>
+        <text class="t" x="170" y="368" text-anchor="middle">Explore in proportion</text>
+        <text class="t" x="170" y="384" text-anchor="middle">to uncertainty?</text>
+        <polygon class="diamond" points="500,332 650,372 500,412 350,372"/>
+        <text class="t" x="500" y="368" text-anchor="middle">Do segments prefer</text>
+        <text class="t" x="500" y="384" text-anchor="middle">different offers?</text>
+        <polygon class="diamond" points="830,332 980,372 830,412 680,372"/>
+        <text class="t" x="830" y="368" text-anchor="middle">Can tastes shift</text>
+        <text class="t" x="830" y="384" text-anchor="middle">over time?</text>
+
+        <path class="edge strong" d="M170 412V430H92V448" marker-end="url(#t0-ah)"/>
+        <path class="edge strong" d="M170 430H248V448" marker-end="url(#t0-ah)"/>
+        <text class="no" x="131" y="424" text-anchor="middle">no</text>
+        <text class="yes" x="209" y="424" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M500 412V430H422V448" marker-end="url(#t0-ah)"/>
+        <path class="edge strong" d="M500 430H578V448" marker-end="url(#t0-ah)"/>
+        <text class="no" x="461" y="424" text-anchor="middle">no</text>
+        <text class="yes" x="539" y="424" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M830 412V430H752V448" marker-end="url(#t0-ah)"/>
+        <path class="edge strong" d="M830 430H908V448" marker-end="url(#t0-ah)"/>
+        <text class="no" x="791" y="424" text-anchor="middle">no</text>
+        <text class="yes" x="869" y="424" text-anchor="middle">yes</text>
+
+        <rect class="box term" x="20" y="450" width="144" height="50" rx="6"/>
+        <text class="t" x="92" y="471" text-anchor="middle">ε-greedy</text>
+        <text class="s" x="92" y="488" text-anchor="middle">fixed random share</text>
+        <rect class="box pick" x="176" y="450" width="144" height="50" rx="6"/>
+        <text class="t" x="248" y="471" text-anchor="middle">Thompson sampling</text>
+        <text class="s" x="248" y="488" text-anchor="middle">sample Beta beliefs</text>
+        <rect class="box term" x="350" y="450" width="144" height="50" rx="6"/>
+        <text class="t" x="422" y="471" text-anchor="middle">One shared model</text>
+        <text class="s" x="422" y="488" text-anchor="middle">global statistics</text>
+        <rect class="box pick" x="506" y="450" width="144" height="50" rx="6"/>
+        <text class="t" x="578" y="471" text-anchor="middle">Contextual</text>
+        <text class="s" x="578" y="488" text-anchor="middle">per segment, × payday</text>
+        <rect class="box term" x="680" y="450" width="144" height="50" rx="6"/>
+        <text class="t" x="752" y="471" text-anchor="middle">Keep all evidence</text>
+        <text class="s" x="752" y="488" text-anchor="middle">no decay</text>
+        <rect class="box pick" x="836" y="450" width="144" height="50" rx="6"/>
+        <text class="t" x="908" y="471" text-anchor="middle">Forgetting</text>
+        <text class="s" x="908" y="488" text-anchor="middle">decay old evidence</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>In this simulated world every answer on the right is yes: payday changes favourites, segments differ, and the behaviour shift changes tastes. The highlighted combination is the one expected to win; the results in Phase 4 will confirm or refute it.</span>
+      <span class="legend"><span><i style="border-top: 2px solid var(--accent)"></i>expected winner</span></span>
+    </figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="learning">
+  <div class="section-head"><h2 id="learning">The update rule</h2><span class="chip proposed">Proposed for Phase 2</span></div>
+  <p>What a policy learns from one response. The <code>ignored</code> branch follows from the response model: an offer nobody noticed carries no evidence about its appeal, so counting it as a failure would wrongly punish offers that were ranked lower.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 276" style="min-width: 820px" role="img" aria-label="Update rule. For one response, a taken up outcome gives reward 1, or margin divided by the top margin in revenue mode; a viewed outcome gives reward 0; an ignored outcome makes no update. Rewards then go through optional forgetting, which multiplies old evidence by gamma, and are added to alpha and beta in the options-store row for that policy, context key and offer.">
+        <defs>
+          <marker id="t2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <rect class="box built" x="16" y="126" width="160" height="48" rx="6"/>
+        <text class="t" x="96" y="146" text-anchor="middle">One response</text>
+        <text class="s" x="96" y="163" text-anchor="middle">invocation + offer</text>
+        <polygon class="diamond" points="270,104 336,150 270,196 204,150"/>
+        <text class="t" x="270" y="154" text-anchor="middle">Outcome?</text>
+        <path class="edge strong" d="M176 150H202" marker-end="url(#t2-ah)"/>
+
+        <rect class="box planned" x="380" y="40" width="220" height="52" rx="6"/>
+        <text class="t" x="490" y="62" text-anchor="middle">Reward r = 1</text>
+        <text class="s" x="490" y="80" text-anchor="middle">revenue mode: margin ÷ top margin</text>
+        <rect class="box planned" x="380" y="124" width="220" height="52" rx="6"/>
+        <text class="t" x="490" y="146" text-anchor="middle">Reward r = 0</text>
+        <text class="s" x="490" y="164" text-anchor="middle">seen and passed over</text>
+        <rect class="box term" x="380" y="208" width="220" height="52" rx="6"/>
+        <text class="t" x="490" y="230" text-anchor="middle">No update</text>
+        <text class="s" x="490" y="248" text-anchor="middle">probably never seen</text>
+
+        <path class="edge strong" d="M270 104V66H378" marker-end="url(#t2-ah)"/>
+        <text class="lbl mono" x="324" y="58" text-anchor="middle">taken_up</text>
+        <path class="edge strong" d="M336 150H378" marker-end="url(#t2-ah)"/>
+        <text class="lbl mono" x="357" y="142" text-anchor="middle">viewed</text>
+        <path class="edge strong" d="M270 196V234H378" marker-end="url(#t2-ah)"/>
+        <text class="lbl mono" x="324" y="226" text-anchor="middle">ignored</text>
+
+        <rect class="box planned" x="680" y="40" width="304" height="52" rx="6"/>
+        <text class="t" x="832" y="62" text-anchor="middle">Forget a little (if decay is on)</text>
+        <text class="s" x="832" y="80" text-anchor="middle">older evidence × γ, e.g. γ = 0.999</text>
+        <rect class="box planned" x="680" y="124" width="304" height="52" rx="6"/>
+        <text class="t" x="832" y="146" text-anchor="middle">Add the new evidence</text>
+        <text class="s mono" x="832" y="164" text-anchor="middle">α += r · β += 1 − r · pulls += 1</text>
+        <rect class="box planned store" x="680" y="208" width="304" height="52" rx="6"/>
+        <text class="t" x="832" y="230" text-anchor="middle">Options-store row</text>
+        <text class="s mono" x="832" y="248" text-anchor="middle">(policy, context_key, offer_id)</text>
+
+        <path class="edge strong" d="M600 66H678" marker-end="url(#t2-ah)"/>
+        <path class="edge strong" d="M600 150H640V66"/>
+        <circle cx="640" cy="66" r="3.5" class="ah strong"/>
+        <path class="edge strong" d="M832 92V122" marker-end="url(#t2-ah)"/>
+        <path class="edge strong" d="M832 176V206" marker-end="url(#t2-ah)"/>
+      </svg>
+    </div>
+    <figcaption><span>The revenue-aware reward scales the margin into 0–1 so it still fits a Beta belief. The value of γ and whether decay applies to every offer in the context or only the one updated are Phase 2 decisions.</span></figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="keys">
+  <div class="section-head"><h2 id="keys">Context keys</h2><span class="chip proposed">Proposed for Phase 2</span></div>
+  <p>The context key decides whose experience a policy pools. Finer keys personalise more but split the evidence thinner. Payday splitting only pays off because two segments change favourite in payday week (decision D13).</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 196" style="min-width: 760px" role="img" aria-label="Choosing a context key for an app open by a family customer in payday week. Without contextual mode the key is all. With contextual mode and no payday split the key is family. With the payday split the key is family|payday.">
+        <defs>
+          <marker id="t3-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <rect class="box built" x="16" y="40" width="180" height="56" rx="6"/>
+        <text class="t" x="106" y="64" text-anchor="middle">App open</text>
+        <text class="s" x="106" y="82" text-anchor="middle">family, payday week</text>
+        <polygon class="diamond" points="330,28 430,68 330,108 230,68"/>
+        <text class="t" x="330" y="64" text-anchor="middle">Contextual</text>
+        <text class="t" x="330" y="80" text-anchor="middle">mode?</text>
+        <polygon class="diamond" points="600,28 700,68 600,108 500,68"/>
+        <text class="t" x="600" y="64" text-anchor="middle">Split by</text>
+        <text class="t" x="600" y="80" text-anchor="middle">payday week?</text>
+
+        <rect class="box planned" x="250" y="140" width="160" height="44" rx="6"/>
+        <text class="t mono" x="330" y="159" text-anchor="middle">all</text>
+        <text class="s" x="330" y="175" text-anchor="middle">one key for everyone</text>
+        <rect class="box planned" x="520" y="140" width="160" height="44" rx="6"/>
+        <text class="t mono" x="600" y="159" text-anchor="middle">family</text>
+        <text class="s" x="600" y="175" text-anchor="middle">per segment</text>
+        <rect class="box pick" x="780" y="40" width="204" height="56" rx="6"/>
+        <text class="t mono" x="882" y="64" text-anchor="middle">family|payday</text>
+        <text class="s" x="882" y="82" text-anchor="middle">per segment × payday week</text>
+
+        <path class="edge strong" d="M196 68H228" marker-end="url(#t3-ah)"/>
+        <path class="edge strong" d="M430 68H498" marker-end="url(#t3-ah)"/>
+        <text class="yes" x="464" y="60" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M700 68H778" marker-end="url(#t3-ah)"/>
+        <text class="yes" x="739" y="60" text-anchor="middle">yes</text>
+        <path class="edge strong" d="M330 108V138" marker-end="url(#t3-ah)"/>
+        <text class="no" x="340" y="128">no</text>
+        <path class="edge strong" d="M600 108V138" marker-end="url(#t3-ah)"/>
+        <text class="no" x="610" y="128">no</text>
+      </svg>
+    </div>
+    <figcaption><span>The key becomes the <code>context_key</code> column of the options store, so each policy variant keeps its own rows and they can be compared side by side.</span></figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="log">
+  <h2 id="log">Decision log</h2>
+  <p>Every ambiguity in the brief, the default chosen and the reason, in the order the decisions were made.</p>
+<!-- BEGIN generated:decision-log -->
+<h3 id="log-setup">Setup</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>S1</td><td>The repository root is this folder; there is no nested <code>telco-dynamic-recommender/</code> directory.</td><td>The folder already existed with a <code>.gitignore</code>. Nesting would add a level with no benefit.</td></tr>
+<tr><td>S2</td><td>Exact-pinned dependencies in <code>requirements.txt</code> (<code>==</code>).</td><td>"Works on a clean machine" and reproducible results matter more than picking up new minor versions.</td></tr>
+<tr><td>S3</td><td><code>httpx2</code> instead of <code>httpx</code> for FastAPI's <code>TestClient</code>.</td><td>Starlette deprecates <code>httpx</code> for its test client and emits a warning; <code>httpx2</code> is the recommended replacement.</td></tr>
+<tr><td>S4</td><td>On Windows/OneDrive, create the local virtualenv <strong>outside</strong> OneDrive (for example <code>%USERPROFILE%\.venvs\telco-recommender</code>).</td><td>OneDrive sync locks files inside <code>.venv</code> and <code>pip install</code> fails with <code>WinError 32</code>. This does not affect Docker.</td></tr>
+<tr><td>S5</td><td><code>make</code> is the documented interface; every target is a single plain command, so it can be run by hand where <code>make</code> is not installed (for example Windows without Git-Bash make).</td><td>Keeps one source of truth for commands.</td></tr>
+</tbody></table></div>
+<h3 id="log-phase-1-domain-and-data">Phase 1: Domain and data</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>D1</td><td>A customer has a <strong>static profile</strong> (segment, device tier, prepaid/contract, monthly spend, province, <em>usual</em> time of day). <code>time_of_day</code>, <code>day_of_week</code> and <code>is_payday_week</code> are <strong>per-session context</strong>, derived when the app is opened (from the simulated calendar, or the server clock in the API).</td><td>These change between app opens. Storing them on the customer would freeze "the moment" the recommender is meant to react to.</td></tr>
+<tr><td>D2</td><td>Payday week: salaried segments from the 25th to month end; pensioners on SASSA grant days 1–7.</td><td>Matches South African pay patterns and makes payday a real contextual signal that differs by segment.</td></tr>
+<tr><td>D3</td><td>The hidden truth lives in <code>config/ground_truth.yaml</code> and is used only by <code>recommender.simulator</code> and offline evaluation. A test fails if any other <code>recommender</code> module imports the simulator.</td><td>Enforces "the recommender never reads the true probabilities" with a test rather than relying on convention.</td></tr>
+<tr><td>D4</td><td>Truth model: <code>base[segment][offer]</code> × multiplicative context effects (payday, time of day, weekend, device, contract, spend band, province), capped at 0.9.</td><td>One readable table plus a short list of named effects that a reviewer can reason about.</td></tr>
+<tr><td>D5</td><td>Take-up rates of roughly 2–20%, higher than the 1–5% typical in practice.</td><td>50,000 simulated rounds are then enough to show convergence. The relative patterns matter, not the absolute levels.</td></tr>
+<tr><td>D6</td><td>Segment eligibility (<code>offers.yaml</code>) is a business rule the recommender <strong>may</strong> use. The ground truth defines probabilities for eligible pairs only, and this is validated on load.</td><td>Eligibility is public business logic; the probabilities are not.</td></tr>
+<tr><td>D7</td><td>Behaviour shift: young professionals' <code>streaming_bundle</code> base rate goes from 5% to 20% and their <code>data_5gb</code> drops from 13% to 8% (cannibalisation); students' streaming rises from 8% to 12%.</td><td>Flipping the favourite in the largest segment is the clearest adaptation test. Because the old favourite also gets <em>worse</em>, models that never forget are penalised.</td></tr>
+<tr><td>D8</td><td>The customer table is a CSV (<code>data/customers.csv</code>), regenerated deterministically from the seed and git-ignored.</td><td>Small, inspectable and reproducible. It can be loaded into SQLite or Postgres later.</td></tr>
+<tr><td>D9</td><td>Prices for cover products are monthly premiums; the savings pocket "price" is its minimum deposit. All prices and margins are illustrative.</td><td>Keeps <code>margin_zar &lt;= price_zar</code> meaningful for every offer.</td></tr>
+<tr><td>D10</td><td>Generic names for third-party products ("Music + Video Streaming Bundle", "Food Delivery Voucher").</td><td>Avoids implying real partnerships.</td></tr>
+<tr><td>D11</td><td>Population, the ground-truth path and the calendar live in <code>config/simulation.yaml</code>, loaded only by <code>recommender.simulator</code>. The recommender's <code>settings.yaml</code> has no path to the truth, and a test fails if recommender code mentions <code>ground_truth</code> or <code>simulation.yaml</code>.</td><td>Hiding the truth is enforced for file reads as well as imports.</td></tr>
+<tr><td>D12</td><td>The simulated calendar is 60 days from 2026-09-01: two salary paydays and two SASSA grant weeks.</td><td>Payday effects get exercised twice, and the shift can sit at the halfway point.</td></tr>
+<tr><td>D13</td><td>Payday <strong>changes the favourite</strong> in two segments. Pensioners: airtime for the rest of the month, electricity in grant week. Small businesses: pay-later in the mid-month cash squeeze, 20GB data in payday week. Other segments keep one favourite.</td><td>Without this the segment × payday context mode has nothing to learn and would lose to plain per-segment mode, because it splits the data for no benefit.</td></tr>
+<tr><td>D14</td><td>Funeral cover margin raised from R40 to R50. Every favourite, by take-up or by revenue, leads its runner-up by at least ×1.2 (tested).</td><td>Removes the family revenue near-tie (×1.02), which would have stopped any policy from settling. Revenue changes the favourite for students (5GB), young professionals (20GB), small businesses (20GB) and pensioners (funeral cover), which makes the revenue-aware reward worth demonstrating.</td></tr>
+<tr><td>D15</td><td><strong>Response model for a ranked list</strong> (in the ground truth): the customer scans from the top and notices position k with probability <code>attention = [1.0, 0.6, 0.4, 0.25, 0.15]</code>. A noticed offer is taken up with its true probability, and the first take-up ends the visit. Outcomes: noticed and taken = <code>taken_up</code>; noticed, not taken = <code>viewed</code>; not noticed (or below a take-up) = <code>ignored</code>.</td><td>Gives the API's three outcomes a precise meaning and makes position matter, so ranking order affects reward. It is simple enough to compute expected reward exactly, which the regret oracle needs. <em>Implication for Phase 2:</em> <code>ignored</code> says little about whether an offer appeals, so how policies learn from it has to be a deliberate choice.</td></tr>
+</tbody></table></div>
+<h3 id="log-documentation">Documentation</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>DOC1</td><td>The docs are a static HTML site in <code>docs/</code>: six pages, one stylesheet, no build step and no JavaScript libraries. Diagrams are hand-drawn inline SVG.</td><td>Opens offline straight from the file system, deploys to GitHub Pages unchanged, and follows the reader's light or dark theme. SVG diagrams stay crisp and change in the same diff as the code they describe.</td></tr>
+<tr><td>DOC2</td><td>Every data table in the docs (offers, segments, effects, take-up rates, favourites, this log, tool versions, tests, build status) is generated from the code by <code>scripts/build_docs.py</code> between marker comments. <code>tests/test_docs.py</code> fails if a page is stale, a link or anchor is broken, or an id repeats.</td><td>Docs as code: the numbers a reviewer reads are the numbers the simulator uses, and stale docs fail the build like broken code.</td></tr>
+<tr><td>DOC3</td><td>The README will still carry its own Mermaid architecture diagram (Phase 6).</td><td>GitHub renders Mermaid inside Markdown, and the README is the first thing a reviewer sees.</td></tr>
+</tbody></table></div>
+<!-- END generated:decision-log -->
+  <p class="source">From DECISIONS.md · rebuilt by make docs</p>
+</section>
+
+<p class="foot">Edit decisions in <code>DECISIONS.md</code>, never in this page; <code>make docs</code> copies them here.</p>
+</main>
+</div>
+</body>
+</html>

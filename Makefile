@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install data truth run test lint format
+.PHONY: install data truth run test lint format docs
 
 install:  ## Install dependencies and the package in editable mode
 	$(PYTHON) -m pip install -r requirements.txt
@@ -25,3 +25,6 @@ lint:  ## Check code style
 format:  ## Auto-format code
 	$(PYTHON) -m ruff check --fix .
 	$(PYTHON) -m ruff format .
+
+docs:  ## Rebuild the data-driven tables in docs/*.html from code and config
+	$(PYTHON) scripts/build_docs.py
