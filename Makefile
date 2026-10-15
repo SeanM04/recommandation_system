@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install db data truth experiment run benchmark docker-build docker-api benchmark-docker test lint format docs
+.PHONY: install db data truth simulate compare experiment run benchmark docker-build docker-api benchmark-docker test lint format docs
 
 install:  ## Install dependencies and the package in editable mode
 	$(PYTHON) -m pip install -r requirements.txt
@@ -14,6 +14,12 @@ data:  ## Generate the synthetic customer population (data/customers.csv)
 
 truth:  ## Print the hidden take-up table per segment (simulator only)
 	$(PYTHON) scripts/inspect_ground_truth.py
+
+simulate:  ## Simulate 50,000 app opens through the active policy (fast mode; --mode api to use the API)
+	$(PYTHON) scripts/run_simulation.py
+
+compare:  ## Compare every policy on the same world, 3 seeds; results to results/ and the docs
+	$(PYTHON) scripts/compare_algorithms.py
 
 experiment:  ## Rerun the forgetting experiment behind decision P9 (about a minute)
 	$(PYTHON) scripts/experiment_forgetting.py
