@@ -81,7 +81,8 @@
 <tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The latency benchmark (and later the simulator) call the API as an app would.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards; quick to build five pages.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts.</td><td><span class="chip planned">Planned</span></td></tr>
-<tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>Starts the API and dashboard with one command.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Docker</strong></td><td>Packaging</td><td>–</td><td>The API image: slim, non-root, health-checked, 4 workers; secrets via --env-file.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>Starts the API, dashboard and a Postgres container with one command (Phase 6).</td><td><span class="chip planned">Planned</span></td></tr>
 </tbody></table></div>
 <!-- END generated:tools -->
   <p class="source">Versions from requirements.txt · rebuilt by make docs</p>
@@ -110,7 +111,8 @@
         <tr><td>Learnability guards</td><td>Every favourite (by take-up, revenue and payday week) beats its runner-up by at least ×1.2</td><td>part of <code>make test</code></td></tr>
         <tr><td>Config validation</td><td>Unknown segments or offers, ineligible pairs, bad effect keys, shares that don't sum to 1: all fail at load</td><td>on every load</td></tr>
         <tr><td>Lint and format</td><td>Ruff rules E, F, I, B, UP and SIM; line length 100; formatter check</td><td><code>make lint</code></td></tr>
-        <tr><td>Latency</td><td>p95 under 50 ms end to end: real server, Postgres and HTTP</td><td><code>make benchmark</code></td></tr>
+        <tr><td>Concurrency</td><td>Simultaneous duplicate responses, concurrent learning and concurrent start-up, on Postgres as well as SQLite</td><td>part of <code>make test</code></td></tr>
+        <tr><td>Latency</td><td>p95 under 50 ms end to end, at 1, 4 and 8 concurrent clients</td><td><code>make benchmark</code></td></tr>
         <tr><td>Docs freshness</td><td>Generated tables match the code; every link between pages resolves</td><td>part of <code>make test</code></td></tr>
       </tbody>
     </table>
@@ -157,7 +159,7 @@
 <tr><td>Payday week salaried vs pensioner</td><td class="num">1</td></tr>
 <tr><td>Context build derives calendar fields</td><td class="num">1</td></tr>
 <tr><td>Database url precedence</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_events.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_events.py</code> · Event log: round trips, simultaneous duplicates, averages and safe concurrent start-up, on SQLite and Postgres</th></tr>
 <tr><td>Invocation round trip</td><td class="num">1</td></tr>
 <tr><td>Second response for the same offer is a duplicate</td><td class="num">1</td></tr>
 <tr><td>Simultaneous duplicates are recorded exactly once</td><td class="num">1</td></tr>

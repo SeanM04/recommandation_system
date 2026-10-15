@@ -139,8 +139,10 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
      "Python-only dashboards; quick to build five pages."),
     ("Plotly", "plotly", "Charts", "planned",
      "Interactive regret, reward and Beta-distribution charts."),
+    ("Docker", None, "Packaging", "built",
+     "The API image: slim, non-root, health-checked, 4 workers; secrets via --env-file."),
     ("Docker Compose", None, "Packaging", "planned",
-     "Starts the API and dashboard with one command."),
+     "Starts the API, dashboard and a Postgres container with one command (Phase 6)."),
 ]
 # fmt: on
 
@@ -156,6 +158,8 @@ TEST_FILES = {
     "and identical behaviour in memory, SQLite and Postgres",
     "test_policies.py": "Bandit policies: ranking, learning, context keys, forgetting, convergence",
     "test_rewards.py": "Reward functions and the policy factory",
+    "test_events.py": "Event log: round trips, simultaneous duplicates, averages and safe "
+    "concurrent start-up, on SQLite and Postgres",
 }
 
 CHIP_LABELS = {"built": "Built", "planned": "Planned", "proposed": "Proposed"}

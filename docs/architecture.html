@@ -53,6 +53,7 @@
     <li><a href="#layout">Code layout</a></li>
     <li><a href="#config">Configuration files</a></li>
     <li><a href="#storage">Storage design</a></li>
+    <li><a href="#deployment">Deployment</a></li>
   </ul>
 </header>
 
@@ -93,7 +94,7 @@
 
         <rect class="box built" x="388" y="206" width="244" height="60" rx="6"/>
         <text class="t" x="404" y="231">Recommender API</text>
-        <text class="s" x="404" y="251">FastAPI · 8 endpoints · p95 ≈ 13 ms</text>
+        <text class="s" x="404" y="251">FastAPI · 8 endpoints · p95 11 ms</text>
 
         <rect class="box built" x="388" y="316" width="244" height="60" rx="6"/>
         <text class="t" x="404" y="341">Bandit policies</text>
@@ -303,6 +304,65 @@
     <figcaption>
       <span>The crossed path is the one that must never exist. Both guards live in <code>tests/test_ground_truth.py</code> and run with every <code>make test</code>.</span>
       <span class="legend"><span><i></i>reads</span><span><i class="blocked"></i>blocked by tests</span><span><i class="zone"></i>simulated world</span></span>
+    </figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="deployment">
+  <div class="section-head"><h2 id="deployment">Deployment</h2><span class="chip built">Built</span></div>
+  <p>The API runs two ways: as one local process (<code>make run</code>), or as a container with four worker processes (<code>make docker-api</code>). Both use the same Postgres database. The difference that matters on this laptop is the path every database call takes.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 360" style="min-width: 820px" role="img" aria-label="Two deployments compared. Native: a client calls one uvicorn process on port 8000, which talks to Postgres on port 5432, all on the Windows laptop; p95 11 ms at one client. Docker: the client calls port 8000, forwarded into a container with four uvicorn workers inside Docker Desktop's Linux VM; every database call leaves the VM to reach Postgres on Windows through host.docker.internal; p95 55 ms at one client on this laptop.">
+        <defs>
+          <marker id="d1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+          <marker id="d1-ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah blocked"/></marker>
+        </defs>
+
+        <text class="t" x="16" y="24">Native · make run</text>
+        <rect class="frame" x="16" y="40" width="468" height="300" rx="10"/>
+        <text class="zone-label" x="32" y="60" style="fill: var(--muted)">WINDOWS LAPTOP</text>
+        <rect class="box built" x="40" y="80" width="180" height="52" rx="6"/>
+        <text class="t" x="130" y="102" text-anchor="middle">Client</text>
+        <text class="s" x="130" y="120" text-anchor="middle">simulator, curl, dashboard</text>
+        <rect class="box built" x="40" y="180" width="180" height="52" rx="6"/>
+        <text class="t" x="130" y="202" text-anchor="middle">API process</text>
+        <text class="s" x="130" y="220" text-anchor="middle">uvicorn · 1 worker</text>
+        <rect class="box built store" x="280" y="180" width="184" height="52" rx="6"/>
+        <text class="t" x="372" y="202" text-anchor="middle">Postgres 18</text>
+        <text class="s mono" x="372" y="220" text-anchor="middle">Telco_Dynamic_Recomender</text>
+        <path class="edge strong" d="M130 132V178" marker-end="url(#d1-ah)"/>
+        <text class="lbl mono" x="138" y="160">HTTP :8000</text>
+        <path class="edge strong" d="M220 206H278" marker-end="url(#d1-ah)"/>
+        <text class="lbl mono" x="249" y="198" text-anchor="middle">:5432</text>
+        <text class="t" x="40" y="286">p95 11 ms at 1 client, 32 ms at 4</text>
+        <text class="s" x="40" y="306">peak 189 requests/s; one Python process is CPU-bound</text>
+
+        <text class="t" x="516" y="24">Docker · make docker-api</text>
+        <rect class="frame" x="516" y="40" width="468" height="300" rx="10"/>
+        <text class="zone-label" x="532" y="60" style="fill: var(--muted)">WINDOWS LAPTOP</text>
+        <rect class="zone" x="536" y="150" width="240" height="120" rx="8"/>
+        <text class="zone-label" x="548" y="262">DOCKER DESKTOP LINUX VM</text>
+        <rect class="box built" x="552" y="80" width="208" height="52" rx="6"/>
+        <text class="t" x="656" y="102" text-anchor="middle">Client</text>
+        <text class="s" x="656" y="120" text-anchor="middle">same calls, same port</text>
+        <rect class="box built" x="552" y="186" width="208" height="60" rx="6"/>
+        <text class="t" x="656" y="210" text-anchor="middle">API container</text>
+        <text class="s" x="656" y="230" text-anchor="middle">uvicorn · 4 workers</text>
+        <rect class="box built store" x="800" y="186" width="168" height="60" rx="6"/>
+        <text class="t" x="884" y="210" text-anchor="middle">Postgres 18</text>
+        <text class="s" x="884" y="230" text-anchor="middle">on Windows</text>
+        <path class="edge strong" d="M656 132V184" marker-end="url(#d1-ah)"/>
+        <text class="lbl" x="664" y="144">port 8000 forwarded</text>
+        <path class="edge blocked" d="M760 216H798" marker-end="url(#d1-ahb)"/>
+        <text class="lbl mono" x="884" y="264" text-anchor="middle">via host.docker.internal</text>
+        <text class="t" x="552" y="300">p95 55 ms at 1 client on this laptop</text>
+        <text class="s hidden-text" x="552" y="320">every database call crosses the VM boundary</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>Several workers are the way past one process's CPU limit, but only when the database is close. On Windows, Docker Desktop puts the containers in a VM, so each of the 3–5 database calls per request pays an extra network hop. On Linux, or with Postgres in a container on the same Docker network (Phase 6, docker-compose), that hop disappears. Measured numbers: decision A16.</span>
+      <span class="legend"><span><i class="zone"></i>Docker Desktop's VM</span><span><i class="blocked"></i>crosses the VM boundary</span></span>
     </figcaption>
   </figure>
 </section>

@@ -112,7 +112,8 @@ make data      # 5,000 synthetic customers -> data/customers.csv and the databas
 make run       # the API on http://localhost:8000 (interactive docs at /docs)
 make truth     # print the hidden take-up rates (simulator only)
 make test      # full test suite
-make docs      # rebuild the data tables in these pages</code></pre>
+make docs      # rebuild the data tables in these pages
+make docker-build &amp;&amp; make docker-api   # or run the API in Docker</code></pre>
   <p>Without <code>make</code> (for example on Windows), run the command under each target in the <code>Makefile</code> directly, such as <code>python scripts/generate_customers.py</code>.</p>
 </section>
 
