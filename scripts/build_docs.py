@@ -163,6 +163,7 @@ TEST_FILES = {
     "test_rewards.py": "Reward functions and the policy factory",
     "test_simulation.py": "Simulator: oracle and regret, common random numbers, learning, the "
     "comparison and simulation through the API",
+    "test_dashboard.py": "Dashboard: every page renders without errors, with or without data",
     "test_events.py": "Event log: round trips, simultaneous duplicates, averages and safe "
     "concurrent start-up, on SQLite and Postgres",
 }

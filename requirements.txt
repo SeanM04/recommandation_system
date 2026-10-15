@@ -16,3 +16,4 @@ requests==2.34.2
 pytest==9.1.1
 httpx2==2.13.1
 ruff==0.17.0
+playwright==1.64.0   # dashboard screenshots (uses the installed Chrome or Edge)

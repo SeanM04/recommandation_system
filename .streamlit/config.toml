@@ -1,0 +1,9 @@
+[client]
+toolbarMode = "minimal"   # no "Deploy" button
+
+[theme]
+primaryColor = "#2a78d6"  # the docs' and charts' blue
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
