@@ -75,7 +75,7 @@ flowchart LR
 1. **An app open** arrives with a customer ID. The API builds the context (segment, device, spend, time of day, payday week) and asks the active policy for a ranking of the offers that customer is eligible for.
 2. **The policy** (`thompson_segment_decay` by default) draws one sample from each offer's Beta belief for the customer's segment and ranks by the draws. Offers it is unsure about sometimes draw high and get shown; that is the exploration.
 3. **Everything shown is logged** before the response returns, with the full context, so any model can be rebuilt from the log.
-4. **The outcome** comes back on `POST /response`. It is logged once (a repeat gets 409), turned into a reward (1 for a take-up, 0 for a view; ignored offers teach nothing by default), and the belief is updated in one atomic database statement. Each update also discounts the old evidence in that segment by a factor of 0.9998, so a belief built on last month's behaviour fades.
+4. **The outcome** comes back on `POST /response`. It is logged once (a repeat gets 409), turned into a reward (1 for a take-up, 0 for a view; ignored offers teach nothing by default), and the belief is updated in one database transaction, computed from the stored values so concurrent updates never overwrite each other. Each update also discounts the old evidence in that segment by a factor of 0.9998, so a belief built on last month's behaviour fades.
 5. **The simulator** plays the customers: 5,000 synthetic South Africans in five segments, whose hidden take-up probabilities depend on segment, context and payday, and shift halfway through the run (young professionals turn to streaming, families to prepaid electricity). The policies never see these probabilities; the evaluation uses them to measure regret.
 
 Nine policies are compared: random, a static popularity ranking fitted on a month of history, epsilon-greedy and Thompson sampling with one global belief or one per segment, and Thompson variants with payday context, forgetting, and a revenue reward. Every choice and its reasoning is in [DECISIONS.md](DECISIONS.md).
@@ -137,7 +137,7 @@ Screenshots of every page are on the [dashboard docs page](docs/dashboard.html).
 
 - **Logs:** one JSON line per request (endpoint, status, milliseconds) and per startup, ready for any log shipper.
 - **Health and metrics:** `GET /health` checks the database; `GET /metrics` gives app opens, outcomes, take-up and revenue per policy, and p50/p95 latency per endpoint.
-- **Nightly job:** `make nightly` rolls yesterday's event log up into `daily_offer_stats`, one row per day, policy, segment and offer (impressions, times shown first, take-ups, views, ignores, offers with no response yet, revenue), so reports and drift alerts never scan the raw log. Days follow the configured timezone and rerunning a day replaces it, so late responses are picked up by running it again. Schedule it with cron (`5 0 * * * make nightly`) or one Airflow task; `make nightly ARGS=--all` backfills every day in the log. In Docker: `docker compose run --rm simulate python scripts/nightly_aggregate.py --all`.
+- **Nightly job:** `make nightly` rolls yesterday's event log up into `daily_offer_stats`, one row per day, policy, segment and offer (impressions, times shown first, take-ups, views, ignores, offers with no response yet, revenue), so reports and drift alerts never scan the raw log. Days follow the configured timezone and rerunning a day replaces it, so late responses are picked up by running it again. Schedule it with cron (`5 0 * * * cd /path/to/repo && make nightly`) or one Airflow task; `make nightly ARGS=--all` backfills every day in the log. In Docker: `docker compose run --rm simulate python scripts/nightly_aggregate.py --all`.
 
 ## Configuration
 
@@ -173,7 +173,7 @@ docs/                  HTML documentation (open docs/index.html)
 - `make test` runs the suite: domain rules, the store under concurrent updates, every policy, the API end to end (including idempotency and, when Postgres is configured, against Postgres in a throwaway schema), the simulator, every dashboard page, and a check that the generated parts of the docs, this README and the write-up match the latest results. Tests never touch the real tables.
 - `make lint` runs ruff; `make docs` regenerates the data-driven parts of the docs and of this README.
 - Random seeds are fixed throughout: the same command gives the same numbers.
-- `make benchmark` measures latency end to end against a real server and database. One local worker answers an app open in 11 ms at the 95th percentile with one client; see the [API page](docs/api.html#latency) for higher concurrency and Docker.
+- `make benchmark` measures latency end to end against a real server and database. One local worker answers an app open in 11 ms at the 95th percentile with one client. In Docker Compose, four workers on the same network as Postgres keep p95 under 25 ms up to four concurrent clients, at 224 requests a second (decision Q3 explains how that was measured).
 
 ## Documentation
 
