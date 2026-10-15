@@ -69,7 +69,7 @@ The brief names the concepts below. This project implements each one from scratc
 - **Richer context, where it pays.** Segments carry most of the value here (92% of the oracle against 68% for one global model); payday context only tied. With real data I would test a contextual bandit on customer features from a feature store (linear or logistic Thompson sampling) against this as the baseline.
 - **Guardrails.** Eligibility is enforced already. Production also needs fatigue caps, frequency limits, business overrides and affordability checks before any credit offer: the pay-later voucher falls under the National Credit Act.
 - **Measurement that never stops.** A small holdout on the static policy measures uplift continuously. Alerts fire when take-up drops, exploration collapses or beliefs move sharply. Logged ranking propensities would let new policies be evaluated offline before they serve anyone.
-- **Delayed rewards, security, privacy.** Real take-ups can arrive hours later, so responses need an attribution window. The API needs authentication, and customer data needs POPIA-compliant handling.
+- **Delayed rewards, security, privacy.** Real take-ups can arrive hours later, so responses need an attribution window. The dashboard has accounts with roles, and the API takes optional API keys; production would use the company's single sign-on and a secrets manager instead, and customer data needs POPIA-compliant handling.
 
 ## Limitations
 

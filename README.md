@@ -33,7 +33,25 @@ Every policy faced the identical sequence of app opens and outcomes in each seed
 
 ## Quickstart
 
-Python 3.12 and `make` (on Windows: `winget install ezwinports.make`, then use Git Bash). No database or server needed: without a `.env` everything uses a local SQLite file.
+Python 3.12. No database or server needed: without a `.env`, everything uses a local SQLite file. With one, it uses your Postgres (copy `.env.example`; every setting is listed there).
+
+**Django style, on any OS:**
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1          # macOS / Linux: source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+
+python manage.py migrate            # the tables and the 5,000 customers
+python manage.py createsuperuser    # your admin account (or create it on the dashboard's first screen)
+python manage.py simulate           # results for the dashboard, 1,000 app opens through the API (~4 min)
+python manage.py runserver          # API on :8000, dashboard on :8501; Ctrl+C stops both
+```
+
+Then sign in at [localhost:8501](http://localhost:8501). Keep the virtual environment outside folders that OneDrive or Dropbox sync: they lock files while pip installs. `python manage.py --help` lists every command, and the ports come from `API_PORT` and `DASHBOARD_PORT` in `.env`.
+
+**Or with make** (Linux, macOS, or Windows with `winget install ezwinports.make`):
 
 ```bash
 make install     # dependencies and the package
@@ -41,7 +59,7 @@ make simulate    # customers, a 3-seed comparison, 1,000 app opens through the A
 make dashboard   # http://localhost:8501
 ```
 
-`make compare` reproduces the 10-seed results above (about 7 minutes). `make help` lists every target.
+`make compare` (or `python manage.py compare`) reproduces the 10-seed results above, in about 7 minutes. `make help` lists every target.
 
 **Or the whole system in Docker:** `docker compose up --build` starts Postgres, the API on [localhost:8000/docs](http://localhost:8000/docs) with four workers, and the dashboard on [localhost:8501](http://localhost:8501), then sends 1,000 app opens through the API so the live view fills while you watch. `docker compose down --volumes` removes it all again.
 
@@ -82,7 +100,7 @@ Nine policies are compared: random, a static popularity ranking fitted on a mont
 
 ## Using the API
 
-Start it with `make run` (or use the Docker stack); interactive docs are at `/docs`.
+Start it with `python manage.py runserver` (or `make run`, or the Docker stack); interactive docs are at `/docs`.
 
 ```bash
 # An app open: the top three offers for this customer, right now
@@ -129,9 +147,20 @@ Other endpoints: `GET /offers`, `GET /customers?segment=student`, `GET /policies
 | Algorithm comparison | The results table, cumulative regret, take-ups and revenue per policy, and how fast each converged |
 | Explore vs exploit | The Beta belief behind every offer at any point in a run |
 | Behaviour shift | How quickly each policy noticed the new favourites after the shift |
-| Try it | Play a customer: open the app, take up or ignore offers, and watch the belief move |
+| Try it (admins) | Play a customer: open the app, take up or ignore offers, and watch the belief move |
+| Users and API keys (admins) | Add users, change passwords, create and revoke API keys |
 
 Screenshots of every page are on the [dashboard docs page](docs/dashboard.html).
+
+## Accounts and API keys
+
+Everyone signs in to the dashboard. Accounts live in the `users` table of the project database, with passwords stored only as salted scrypt hashes.
+
+- **Roles:** viewers see the live view and the results. Admins can also use Try it, which changes the model, and the Users and API keys page.
+- **The first admin:** `python manage.py createsuperuser`. On an empty database the dashboard's first screen offers the same.
+- **More accounts:** the Users and API keys page, or `python manage.py createuser NAME [--role admin]`; `changepassword NAME` resets a password.
+- **A failed sign-in** takes as long as a correct one, and five failures in a row lock the browser session for 30 seconds. A sign-in lasts until the browser tab is reloaded.
+- **API keys** are off by default, so a clean machine works as is. Set `RECOMMENDER_REQUIRE_API_KEY=true` in `.env`, and every endpoint except `/health` then needs an `X-API-Key` header (the interactive docs have an Authorize button). Create keys with `python manage.py createapikey --label NAME` or on the Users page. Each key is shown once and stored only as a hash. Put one in `RECOMMENDER_API_KEY` for the dashboard and simulator to send.
 
 ## Running it
 
@@ -158,10 +187,13 @@ src/recommender/
   algorithms/          random, static, epsilon-greedy, Thompson sampling, rewards
   store/               the options store: in memory, or SQL with atomic updates and forgetting
   events/              the event log (invocations, impressions, responses), nightly roll-up
-  api/                 FastAPI app, schemas, request timing
+  api/                 FastAPI app, schemas, request timing, API keys
+  accounts.py          users and API keys: hashing, sign-in
+  cli.py               the commands behind manage.py
   simulator/           population, hidden ground truth, the simulation engine
   evaluation/          regret, convergence, the multi-seed comparison
-dashboard/             Streamlit app, one file per page
+manage.py              python manage.py migrate | createsuperuser | runserver | ...
+dashboard/             Streamlit app: sign-in, then one file per page
 scripts/               everything the Makefile runs
 config/                YAML: settings, offers, the simulated world
 tests/                 pytest, from the domain model to the dashboard pages
