@@ -6,14 +6,11 @@ import pytest
 from recommender.algorithms.base import BanditPolicy, context_key
 from recommender.algorithms.epsilon_greedy import EpsilonGreedyPolicy
 from recommender.algorithms.random_policy import RandomPolicy
-from recommender.algorithms.rewards import binary_reward
 from recommender.algorithms.static import StaticPolicy
 from recommender.algorithms.thompson import ThompsonSamplingPolicy
-from recommender.config import load_offers, load_settings
-from recommender.domain import Context, Customer, Offer
-from recommender.simulator.ground_truth import GroundTruth, take_up_table
-from recommender.simulator.population import generate_customers, sample_context
-from recommender.simulator.settings import load_simulation_settings
+from recommender.domain import SEGMENTS, Context, Offer
+from recommender.simulator.engine import World, simulate
+from recommender.simulator.ground_truth import take_up_table
 from recommender.store.options_store import ArmStats, InMemoryOptionsStore
 from recommender.store.sql import create_store
 
@@ -168,7 +165,7 @@ def test_thompson_converges_to_the_best_arm() -> None:
 def test_contextual_policy_learns_separately_per_segment() -> None:
     offers = make_offers("a", "b")
     student, family = make_context("student"), make_context("family")
-    policy = ThompsonSamplingPolicy("ts", InMemoryOptionsStore(), rng=rng(), context="segment")
+    policy = ThompsonSamplingPolicy("ts", InMemoryOptionsStore(), rng=rng(), context_mode="segment")
     play_bandit(policy, offers, {"a": 0.4, "b": 0.05}, rounds=600, context=student)
     play_bandit(policy, offers, {"a": 0.05, "b": 0.4}, rounds=600, context=family)
     student_means = {o: s.mean for o, s in policy.store.get_context("ts", "student").items()}
@@ -211,7 +208,7 @@ def test_invalid_arguments_are_rejected() -> None:
     with pytest.raises(ValueError, match="decay"):
         ThompsonSamplingPolicy("ts", store, rng=rng(), decay=0.0)
     with pytest.raises(ValueError, match="context mode"):
-        ThompsonSamplingPolicy("ts", store, rng=rng(), context="province")
+        ThompsonSamplingPolicy("ts", store, rng=rng(), context_mode="province")
     policy = ThompsonSamplingPolicy("ts", store, rng=rng())
     with pytest.raises(ValueError, match="reward"):
         policy.update(make_context(), "a", 1.5)
@@ -221,9 +218,9 @@ def test_invalid_arguments_are_rejected() -> None:
 
 def test_learning_survives_a_restart_with_the_sql_store(tmp_path) -> None:
     url = f"sqlite:///{(tmp_path / 'model.db').as_posix()}"
-    first = ThompsonSamplingPolicy("ts", create_store(url), rng=rng(), context="segment")
+    first = ThompsonSamplingPolicy("ts", create_store(url), rng=rng(), context_mode="segment")
     first.update(make_context("family"), "a", 1.0)
-    restarted = ThompsonSamplingPolicy("ts", create_store(url), rng=rng(), context="segment")
+    restarted = ThompsonSamplingPolicy("ts", create_store(url), rng=rng(), context_mode="segment")
     stats = restarted.stats(make_context("family"), make_offers("a", "b"))
     assert stats == {"a": ArmStats(1, 1), "b": ArmStats()}
 
@@ -233,35 +230,25 @@ def test_learning_survives_a_restart_with_the_sql_store(tmp_path) -> None:
 
 def test_contextual_thompson_learns_each_segment_favourite_in_the_simulated_world() -> None:
     """Rank, let the simulated customer respond, learn; then check what was learned."""
-    settings, simulation = load_settings(), load_simulation_settings()
-    offers = load_offers()
-    truth = GroundTruth.from_yaml(simulation.ground_truth, offers)
-    frame = generate_customers(5000, simulation.population.segment_mix, seed=settings.seed)
-    customers = [Customer(**record) for record in frame.to_dict("records")]
-    days = simulation.calendar.days()
-    world = np.random.default_rng(7)
+    world = World.load()
+    policy = ThompsonSamplingPolicy("ts", InMemoryOptionsStore(), rng=rng(), context_mode="segment")
+    simulate(policy, world, rounds=12_000, seed=7)
 
-    policy = ThompsonSamplingPolicy("ts", InMemoryOptionsStore(), rng=rng(), context="segment")
-    for _ in range(12_000):
-        customer = customers[world.integers(len(customers))]
-        context = sample_context(customer, world, days[world.integers(len(days))])
-        eligible = [o for o in offers if o.is_eligible(context.segment)]
-        shown = [offers_by_id(offers)[r.offer_id] for r in policy.rank(context, eligible, 3)]
-        for offer_id, outcome in truth.respond(context, shown, world).items():
-            reward = binary_reward(offers_by_id(offers)[offer_id], outcome)
-            if reward is not None:
-                policy.update(context, offer_id, reward)
-
-    favourites = take_up_table(truth, customers, offers, days, samples_per_segment=2000).idxmax(
-        axis=1
-    )
-    for segment, favourite in favourites.items():
+    table = take_up_table(world.truth, world.customers, world.offers, world.days)
+    for segment, favourite in table.idxmax(axis=1).items():
         learned = {o: s.mean for o, s in policy.store.get_context("ts", segment).items()}
         assert max(learned, key=learned.get) == favourite, segment
 
 
-def offers_by_id(offers: list[Offer]) -> dict[str, Offer]:
-    return {offer.offer_id: offer for offer in offers}
+def test_simulation_log_has_one_row_per_app_open_and_applies_the_shift() -> None:
+    world = World.load()
+    policy = RandomPolicy(rng=rng())
+    log = simulate(policy, world, rounds=300, shift_round=200, n_offers=3, seed=3)
+    assert len(log) == 300
+    assert not log["shifted"].iloc[:200].any() and log["shifted"].iloc[200:].all()
+    assert log["take_ups"].between(0, 1).all()  # at most one take-up per app open
+    assert log["day"].is_monotonic_increasing
+    assert set(log["segment"]) <= set(SEGMENTS)
 
 
 def test_every_bandit_policy_shares_the_update_rule() -> None:

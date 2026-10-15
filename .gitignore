@@ -10,6 +10,9 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
+# Local secrets (database password)
+.env
+
 # Generated data, databases and simulation output
 data/
 results/

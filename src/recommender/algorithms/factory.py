@@ -41,14 +41,16 @@ def build_policy(
             name,
             store,
             rng=rng,
-            context=spec.context,
+            context_mode=spec.context,
             decay=spec.decay,
             epsilon=spec.epsilon,
             epsilon_decay=spec.epsilon_decay,
             min_epsilon=spec.min_epsilon,
         )
     if spec.type == "thompson":
-        return ThompsonSamplingPolicy(name, store, rng=rng, context=spec.context, decay=spec.decay)
+        return ThompsonSamplingPolicy(
+            name, store, rng=rng, context_mode=spec.context, decay=spec.decay
+        )
     raise ValueError(f"unknown policy type {spec.type!r}")
 
 

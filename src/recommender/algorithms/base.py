@@ -8,10 +8,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from recommender.domain import Context, Offer
+from recommender.domain import CONTEXT_MODES, Context, Offer
 from recommender.store.options_store import ArmStats, OptionsStore
-
-CONTEXT_MODES = ("global", "segment", "segment_payday")
 
 
 @dataclass(frozen=True)
@@ -58,7 +56,7 @@ class Policy(ABC):
 class BanditPolicy(Policy):
     """A policy that learns, keeping its statistics in the options store.
 
-    ``context`` sets whose experience is pooled (see ``context_key``). ``decay`` < 1
+    ``context_mode`` sets whose experience is pooled (see ``context_key``). ``decay`` < 1
     switches on forgetting: before each update, every offer's evidence in that context
     shrinks by ``decay``, so recent responses outweigh old ones.
     """
@@ -69,34 +67,34 @@ class BanditPolicy(Policy):
         store: OptionsStore,
         *,
         rng: np.random.Generator,
-        context: str = "global",
+        context_mode: str = "global",
         decay: float = 1.0,
     ) -> None:
-        if context not in CONTEXT_MODES:
-            raise ValueError(f"unknown context mode {context!r}; expected one of {CONTEXT_MODES}")
+        if context_mode not in CONTEXT_MODES:
+            raise ValueError(
+                f"unknown context mode {context_mode!r}; expected one of {CONTEXT_MODES}"
+            )
         if not 0 < decay <= 1:
             raise ValueError(f"decay must be in (0, 1], got {decay}")
         self.name = name
         self.store = store
         self.rng = rng
-        self.context = context
+        self.context_mode = context_mode
         self.decay = decay
 
     def key(self, context: Context) -> str:
-        return context_key(context, self.context)
+        return context_key(context, self.context_mode)
 
     def stats(self, context: Context, candidates: Sequence[Offer]) -> dict[str, ArmStats]:
         """Current statistics for each candidate; untried offers start at the prior."""
         return self.store.get(self.name, self.key(context), [o.offer_id for o in candidates])
 
     def update(self, context: Context, offer_id: str, reward: float) -> None:
-        """Forget a little (if decay is on), then add the new evidence."""
+        """Forget a little (if decay is on), then add the new evidence.
+
+        The store does both in one atomic step, so concurrent requests never overwrite
+        each other's learning.
+        """
         if not 0 <= reward <= 1:
             raise ValueError(f"reward must be in [0, 1], got {reward}")
-        key = self.key(context)
-        arms = self.store.get_context(self.name, key)
-        if self.decay < 1:
-            arms = {offer: stats.decayed(self.decay) for offer, stats in arms.items()}
-        arms[offer_id] = arms.get(offer_id, ArmStats()).updated(reward)
-        changed = arms if self.decay < 1 else {offer_id: arms[offer_id]}
-        self.store.put(self.name, key, changed)
+        self.store.learn(self.name, self.key(context), offer_id, reward, decay=self.decay)

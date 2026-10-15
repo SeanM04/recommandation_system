@@ -7,6 +7,7 @@ and tests; ``SqlOptionsStore`` (see ``sql.py``) persists the same rows for the A
 
 from __future__ import annotations
 
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -74,8 +75,15 @@ class OptionsStore(ABC):
         """Every offer with statistics for this policy and context key."""
 
     @abstractmethod
+    def learn(
+        self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
+    ) -> None:
+        """Atomically: shrink every offer's evidence in the context by ``decay``, then add
+        one ``reward`` to ``offer_id``. Concurrent calls must never lose an update."""
+
+    @abstractmethod
     def put(self, policy: str, context_key: str, arms: Mapping[str, ArmStats]) -> None:
-        """Insert or replace the rows for these offers."""
+        """Insert or replace the rows for these offers (seeding, tests and migration)."""
 
     @abstractmethod
     def rows(self, policy: str | None = None) -> list[OptionRow]:
@@ -91,15 +99,29 @@ class InMemoryOptionsStore(OptionsStore):
 
     def __init__(self) -> None:
         self._rows: dict[tuple[str, str], dict[str, tuple[ArmStats, datetime]]] = {}
+        self._lock = threading.Lock()  # learn() reads then writes; one at a time
 
     def get_context(self, policy: str, context_key: str) -> dict[str, ArmStats]:
         rows = self._rows.get((policy, context_key), {})
         return {offer_id: stats for offer_id, (stats, _) in rows.items()}
 
+    def learn(
+        self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
+    ) -> None:
+        now = datetime.now(UTC)
+        with self._lock:
+            rows = self._rows.setdefault((policy, context_key), {})
+            if decay < 1:
+                for other, (stats, _) in list(rows.items()):
+                    rows[other] = (stats.decayed(decay), now)
+            stats, _ = rows.get(offer_id, (ArmStats(), now))
+            rows[offer_id] = (stats.updated(reward), now)
+
     def put(self, policy: str, context_key: str, arms: Mapping[str, ArmStats]) -> None:
         now = datetime.now(UTC)
-        rows = self._rows.setdefault((policy, context_key), {})
-        rows.update({offer_id: (stats, now) for offer_id, stats in arms.items()})
+        with self._lock:
+            rows = self._rows.setdefault((policy, context_key), {})
+            rows.update({offer_id: (stats, now) for offer_id, stats in arms.items()})
 
     def rows(self, policy: str | None = None) -> list[OptionRow]:
         return sorted(
@@ -113,7 +135,8 @@ class InMemoryOptionsStore(OptionsStore):
         )
 
     def reset(self, policy: str | None = None) -> None:
-        if policy is None:
-            self._rows.clear()
-        else:
-            self._rows = {key: rows for key, rows in self._rows.items() if key[0] != policy}
+        with self._lock:
+            if policy is None:
+                self._rows.clear()
+            else:
+                self._rows = {k: rows for k, rows in self._rows.items() if k[0] != policy}

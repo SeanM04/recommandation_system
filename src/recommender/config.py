@@ -7,12 +7,17 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from recommender.domain import Offer
+from recommender.domain import CONTEXT_MODES, Offer
 
 PROJECT_ROOT = Path(os.environ.get("RECOMMENDER_HOME", Path(__file__).resolve().parents[2]))
 DEFAULT_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.yaml"
+
+# Local secrets such as the database password live in .env (git-ignored). Real
+# environment variables win over the file.
+load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 
 def resolve_path(path: Path) -> Path:
@@ -35,11 +40,18 @@ class PolicySpec(BaseModel):
     """One configured policy. Settings that don't apply to its type are ignored."""
 
     type: Literal["random", "static", "epsilon_greedy", "thompson"]
-    context: Literal["global", "segment", "segment_payday"] = "global"
+    context: str = "global"  # one of CONTEXT_MODES
     decay: float = Field(1.0, gt=0, le=1)  # 1 = never forget
     epsilon: float = Field(0.1, ge=0, le=1)
     epsilon_decay: float = Field(1.0, gt=0, le=1)
     min_epsilon: float = Field(0.0, ge=0, le=1)
+
+    @field_validator("context")
+    @classmethod
+    def _known_context_mode(cls, mode: str) -> str:
+        if mode not in CONTEXT_MODES:
+            raise ValueError(f"unknown context mode {mode!r}; expected one of {CONTEXT_MODES}")
+        return mode
 
 
 class RecommendationSettings(BaseModel):
@@ -65,7 +77,7 @@ class Settings(BaseModel):
 
     @property
     def database_url(self) -> str:
-        """``$RECOMMENDER_DATABASE_URL`` (e.g. Postgres), else the local SQLite file."""
+        """``$RECOMMENDER_DATABASE_URL`` (Postgres, set in .env), else the local SQLite file."""
         default = f"sqlite:///{self.paths.database.as_posix()}"
         return os.environ.get("RECOMMENDER_DATABASE_URL", default)
 

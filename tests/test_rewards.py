@@ -58,7 +58,7 @@ def test_every_configured_policy_is_built() -> None:
     assert isinstance(policies["random"], RandomPolicy)
     assert isinstance(policies["static"], StaticPolicy)
     assert isinstance(policies["epsilon_greedy_segment"], EpsilonGreedyPolicy)
-    assert policies["epsilon_greedy_segment"].context == "segment"
+    assert policies["epsilon_greedy_segment"].context_mode == "segment"
     assert isinstance(policies["thompson_segment_decay"], ThompsonSamplingPolicy)
     assert policies["thompson_segment_decay"].decay < 1
 
