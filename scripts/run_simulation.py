@@ -4,6 +4,7 @@ Usage:
     python scripts/run_simulation.py                    fast mode: 50,000 app opens (make simulate)
     python scripts/run_simulation.py --mode api         every app open goes through the
                                                         running API (make run first)
+    python scripts/run_simulation.py --mode api --in-process   the same, no server needed
     python scripts/run_simulation.py --policy static --rounds 10000 --no-shift
 
 Fast mode calls the policy directly; --persist then copies what it learned into the
@@ -40,6 +41,11 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--no-shift", action="store_true", help="keep behaviour stable")
     parser.add_argument("--url", default="http://localhost:8000", help="API mode: the API")
+    parser.add_argument(
+        "--in-process",
+        action="store_true",
+        help="API mode without a server: run the API app inside this process",
+    )
     parser.add_argument("--persist", action="store_true", help="fast mode: save the model")
     args = parser.parse_args()
 
@@ -74,26 +80,36 @@ def main() -> None:
             copied = copy_options(store, SqlOptionsStore(make_engine(settings.database_url)))
             print(f"Saved {copied} options rows for {name} to the database")
     else:
-        session = requests.Session()
-        health = session.get(f"{args.url}/health", timeout=5).json()
-        print(f"API at {args.url}: {health['database']}, serving {health['active_policy']}")
+        if args.in_process:
+            # The real FastAPI app (routing, validation, event log, learning), minus the network.
+            from fastapi.testclient import TestClient
+
+            from recommender.api.main import create_app
+
+            client_context, base = TestClient(create_app()), ""
+        else:
+            client_context, base = requests.Session(), args.url
 
         def progress(done: int) -> None:
             if done % 500 == 0 or done == rounds:
                 rate = done / (time.perf_counter() - start)
                 print(f"  {done:,} app opens ({rate:.0f}/s, {(rounds - done) / rate:.0f}s left)")
 
-        log = simulate_via_api(
-            session,
-            world,
-            rounds=rounds,
-            shift_round=shift_round,
-            n_offers=n_offers,
-            seed=args.seed,
-            policy=name,
-            base_url=args.url,
-            progress=progress,
-        )
+        with client_context as client:
+            health = client.get(f"{base}/health").json()
+            where = "in-process" if args.in_process else base
+            print(f"API ({where}): {health['database']}, serving {health['active_policy']}")
+            log = simulate_via_api(
+                client,
+                world,
+                rounds=rounds,
+                shift_round=shift_round,
+                n_offers=n_offers,
+                seed=args.seed,
+                policy=name,
+                base_url=base,
+                progress=progress,
+            )
 
     elapsed = time.perf_counter() - start
     out = PROJECT_ROOT / "results" / f"simulation_{args.mode}_{name}.parquet"

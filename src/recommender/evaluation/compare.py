@@ -19,8 +19,9 @@ from recommender.algorithms.random_policy import RandomPolicy
 from recommender.algorithms.rewards import binary_reward
 from recommender.algorithms.static import StaticPolicy
 from recommender.config import Settings
-from recommender.evaluation.metrics import summarize
+from recommender.evaluation.metrics import convergence, summarize
 from recommender.simulator.engine import World, simulate
+from recommender.simulator.ground_truth import take_up_table
 from recommender.store.options_store import InMemoryOptionsStore
 
 
@@ -128,3 +129,31 @@ def comparison_table(summary: pd.DataFrame) -> pd.DataFrame:
     spread = summary.groupby("policy")["regret"].std()
     table.insert(table.columns.get_loc("regret") + 1, "regret_sd", spread)
     return table
+
+
+def moment_favourites(truth, world: World) -> dict[tuple[str, bool], str]:
+    """The right first offer for each (segment, payday week) under ``truth``."""
+    table = take_up_table(
+        truth, world.customers, world.offers, world.days, by=("segment", "is_payday_week")
+    )
+    return {key: row.idxmax() for key, row in table.iterrows()}
+
+
+def convergence_table(rounds: pd.DataFrame, world: World, shift_round: int | None) -> pd.DataFrame:
+    """App opens each policy needed to rank each segment's best offer first, from the start
+    and again after the behaviour shift (NaN: not within the run)."""
+    before = moment_favourites(world.truth, world)
+    after = moment_favourites(world.truth.after_shift(), world) if shift_round else None
+    rows = []
+    for policy, log in rounds.groupby("policy", sort=False):
+        log = log.reset_index(drop=True)
+        phases = [("from the start", before, 0, shift_round)]
+        if after is not None:
+            phases.append(("after the shift", after, shift_round, None))
+        for phase, favourites, start, end in phases:
+            reached = convergence(log, favourites, start_round=start, end_round=end)
+            rows.extend(
+                {"policy": policy, "phase": phase, "segment": segment, "app_opens": opens}
+                for segment, opens in reached.items()
+            )
+    return pd.DataFrame(rows)

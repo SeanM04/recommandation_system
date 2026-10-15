@@ -7,6 +7,7 @@ Writes to results/:
     comparison_by_seed.csv           one row per policy and seed
     comparison_rounds.parquet        every app open of the first seed (for the dashboard)
     comparison_snapshots.parquet     beliefs over time of the learning policies
+    convergence.csv                  app opens to rank each segment's best offer first
 and docs/data/comparison.json, which the docs and README tables are built from.
 """
 
@@ -19,7 +20,12 @@ import time
 import pandas as pd
 
 from recommender.config import PROJECT_ROOT, load_settings
-from recommender.evaluation.compare import HEADLINE, comparison_table, run_comparison
+from recommender.evaluation.compare import (
+    HEADLINE,
+    comparison_table,
+    convergence_table,
+    run_comparison,
+)
 from recommender.evaluation.metrics import cumulative
 from recommender.simulator.engine import World
 
@@ -51,6 +57,7 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, default=10)
     parser.add_argument("--warm-up", type=int, default=5000, help="static baseline's history")
     parser.add_argument("--no-shift", action="store_true", help="keep behaviour stable")
+    parser.add_argument("--no-docs", action="store_true", help="leave docs/data untouched")
     args = parser.parse_args()
 
     settings = load_settings()
@@ -75,8 +82,14 @@ def main() -> None:
     table.to_csv(out / "comparison.csv")
     comparison.rounds.to_parquet(out / "comparison_rounds.parquet", index=False)
     comparison.snapshots.to_parquet(out / "comparison_snapshots.parquet", index=False)
+    convergence = convergence_table(comparison.rounds, world, shift_round)
+    convergence.to_csv(out / "convergence.csv", index=False)
     markdown = to_markdown(table)
     (out / "comparison.md").write_text(markdown + "\n", encoding="utf-8")
+    print(markdown)
+    if args.no_docs:
+        print("\nSaved results/ (docs/data left untouched)")
+        return
 
     curves = {
         policy: cumulative(log, every=500)[["round", "regret"]].round(2).to_dict("list")
@@ -92,11 +105,10 @@ def main() -> None:
         "table": table.reset_index().round(6).to_dict("records"),
         "by_seed": comparison.summary.round(6).to_dict("records"),  # for paired comparisons
         "regret_curves": curves,
+        "convergence": convergence.to_dict("records"),
     }
     (docs_data / "comparison.json").write_text(json.dumps(payload, indent=1), encoding="utf-8")
-
-    print(markdown)
-    print("\nSaved results/comparison*.* and docs/data/comparison.json")
+    print("\nSaved results/ and docs/data/comparison.json")
 
 
 if __name__ == "__main__":
