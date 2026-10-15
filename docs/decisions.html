@@ -24,6 +24,7 @@
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
 <li><a href="api.html">API</a></li>
+<li><a href="results.html">Results</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html" aria-current=page>Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -33,7 +34,7 @@
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
-<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
 </ul></div>
@@ -316,6 +317,18 @@
 <tr><td>A15</td><td><strong>Docker image</strong>: <code>python:3.12-slim</code>, a non-root user, a <code>/health</code> health check, 4 uvicorn workers by default (<code>WEB_CONCURRENCY</code>). Secrets come from <code>--env-file .env</code> with <code>DB_HOST=host.docker.internal</code>, never baked in. Each server process seeds its own random stream. <code>make docker-build</code>, <code>make docker-api</code>, <code>make benchmark-docker</code>.</td><td>The API can be deployed separately as a container, and several workers never draw identical Thompson samples.</td></tr>
 <tr><td>A16</td><td><strong>Capacity, measured.</strong> Native, one worker, Postgres on the same laptop (<code>make benchmark</code>): p95 11.4 ms at 1 client (113 req/s), 31.6 ms at 4 clients (189 req/s), 120 ms at 8 clients (158 req/s). Server-side timings match the client's, and <code>synchronous_commit=off</code> changed nothing, so one Python process is CPU-bound at about 5 ms of work per request. Docker Desktop with 4 workers was <em>slower</em> on this laptop (p95 55 ms at 1 client, 81 req/s at 8), because every database call crosses from the Linux VM to Postgres on Windows; one run also stalled when Docker Desktop froze for over an hour.</td><td>The 50 ms target holds for up to 4 concurrent clients, which covers the simulator and a local demo. Beyond that the answer is more processes on Linux, with the database on the same network (to measure with docker-compose in Phase 6). Production would add PgBouncer connection pooling and batched event writes.</td></tr>
 <tr><td>A12</td><td>Added <code>GET /customers</code> (a few ids, optionally per segment), which the brief does not list.</td><td>Needed to try the API by hand and for the dashboard's "pick a customer" page.</td></tr>
+</tbody></table></div>
+<h3 id="log-phase-4-simulator-and-comparison">Phase 4: Simulator and comparison</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td><strong>Regret against an oracle, from expected values.</strong> For each app open the oracle ranks eligible offers by true probability, and regret is the oracle's expected take-ups minus the expected take-ups of the list the policy showed, both from the response model. The revenue oracle ranks by probability × margin.</td><td>Expected values measure the policy's choices rather than the luck of one draw, so curves are smooth and seeds agree. Ranking by p × margin is not exactly optimal under the attention model, but it is close and identical for every policy.</td></tr>
+<tr><td>C2</td><td><strong>Common random numbers.</strong> Arrivals (customer, day, time of day) and customer responses use separate random streams, so every policy run with a seed faces the identical sequence of app opens.</td><td>Differences between policies come from their decisions, not from different customers. A test checks the sequences match.</td></tr>
+<tr><td>C3</td><td><strong>A fair batch baseline.</strong> The static policy is fitted on a warm-up month (5,000 app opens served by a random policy, before the shift), then frozen. The learning policies start with no data.</td><td>The static model gets the history a real batch model would have; the bandits still beat it.</td></tr>
+<tr><td>C4</td><td>Every comparison runs <strong>3 seeds</strong>, and the table reports the mean and the spread of regret.</td><td>Shows which differences are real (contextual against global) and which are within noise (the three per-segment Thompson variants).</td></tr>
+<tr><td>C5</td><td><strong>Fast mode is the default</strong> (about 9,000 app opens a second, 50,000 in roughly 5 s). <strong>API mode</strong> (<code>--mode api</code>, default 5,000 app opens) sends real HTTP calls with the simulated day and time as context overrides, so the database fills with live-like traffic. <code>--persist</code> copies a fast-mode model into the database.</td><td>Large comparisons need speed; the API path proves the same loop works end to end, and its events feed the dashboard's live view.</td></tr>
+<tr><td>C6</td><td>Results go to <code>results/</code> (git-ignored: CSV, Markdown, per-app-open Parquet and belief snapshots) and a summary to <code>docs/data/comparison.json</code> (committed). The Results page, its chart and the findings are generated from that file.</td><td>Published numbers always match the last <code>make compare</code>, and the docs check keeps them consistent.</td></tr>
+<tr><td>C7</td><td><strong>Results</strong> (50,000 app opens, shift at 25,000, mean of 3 seeds). <code>thompson_segment_decay</code>: take-up 0.263 per app open, 92.7% of the oracle, regret 1,042 ± 68, which is 85% less than random and 82% less than static. Static: 0.167 and 58.8%. Global Thompson: 66.8%. After the shift, forgetting cut regret from 572 to 458 and halved the spread across seeds.</td><td>The definition of done is met: contextual Thompson sampling clearly beats both baselines and adapts after the shift, while the static model does not.</td></tr>
 </tbody></table></div>
 <h3 id="log-database">Database</h3>
 <div class="table-wrap"><table class="decision-log">

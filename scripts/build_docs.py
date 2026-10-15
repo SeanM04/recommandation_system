@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 import ast
 import inspect
+import json
+import math
 import re
 import sys
 import textwrap
@@ -50,6 +52,7 @@ PAGES = [
     ("simulation.html", "Simulated world"),
     ("algorithms.html", "Policies"),
     ("api.html", "API"),
+    ("results.html", "Results"),
     ("workflows.html", "Workflows"),
     ("decisions.html", "Decisions"),
     ("stack.html", "Tools & quality"),
@@ -80,7 +83,7 @@ PHASES = [
     (
         4,
         "Simulator",
-        "planned",
+        "built",
         "50,000 app opens through the API or in fast mode, with the behaviour shift halfway.",
     ),
     (
@@ -158,6 +161,8 @@ TEST_FILES = {
     "and identical behaviour in memory, SQLite and Postgres",
     "test_policies.py": "Bandit policies: ranking, learning, context keys, forgetting, convergence",
     "test_rewards.py": "Reward functions and the policy factory",
+    "test_simulation.py": "Simulator: oracle and regret, common random numbers, learning, the "
+    "comparison and simulation through the API",
     "test_events.py": "Event log: round trips, simultaneous duplicates, averages and safe "
     "concurrent start-up, on SQLite and Postgres",
 }
@@ -713,6 +718,202 @@ def block_event_schema(src: Sources, page: str) -> str:
     return table(["Table", "Column", "Type", "Key", "Nullable"], rows)
 
 
+# --- results (from docs/data/comparison.json, written by make compare) ----------------
+
+RESULTS_PATH = DOCS / "data" / "comparison.json"
+# The policies drawn in the regret chart, each with its fixed categorical colour slot.
+CHART_SERIES = [
+    ("thompson_segment_decay", 1),
+    ("static", 2),
+    ("random", 3),
+    ("thompson", 4),
+    ("epsilon_greedy_segment", 5),
+]
+NO_RESULTS = '<p class="note">No results yet: run <code>make compare</code>, then <code>make docs</code>.</p>'
+
+
+def _results() -> dict | None:
+    return json.loads(RESULTS_PATH.read_text(encoding="utf-8")) if RESULTS_PATH.exists() else None
+
+
+def block_results_table(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None:
+        return NO_RESULTS
+    best = data["table"][0]["policy"]
+    rows = []
+    for row in data["table"]:
+        cells = [
+            f"<code>{escape(row['policy'])}</code>",
+            f"{row['take_up_rate']:.3f}",
+            f"{row['take_up_before_shift']:.3f}",
+            f"{row['take_up_after_shift']:.3f}",
+            f"R{row['revenue_per_open']:.2f}",
+            f"{row['regret']:,.0f} ± {row['regret_sd']:,.0f}",
+            f"{row['regret_after_shift']:,.0f}",
+            f"{row['share_of_oracle']:.1%}",
+            f"{row['regret_vs_random']:.0%}",
+            f"{row['regret_vs_static']:.0%}",
+        ]
+        css = ' class="best"' if row["policy"] == best else ""
+        rows.append(
+            f"<tr{css}>"
+            + "".join(f"<td{' class=num' if i else ''}>{cell}</td>" for i, cell in enumerate(cells))
+            + "</tr>"
+        )
+    head = "".join(
+        f'<th scope="col"{" class=num" if i else ""}>{h}</th>'
+        for i, h in enumerate(["Policy", "Take-up per open", "Before shift", "After shift",
+                               "Revenue per open", "Regret", "Regret after shift",
+                               "Share of oracle", "Regret cut vs random", "Regret cut vs static"])
+    )  # fmt: skip
+    caption = (
+        f"{data['rounds']:,} app opens per run, behaviour shift at {data['shift_round']:,}, "
+        f"mean of {data['seeds']} seeds; the static baseline was fitted on "
+        f"{data['warm_up_rounds']:,} warm-up app opens."
+    )
+    return (
+        f'<div class="table-wrap"><table class="results-table">\n<thead><tr>{head}</tr></thead>\n'
+        f"<tbody>\n{chr(10).join(rows)}\n</tbody><caption>{caption}</caption></table></div>"
+    )
+
+
+def block_findings(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None:
+        return NO_RESULTS
+    table = {row["policy"]: row for row in data["table"]}
+    best = data["table"][0]
+    items = []
+    static, random_ = table.get("static"), table.get("random")
+    if static and random_:
+        uplift = best["take_up_rate"] / static["take_up_rate"] - 1
+        items.append(
+            f"<strong>{escape(best['policy'])} wins.</strong> It reached "
+            f"{best['share_of_oracle']:.1%} of the oracle, with {uplift:.0%} more take-ups per "
+            f"app open than the static batch model ({best['take_up_rate']:.3f} against "
+            f"{static['take_up_rate']:.3f}), and cut regret by {best['regret_vs_random']:.0%} "
+            f"against random and {best['regret_vs_static']:.0%} against static."
+        )
+        items.append(
+            f"<strong>It adapts when behaviour changes; the batch model does not.</strong> After "
+            f"the shift its take-up rose from {best['take_up_before_shift']:.3f} to "
+            f"{best['take_up_after_shift']:.3f} per app open; the static model went from "
+            f"{static['take_up_before_shift']:.3f} to {static['take_up_after_shift']:.3f}."
+        )
+    personal, global_ = table.get("thompson_segment"), table.get("thompson")
+    if personal and global_:
+        items.append(
+            f"<strong>Personalisation is the biggest single lever.</strong> Thompson sampling "
+            f"with statistics per segment reached {personal['share_of_oracle']:.1%} of the "
+            f"oracle; one global model reached {global_['share_of_oracle']:.1%}."
+        )
+    decay = table.get("thompson_segment_decay")
+    if personal and decay:
+        reduction = 1 - decay["regret_after_shift"] / personal["regret_after_shift"]
+        items.append(
+            f"<strong>Forgetting pays off after the shift.</strong> Regret after the shift fell "
+            f"from {personal['regret_after_shift']:,.0f} to {decay['regret_after_shift']:,.0f} "
+            f"({reduction:.0%} less), and the spread across seeds went from "
+            f"{personal['regret_sd']:,.0f} to {decay['regret_sd']:,.0f}."
+        )
+    greedy = table.get("epsilon_greedy_segment")
+    if personal and greedy:
+        items.append(
+            f"<strong>Thompson sampling explores better than epsilon-greedy.</strong> With the "
+            f"same per-segment statistics, regret was {personal['regret']:,.0f} against "
+            f"{greedy['regret']:,.0f}: epsilon-greedy keeps spending 10% of slots on random "
+            f"offers it already knows are poor."
+        )
+    return '<ol class="findings">\n' + "\n".join(f"<li>{item}</li>" for item in items) + "\n</ol>"
+
+
+def block_regret_chart(src: Sources, page: str) -> str:
+    data = _results()
+    if data is None:
+        return NO_RESULTS
+    curves = data["regret_curves"]
+    series = [(name, slot) for name, slot in CHART_SERIES if name in curves]
+    rounds, shift = data["rounds"], data["shift_round"]
+    x0, x1, y0, y1 = 70, 730, 30, 340
+    peak = max(curves[name]["regret"][-1] for name, _ in series)
+    step = 1000 if peak <= 8000 else 2000
+    top = math.ceil(peak / step) * step
+
+    def sx(r: float) -> float:
+        return x0 + (x1 - x0) * r / rounds
+
+    def sy(v: float) -> float:
+        return y1 - (y1 - y0) * v / top
+
+    parts = []
+    for value in range(0, top + 1, step):
+        parts.append(
+            f'<line class="grid" x1="{x0}" x2="{x1}" y1="{sy(value):.1f}" y2="{sy(value):.1f}"/>'
+        )
+        parts.append(
+            f'<text class="axis-label" x="{x0 - 8}" y="{sy(value) + 4:.1f}" text-anchor="end">'
+            f"{value:,}</text>"
+        )
+    for r in range(0, rounds + 1, rounds // 5):
+        parts.append(
+            f'<text class="axis-label" x="{sx(r):.1f}" y="{y1 + 18}" text-anchor="middle">'
+            f"{r // 1000}k</text>"
+        )
+    parts.append(
+        f'<text class="axis-label" x="{(x0 + x1) / 2:.0f}" y="{y1 + 38}" text-anchor="middle">App opens</text>'
+    )
+    parts.append(
+        f'<text class="axis-label" x="{x0}" y="{y0 - 14}">Take-ups lost to the oracle (cumulative)</text>'
+    )
+    if shift:
+        parts.append(
+            f'<line class="shift" x1="{sx(shift):.1f}" x2="{sx(shift):.1f}" y1="{y0}" y2="{y1}"/>'
+        )
+        parts.append(
+            f'<text class="shift-label" x="{sx(shift) + 6:.1f}" y="{y0 + 12}">behaviour shift</text>'
+        )
+
+    ends = []
+    for name, slot in series:
+        xs, ys = [0, *curves[name]["round"]], [0.0, *curves[name]["regret"]]
+        points = " ".join(f"{sx(r):.1f},{sy(v):.1f}" for r, v in zip(xs, ys, strict=True))
+        colour = f"var(--series-{slot})"
+        parts.append(
+            f'<polyline class="series" points="{points}" style="stroke: {colour}">'
+            f"<title>{name}: {ys[-1]:,.0f} take-ups lost by {rounds:,} app opens</title></polyline>"
+        )
+        parts.append(
+            f'<circle class="end-dot" cx="{sx(xs[-1]):.1f}" cy="{sy(ys[-1]):.1f}" r="4" style="fill: {colour}"/>'
+        )
+        ends.append([sy(ys[-1]), name, ys[-1]])
+    ends.sort()
+    for i in range(1, len(ends)):  # keep end labels at least 16px apart
+        ends[i][0] = max(ends[i][0], ends[i - 1][0] + 16)
+    for label_y, name, value in ends:
+        parts.append(
+            f'<text class="end-label" x="{x1 + 12}" y="{label_y + 4:.1f}">{name} '
+            f'<tspan class="end-value">{value:,.0f}</tspan></text>'
+        )
+
+    legend = "".join(
+        f'<span><i class="swatch-line" style="background: var(--series-{slot})"></i>{name}</span>'
+        for name, slot in series
+    )
+    label = "Cumulative regret per policy over the run; lower is better. " + ", ".join(
+        f"{name} ends at {curves[name]['regret'][-1]:,.0f}" for name, _ in series
+    )
+    return (
+        '<figure class="fig">\n<div class="fig-scroll">\n'
+        f'<svg class="dg chart" viewBox="0 0 980 400" style="min-width: 760px" role="img" '
+        f'aria-label="{escape(label)}">\n' + "\n".join(parts) + "\n</svg>\n</div>\n"
+        f'<figcaption><span class="legend">{legend}</span><span>Expected take-ups lost '
+        "against an oracle that knows the true probabilities, first seed. The other policies "
+        "are in the table: the per-segment Thompson variants overlap the blue line.</span>"
+        "</figcaption>\n</figure>"
+    )
+
+
 BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "sidenav": block_sidenav,
     "phases": block_phases,
@@ -737,6 +938,9 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "code-static": block_code_static,
     "endpoints": block_endpoints,
     "event-schema": block_event_schema,
+    "results-table": block_results_table,
+    "findings": block_findings,
+    "regret-chart": block_regret_chart,
 }
 
 

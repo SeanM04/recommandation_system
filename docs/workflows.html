@@ -24,6 +24,7 @@
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
 <li><a href="api.html">API</a></li>
+<li><a href="results.html">Results</a></li>
 <li><a href="workflows.html" aria-current=page>Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -33,7 +34,7 @@
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
 <li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
-<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
 <li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
 </ul></div>
@@ -75,30 +76,30 @@
         <rect class="box built" x="420" y="40" width="160" height="56" rx="6"/>
         <text class="t mono" x="500" y="64" text-anchor="middle">make truth</text>
         <text class="s" x="500" y="82" text-anchor="middle">hidden take-up report</text>
-        <rect class="box planned" x="620" y="40" width="160" height="56" rx="6"/>
-        <text class="t mono" x="700" y="64" text-anchor="middle">make simulate</text>
-        <text class="s" x="700" y="82" text-anchor="middle">Phase 4</text>
+        <rect class="box built" x="620" y="40" width="160" height="56" rx="6"/>
+        <text class="t mono" x="700" y="64" text-anchor="middle">make compare</text>
+        <text class="s" x="700" y="82" text-anchor="middle">every policy, 3 seeds</text>
         <rect class="box planned" x="820" y="40" width="160" height="56" rx="6"/>
         <text class="t mono" x="900" y="64" text-anchor="middle">make dashboard</text>
         <text class="s" x="900" y="82" text-anchor="middle">Phase 5</text>
 
         <path class="edge strong" d="M180 68H218" marker-end="url(#w1-ah)"/>
         <path class="edge strong" d="M380 68H418" marker-end="url(#w1-ah)"/>
-        <path class="edge planned" d="M580 68H618" marker-end="url(#w1-ahp)"/>
+        <path class="edge strong" d="M580 68H618" marker-end="url(#w1-ah)"/>
         <path class="edge planned" d="M780 68H818" marker-end="url(#w1-ahp)"/>
 
         <rect class="box built store" x="220" y="140" width="160" height="44" rx="6"/>
         <text class="t mono" x="300" y="167" text-anchor="middle">data/customers.csv</text>
         <rect class="box term" x="420" y="140" width="160" height="44" rx="6"/>
         <text class="t" x="500" y="167" text-anchor="middle">terminal report</text>
-        <rect class="box planned store" x="620" y="140" width="160" height="44" rx="6"/>
-        <text class="t mono" x="700" y="167" text-anchor="middle">results/ + .db</text>
+        <rect class="box built store" x="620" y="140" width="160" height="44" rx="6"/>
+        <text class="t mono" x="700" y="167" text-anchor="middle">results/ + docs</text>
 
         <path class="edge strong" d="M300 96V138" marker-end="url(#w1-ah)"/>
         <text class="lbl" x="308" y="122">writes</text>
         <path class="edge strong" d="M500 96V138" marker-end="url(#w1-ah)"/>
         <text class="lbl" x="508" y="122">prints</text>
-        <path class="edge planned" d="M700 96V138" marker-end="url(#w1-ahp)"/>
+        <path class="edge strong" d="M700 96V138" marker-end="url(#w1-ah)"/>
         <text class="lbl" x="708" y="122">writes</text>
         <path class="edge planned" d="M780 162H900V98" marker-end="url(#w1-ahp)"/>
         <text class="lbl" x="840" y="154" text-anchor="middle">reads</text>
@@ -129,8 +130,8 @@
 </section>
 
 <section aria-labelledby="simloop">
-  <div class="section-head"><h2 id="simloop">Simulation loop</h2><span class="chip planned">Phase 4</span></div>
-  <p>Each round is one app open. Rounds are spread evenly over the simulated calendar, so paydays and grant weeks come round at the right rhythm. The steps that touch the hidden truth are shaded amber; everything else is what a real app and recommender would do.</p>
+  <div class="section-head"><h2 id="simloop">Simulation loop</h2><span class="chip built">Built</span></div>
+  <p>Each round is one app open (<code>make simulate</code>; add <code>--mode api</code> to send every round through the running API). Rounds are spread evenly over the simulated calendar, so paydays and grant weeks come round at the right rhythm. The steps that touch the hidden truth are shaded amber; everything else is what a real app and recommender would do.</p>
   <figure class="fig">
     <div class="fig-scroll">
       <svg class="dg" viewBox="0 0 1000 214" style="min-width: 820px" role="img" aria-label="Simulation loop. Step 1 pick the calendar day for this round, step 2 pick a customer and the moment, step 3 ask the recommender for offers, step 4 the customer reacts using the hidden truth, step 5 report outcomes so the policy updates, step 6 score the round against the oracle. Then the next round; at the shift round the truth switches to its shifted version.">
@@ -138,47 +139,47 @@
           <marker id="w2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
         </defs>
         <text class="lbl" x="13" y="30">STEP 1</text>
-        <rect class="box planned" x="13" y="40" width="144" height="60" rx="6"/>
+        <rect class="box built" x="13" y="40" width="144" height="60" rx="6"/>
         <text class="t" x="85" y="65" text-anchor="middle">Pick the day</text>
         <text class="s" x="85" y="84" text-anchor="middle">round → calendar</text>
         <text class="lbl" x="179" y="30">STEP 2</text>
-        <rect class="box planned" x="179" y="40" width="144" height="60" rx="6"/>
+        <rect class="box built" x="179" y="40" width="144" height="60" rx="6"/>
         <text class="t" x="251" y="65" text-anchor="middle">Pick a customer</text>
         <text class="s" x="251" y="84" text-anchor="middle">profile + moment</text>
         <text class="lbl" x="345" y="30">STEP 3</text>
-        <rect class="box planned" x="345" y="40" width="144" height="60" rx="6"/>
+        <rect class="box built" x="345" y="40" width="144" height="60" rx="6"/>
         <text class="t" x="417" y="65" text-anchor="middle">Ask for offers</text>
         <text class="s mono" x="417" y="84" text-anchor="middle">/invocations</text>
         <text class="lbl" x="511" y="30">STEP 4</text>
-        <rect class="box planned secret" x="511" y="40" width="144" height="60" rx="6"/>
+        <rect class="box built secret" x="511" y="40" width="144" height="60" rx="6"/>
         <text class="t" x="583" y="65" text-anchor="middle">Customer reacts</text>
         <text class="s" x="583" y="84" text-anchor="middle">attention × true p</text>
         <text class="lbl" x="677" y="30">STEP 5</text>
-        <rect class="box planned" x="677" y="40" width="144" height="60" rx="6"/>
+        <rect class="box built" x="677" y="40" width="144" height="60" rx="6"/>
         <text class="t" x="749" y="65" text-anchor="middle">Report back</text>
         <text class="s mono" x="749" y="84" text-anchor="middle">/response</text>
         <text class="lbl" x="843" y="30">STEP 6</text>
-        <rect class="box planned secret" x="843" y="40" width="144" height="60" rx="6"/>
+        <rect class="box built secret" x="843" y="40" width="144" height="60" rx="6"/>
         <text class="t" x="915" y="65" text-anchor="middle">Score the round</text>
         <text class="s" x="915" y="84" text-anchor="middle">reward vs oracle</text>
 
-        <path class="edge planned" d="M157 70H177" marker-end="url(#w2-ah)"/>
-        <path class="edge planned" d="M323 70H343" marker-end="url(#w2-ah)"/>
-        <path class="edge planned" d="M489 70H509" marker-end="url(#w2-ah)"/>
-        <path class="edge planned" d="M655 70H675" marker-end="url(#w2-ah)"/>
-        <path class="edge planned" d="M821 70H841" marker-end="url(#w2-ah)"/>
+        <path class="edge strong" d="M157 70H177" marker-end="url(#w2-ah)"/>
+        <path class="edge strong" d="M323 70H343" marker-end="url(#w2-ah)"/>
+        <path class="edge strong" d="M489 70H509" marker-end="url(#w2-ah)"/>
+        <path class="edge strong" d="M655 70H675" marker-end="url(#w2-ah)"/>
+        <path class="edge strong" d="M821 70H841" marker-end="url(#w2-ah)"/>
 
-        <rect class="box planned secret" x="400" y="148" width="200" height="44" rx="6"/>
+        <rect class="box built secret" x="400" y="148" width="200" height="44" rx="6"/>
         <text class="t" x="500" y="167" text-anchor="middle">Shift round reached?</text>
         <text class="s mono" x="500" y="183" text-anchor="middle">truth.after_shift()</text>
-        <path class="edge planned" d="M915 100V170H602"/>
-        <path class="edge planned" d="M400 170H85V102" marker-end="url(#w2-ah)"/>
+        <path class="edge strong" d="M915 100V170H602"/>
+        <path class="edge strong" d="M400 170H85V102" marker-end="url(#w2-ah)"/>
         <text class="lbl" x="760" y="190" text-anchor="middle">next round</text>
         <text class="lbl" x="240" y="190" text-anchor="middle">50,000 rounds by default</text>
       </svg>
     </div>
     <figcaption>
-      <span>A fast mode will call the policy directly instead of over HTTP for large comparison runs; the steps stay the same. The oracle in step 6 ranks offers by their true probabilities and scores that list with the same response model.</span>
+      <span>Fast mode calls the policy directly (about 9,000 app opens a second); API mode sends real HTTP calls. The steps are the same either way. The oracle in step 6 ranks offers by their true probabilities and scores that list with the same response model.</span>
       <span class="legend"><span><i class="dash"></i>planned</span><span><i class="zone"></i>uses the hidden truth</span></span>
     </figcaption>
   </figure>

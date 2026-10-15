@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Results</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="How every policy performed on the same 50,000 simulated app opens, before and after the behaviour shift.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
+<li><a href="api.html">API</a></li>
+<li><a href="results.html" aria-current=page>Results</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Results · Phase 4</p>
+  <h1>What learning in real time is worth</h1>
+  <p class="lede">Every configured policy served the same simulated customers, opening the app at the same moments, and was scored against an oracle that knows the true take-up probabilities. Halfway through, customer behaviour changed.</p>
+  <ul class="toc">
+    <li><a href="#findings">Findings</a></li>
+    <li><a href="#table">Results table</a></li>
+    <li><a href="#regret">Regret over time</a></li>
+    <li><a href="#method">Method</a></li>
+    <li><a href="#reproduce">Reproduce</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="findings">
+  <div class="section-head"><h2 id="findings">Findings</h2><span class="chip built">Measured</span></div>
+<!-- BEGIN generated:findings -->
+<ol class="findings">
+<li><strong>thompson_segment_decay wins.</strong> It reached 92.7% of the oracle, with 58% more take-ups per app open than the static batch model (0.263 against 0.167), and cut regret by 85% against random and 82% against static.</li>
+<li><strong>It adapts when behaviour changes; the batch model does not.</strong> After the shift its take-up rose from 0.230 to 0.297 per app open; the static model went from 0.166 to 0.169.</li>
+<li><strong>Personalisation is the biggest single lever.</strong> Thompson sampling with statistics per segment reached 92.4% of the oracle; one global model reached 66.8%.</li>
+<li><strong>Forgetting pays off after the shift.</strong> Regret after the shift fell from 572 to 458 (20% less), and the spread across seeds went from 131 to 68.</li>
+<li><strong>Thompson sampling explores better than epsilon-greedy.</strong> With the same per-segment statistics, regret was 1,082 against 1,822: epsilon-greedy keeps spending 10% of slots on random offers it already knows are poor.</li>
+</ol>
+<!-- END generated:findings -->
+</section>
+
+<section aria-labelledby="table">
+  <h2 id="table">Results table</h2>
+  <p>Mean over seeds, best first. <strong>Regret</strong> is the number of take-ups lost against the oracle over the whole run, so lower is better; the ± is the spread across seeds. The last two columns are how much of the baseline's regret the policy avoided; a negative value means more regret than the baseline.</p>
+<!-- BEGIN generated:results-table -->
+<div class="table-wrap"><table class="results-table">
+<thead><tr><th scope="col">Policy</th><th scope="col" class=num>Take-up per open</th><th scope="col" class=num>Before shift</th><th scope="col" class=num>After shift</th><th scope="col" class=num>Revenue per open</th><th scope="col" class=num>Regret</th><th scope="col" class=num>Regret after shift</th><th scope="col" class=num>Share of oracle</th><th scope="col" class=num>Regret cut vs random</th><th scope="col" class=num>Regret cut vs static</th></tr></thead>
+<tbody>
+<tr class="best"><td><code>thompson_segment_decay</code></td><td class=num>0.263</td><td class=num>0.230</td><td class=num>0.297</td><td class=num>R9.86</td><td class=num>1,042 ± 68</td><td class=num>458</td><td class=num>92.7%</td><td class=num>85%</td><td class=num>82%</td></tr>
+<tr><td><code>thompson_segment_payday</code></td><td class=num>0.263</td><td class=num>0.231</td><td class=num>0.294</td><td class=num>R10.35</td><td class=num>1,055 ± 66</td><td class=num>491</td><td class=num>92.6%</td><td class=num>84%</td><td class=num>82%</td></tr>
+<tr><td><code>thompson_segment</code></td><td class=num>0.262</td><td class=num>0.232</td><td class=num>0.292</td><td class=num>R10.30</td><td class=num>1,082 ± 131</td><td class=num>572</td><td class=num>92.4%</td><td class=num>84%</td><td class=num>82%</td></tr>
+<tr><td><code>epsilon_greedy_segment</code></td><td class=num>0.248</td><td class=num>0.232</td><td class=num>0.265</td><td class=num>R9.95</td><td class=num>1,822 ± 583</td><td class=num>1,232</td><td class=num>87.2%</td><td class=num>73%</td><td class=num>69%</td></tr>
+<tr><td><code>thompson</code></td><td class=num>0.190</td><td class=num>0.168</td><td class=num>0.211</td><td class=num>R5.03</td><td class=num>4,704 ± 337</td><td class=num>2,574</td><td class=num>66.8%</td><td class=num>30%</td><td class=num>20%</td></tr>
+<tr><td><code>epsilon_greedy</code></td><td class=num>0.189</td><td class=num>0.169</td><td class=num>0.209</td><td class=num>R5.01</td><td class=num>4,733 ± 498</td><td class=num>2,584</td><td class=num>66.6%</td><td class=num>30%</td><td class=num>19%</td></tr>
+<tr><td><code>static</code></td><td class=num>0.167</td><td class=num>0.166</td><td class=num>0.169</td><td class=num>R4.18</td><td class=num>5,848 ± 831</td><td class=num>3,622</td><td class=num>58.8%</td><td class=num>13%</td><td class=num>0%</td></tr>
+<tr><td><code>random</code></td><td class=num>0.151</td><td class=num>0.143</td><td class=num>0.158</td><td class=num>R5.83</td><td class=num>6,726 ± 29</td><td class=num>3,911</td><td class=num>52.6%</td><td class=num>0%</td><td class=num>-15%</td></tr>
+</tbody><caption>50,000 app opens per run, behaviour shift at 25,000, mean of 3 seeds; the static baseline was fitted on 5,000 warm-up app opens.</caption></table></div>
+<!-- END generated:results-table -->
+</section>
+
+<section aria-labelledby="regret">
+  <h2 id="regret">Regret over time</h2>
+  <p>A learning policy's curve bends and flattens as it finds the right offers: each app open adds less regret than the one before. A straight line means the policy keeps making the same mistakes. Watch the slope after the shift.</p>
+<!-- BEGIN generated:regret-chart -->
+<figure class="fig">
+<div class="fig-scroll">
+<svg class="dg chart" viewBox="0 0 980 400" style="min-width: 760px" role="img" aria-label="Cumulative regret per policy over the run; lower is better. thompson_segment_decay ends at 986, static ends at 5,529, random ends at 6,693, thompson ends at 4,494, epsilon_greedy_segment ends at 1,182">
+<line class="grid" x1="70" x2="730" y1="340.0" y2="340.0"/>
+<text class="axis-label" x="62" y="344.0" text-anchor="end">0</text>
+<line class="grid" x1="70" x2="730" y1="295.7" y2="295.7"/>
+<text class="axis-label" x="62" y="299.7" text-anchor="end">1,000</text>
+<line class="grid" x1="70" x2="730" y1="251.4" y2="251.4"/>
+<text class="axis-label" x="62" y="255.4" text-anchor="end">2,000</text>
+<line class="grid" x1="70" x2="730" y1="207.1" y2="207.1"/>
+<text class="axis-label" x="62" y="211.1" text-anchor="end">3,000</text>
+<line class="grid" x1="70" x2="730" y1="162.9" y2="162.9"/>
+<text class="axis-label" x="62" y="166.9" text-anchor="end">4,000</text>
+<line class="grid" x1="70" x2="730" y1="118.6" y2="118.6"/>
+<text class="axis-label" x="62" y="122.6" text-anchor="end">5,000</text>
+<line class="grid" x1="70" x2="730" y1="74.3" y2="74.3"/>
+<text class="axis-label" x="62" y="78.3" text-anchor="end">6,000</text>
+<line class="grid" x1="70" x2="730" y1="30.0" y2="30.0"/>
+<text class="axis-label" x="62" y="34.0" text-anchor="end">7,000</text>
+<text class="axis-label" x="70.0" y="358" text-anchor="middle">0k</text>
+<text class="axis-label" x="202.0" y="358" text-anchor="middle">10k</text>
+<text class="axis-label" x="334.0" y="358" text-anchor="middle">20k</text>
+<text class="axis-label" x="466.0" y="358" text-anchor="middle">30k</text>
+<text class="axis-label" x="598.0" y="358" text-anchor="middle">40k</text>
+<text class="axis-label" x="730.0" y="358" text-anchor="middle">50k</text>
+<text class="axis-label" x="400" y="378" text-anchor="middle">App opens</text>
+<text class="axis-label" x="70" y="16">Take-ups lost to the oracle (cumulative)</text>
+<line class="shift" x1="400.0" x2="400.0" y1="30" y2="340"/>
+<text class="shift-label" x="406.0" y="42">behaviour shift</text>
+<polyline class="series" points="70.0,340.0 76.6,338.1 83.2,336.8 89.8,336.0 96.4,335.3 103.0,334.7 109.6,334.1 116.2,333.5 122.8,332.9 129.4,332.4 136.0,332.0 142.6,331.7 149.2,331.3 155.8,330.9 162.4,330.5 169.0,330.1 175.6,329.7 182.2,329.4 188.8,329.0 195.4,328.6 202.0,328.3 208.6,327.9 215.2,327.6 221.8,327.3 228.4,326.9 235.0,326.6 241.6,326.2 248.2,325.9 254.8,325.5 261.4,325.2 268.0,324.9 274.6,324.6 281.2,324.2 287.8,323.8 294.4,323.5 301.0,323.3 307.6,323.0 314.2,322.7 320.8,322.4 327.4,322.1 334.0,321.8 340.6,321.2 347.2,320.6 353.8,319.8 360.4,319.2 367.0,318.5 373.6,318.0 380.2,317.5 386.8,317.0 393.4,316.5 400.0,316.0 406.6,314.7 413.2,313.6 419.8,312.9 426.4,312.4 433.0,311.9 439.6,311.4 446.2,310.9 452.8,310.5 459.4,310.1 466.0,309.8 472.6,309.4 479.2,309.1 485.8,308.7 492.4,308.4 499.0,308.1 505.6,307.7 512.2,307.4 518.8,307.1 525.4,306.8 532.0,306.5 538.6,306.2 545.2,305.9 551.8,305.7 558.4,305.4 565.0,305.2 571.6,305.0 578.2,304.7 584.8,304.4 591.4,304.1 598.0,303.8 604.6,303.6 611.2,303.3 617.8,303.1 624.4,302.8 631.0,302.6 637.6,302.4 644.2,302.1 650.8,301.8 657.4,301.5 664.0,301.2 670.6,300.6 677.2,300.0 683.8,299.5 690.4,299.0 697.0,298.5 703.6,298.1 710.2,297.7 716.8,297.2 723.4,296.8 730.0,296.3" style="stroke: var(--series-1)"><title>thompson_segment_decay: 986 take-ups lost by 50,000 app opens</title></polyline>
+<circle class="end-dot" cx="730.0" cy="296.3" r="4" style="fill: var(--series-1)"/>
+<polyline class="series" points="70.0,340.0 76.6,338.2 83.2,336.4 89.8,334.6 96.4,332.9 103.0,331.1 109.6,329.4 116.2,327.6 122.8,325.7 129.4,323.8 136.0,321.9 142.6,320.1 149.2,318.4 155.8,316.7 162.4,315.0 169.0,313.3 175.6,311.7 182.2,309.9 188.8,308.3 195.4,306.4 202.0,304.6 208.6,302.8 215.2,300.9 221.8,299.2 228.4,297.5 235.0,295.8 241.6,294.1 248.2,292.4 254.8,290.7 261.4,289.0 268.0,287.4 274.6,285.5 281.2,283.7 287.8,281.8 294.4,280.1 301.0,278.4 307.6,276.6 314.2,274.9 320.8,273.2 327.4,271.5 334.0,269.8 340.6,267.2 347.2,264.5 353.8,261.6 360.4,258.9 367.0,256.2 373.6,253.8 380.2,251.1 386.8,248.7 393.4,246.2 400.0,243.6 406.6,240.9 413.2,238.2 419.8,235.4 426.4,232.6 433.0,229.6 439.6,226.4 446.2,223.3 452.8,220.7 459.4,218.0 466.0,215.3 472.6,212.7 479.2,210.0 485.8,207.3 492.4,204.6 499.0,201.8 505.6,198.7 512.2,195.6 518.8,192.5 525.4,189.8 532.0,187.3 538.6,184.7 545.2,182.1 551.8,179.5 558.4,176.9 565.0,174.2 571.6,171.5 578.2,168.7 584.8,165.9 591.4,162.8 598.0,159.9 604.6,157.2 611.2,154.6 617.8,151.9 624.4,149.5 631.0,146.7 637.6,144.1 644.2,141.5 650.8,138.8 657.4,135.9 664.0,133.0 670.6,128.7 677.2,124.6 683.8,120.8 690.4,116.9 697.0,113.2 703.6,109.7 710.2,106.1 716.8,102.5 723.4,98.8 730.0,95.1" style="stroke: var(--series-2)"><title>static: 5,529 take-ups lost by 50,000 app opens</title></polyline>
+<circle class="end-dot" cx="730.0" cy="95.1" r="4" style="fill: var(--series-2)"/>
+<polyline class="series" points="70.0,340.0 76.6,337.5 83.2,334.9 89.8,332.4 96.4,329.9 103.0,327.4 109.6,325.0 116.2,322.5 122.8,319.8 129.4,317.2 136.0,314.7 142.6,312.2 149.2,309.8 155.8,307.5 162.4,305.2 169.0,302.9 175.6,300.6 182.2,298.2 188.8,295.9 195.4,293.5 202.0,291.1 208.6,288.8 215.2,286.3 221.8,284.0 228.4,281.6 235.0,279.3 241.6,276.9 248.2,274.5 254.8,272.0 261.4,269.6 268.0,267.1 274.6,264.7 281.2,262.2 287.8,259.8 294.4,257.4 301.0,255.1 307.6,252.7 314.2,250.3 320.8,248.0 327.4,245.6 334.0,243.3 340.6,240.6 347.2,237.8 353.8,235.0 360.4,232.2 367.0,229.5 373.6,226.8 380.2,224.1 386.8,221.4 393.4,218.7 400.0,215.9 406.6,212.5 413.2,209.1 419.8,205.7 426.4,202.2 433.0,198.5 439.6,194.9 446.2,191.3 452.8,188.0 459.4,184.7 466.0,181.3 472.6,178.1 479.2,174.9 485.8,171.6 492.4,168.3 499.0,165.1 505.6,161.5 512.2,158.0 518.8,154.5 525.4,151.1 532.0,147.8 538.6,144.6 545.2,141.4 551.8,138.2 558.4,135.0 565.0,131.8 571.6,128.5 578.2,125.2 584.8,121.8 591.4,118.2 598.0,114.8 604.6,111.6 611.2,108.4 617.8,105.1 624.4,101.9 631.0,98.6 637.6,95.2 644.2,92.1 650.8,88.9 657.4,85.5 664.0,82.1 670.6,78.0 677.2,73.9 683.8,70.3 690.4,66.4 697.0,62.6 703.6,58.8 710.2,55.1 716.8,51.3 723.4,47.5 730.0,43.6" style="stroke: var(--series-3)"><title>random: 6,693 take-ups lost by 50,000 app opens</title></polyline>
+<circle class="end-dot" cx="730.0" cy="43.6" r="4" style="fill: var(--series-3)"/>
+<polyline class="series" points="70.0,340.0 76.6,337.7 83.2,335.5 89.8,333.3 96.4,331.2 103.0,329.3 109.6,327.4 116.2,325.4 122.8,323.4 129.4,321.3 136.0,319.3 142.6,317.5 149.2,315.6 155.8,313.8 162.4,311.9 169.0,310.0 175.6,308.1 182.2,306.3 188.8,304.6 195.4,302.8 202.0,301.0 208.6,299.1 215.2,297.3 221.8,295.5 228.4,293.8 235.0,292.3 241.6,290.7 248.2,288.9 254.8,287.3 261.4,285.6 268.0,283.9 274.6,281.9 281.2,280.0 287.8,278.0 294.4,276.2 301.0,274.5 307.6,272.7 314.2,271.0 320.8,269.2 327.4,267.6 334.0,266.0 340.6,263.3 347.2,260.7 353.8,258.1 360.4,255.7 367.0,253.4 373.6,251.3 380.2,249.3 386.8,247.4 393.4,245.4 400.0,243.5 406.6,240.4 413.2,237.5 419.8,234.7 426.4,231.9 433.0,229.0 439.6,226.0 446.2,223.1 452.8,220.6 459.4,218.2 466.0,215.7 472.6,213.6 479.2,211.3 485.8,208.9 492.4,206.6 499.0,204.5 505.6,202.3 512.2,200.6 518.8,198.8 525.4,197.0 532.0,195.2 538.6,193.4 545.2,191.5 551.8,189.7 558.4,188.0 565.0,186.2 571.6,184.5 578.2,182.8 584.8,181.0 591.4,179.2 598.0,177.5 604.6,175.7 611.2,173.9 617.8,172.2 624.4,170.4 631.0,168.5 637.6,166.7 644.2,165.0 650.8,163.3 657.4,161.5 664.0,159.9 670.6,158.0 677.2,156.1 683.8,154.3 690.4,152.3 697.0,150.5 703.6,148.5 710.2,146.7 716.8,144.7 723.4,142.8 730.0,141.0" style="stroke: var(--series-4)"><title>thompson: 4,494 take-ups lost by 50,000 app opens</title></polyline>
+<circle class="end-dot" cx="730.0" cy="141.0" r="4" style="fill: var(--series-4)"/>
+<polyline class="series" points="70.0,340.0 76.6,338.8 83.2,338.0 89.8,337.5 96.4,337.0 103.0,336.6 109.6,336.2 116.2,335.7 122.8,335.2 129.4,334.7 136.0,334.1 142.6,333.7 149.2,333.3 155.8,332.8 162.4,332.4 169.0,332.0 175.6,331.5 182.2,331.1 188.8,330.7 195.4,330.2 202.0,329.6 208.6,329.1 215.2,328.5 221.8,328.2 228.4,327.8 235.0,327.4 241.6,327.0 248.2,326.6 254.8,326.3 261.4,325.9 268.0,325.6 274.6,325.1 281.2,324.6 287.8,324.2 294.4,323.8 301.0,323.5 307.6,323.2 314.2,323.0 320.8,322.7 327.4,322.4 334.0,322.1 340.6,321.5 347.2,320.7 353.8,319.8 360.4,319.0 367.0,318.2 373.6,317.5 380.2,316.9 386.8,316.3 393.4,315.7 400.0,315.1 406.6,314.2 413.2,313.5 419.8,313.0 426.4,312.4 433.0,311.8 439.6,311.3 446.2,310.7 452.8,310.2 459.4,309.8 466.0,309.3 472.6,308.7 479.2,308.2 485.8,307.8 492.4,307.3 499.0,306.9 505.6,306.3 512.2,305.8 518.8,305.3 525.4,304.8 532.0,304.4 538.6,304.0 545.2,303.5 551.8,303.1 558.4,302.7 565.0,302.3 571.6,301.8 578.2,301.3 584.8,300.8 591.4,300.3 598.0,299.8 604.6,299.3 611.2,298.8 617.8,298.4 624.4,298.0 631.0,297.5 637.6,297.1 644.2,296.7 650.8,296.3 657.4,295.7 664.0,295.2 670.6,294.3 677.2,293.4 683.8,292.7 690.4,291.9 697.0,291.2 703.6,290.6 710.2,289.8 716.8,289.0 723.4,288.4 730.0,287.7" style="stroke: var(--series-5)"><title>epsilon_greedy_segment: 1,182 take-ups lost by 50,000 app opens</title></polyline>
+<circle class="end-dot" cx="730.0" cy="287.7" r="4" style="fill: var(--series-5)"/>
+<text class="end-label" x="742" y="47.6">random <tspan class="end-value">6,693</tspan></text>
+<text class="end-label" x="742" y="99.1">static <tspan class="end-value">5,529</tspan></text>
+<text class="end-label" x="742" y="145.0">thompson <tspan class="end-value">4,494</tspan></text>
+<text class="end-label" x="742" y="291.7">epsilon_greedy_segment <tspan class="end-value">1,182</tspan></text>
+<text class="end-label" x="742" y="307.7">thompson_segment_decay <tspan class="end-value">986</tspan></text>
+</svg>
+</div>
+<figcaption><span class="legend"><span><i class="swatch-line" style="background: var(--series-1)"></i>thompson_segment_decay</span><span><i class="swatch-line" style="background: var(--series-2)"></i>static</span><span><i class="swatch-line" style="background: var(--series-3)"></i>random</span><span><i class="swatch-line" style="background: var(--series-4)"></i>thompson</span><span><i class="swatch-line" style="background: var(--series-5)"></i>epsilon_greedy_segment</span></span><span>Expected take-ups lost against an oracle that knows the true probabilities, first seed. The other policies are in the table: the per-segment Thompson variants overlap the blue line.</span></figcaption>
+</figure>
+<!-- END generated:regret-chart -->
+</section>
+
+<section aria-labelledby="method">
+  <h2 id="method">Method</h2>
+  <ul>
+    <li><strong>The same app opens for everyone.</strong> Arrivals (which customer, which day, which time of day) come from their own random stream, so every policy faces the identical sequence. Customer responses use a second stream.</li>
+    <li><strong>An oracle for scoring.</strong> For every app open, the oracle ranks the eligible offers by their true probability. Regret is the oracle's expected take-ups minus the policy's expected take-ups for the list it actually showed, using the response model. Expected values measure the choice, not the luck of one draw.</li>
+    <li><strong>A fair batch baseline.</strong> The static policy is fitted on a warm-up month of 5,000 app opens gathered by a random policy before the experiment, then frozen. The learning policies start with no data at all.</li>
+    <li><strong>The behaviour shift.</strong> Halfway through, streaming becomes the young professionals' favourite and electricity the families'. See the <a href="simulation.html#shift">simulated world</a>.</li>
+    <li><strong>Several seeds.</strong> The whole comparison runs on several seeds; the table reports the mean and spread. The chart shows the first seed.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="reproduce">
+  <h2 id="reproduce">Reproduce</h2>
+<pre><code>make compare     # every policy, 3 seeds, 50,000 app opens each (about 2 minutes)
+make docs        # rebuild this page from docs/data/comparison.json</code></pre>
+  <p>Full outputs land in <code>results/</code>: the headline table as CSV and Markdown, one row per policy and seed, every app open of the first seed as Parquet, and the learning policies' beliefs over time for the dashboard.</p>
+</section>
+
+<p class="foot">Everything on this page is generated from <code>docs/data/comparison.json</code>, written by <code>make compare</code>.</p>
+</main>
+</div>
+</body>
+</html>

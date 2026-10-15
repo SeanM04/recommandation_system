@@ -409,3 +409,22 @@ td.id.list { white-space: normal; }
 /* grid tracks must not grow to fit wide code or tables; those scroll in place */
 main, main > section, section section, .page-head { grid-template-columns: minmax(0, 1fr); }
 .dg .frame { fill: none; stroke: var(--line-strong); stroke-width: 1.25; stroke-dasharray: 2 4; }
+
+/* ---------- results chart (categorical slots 1-5, fixed order) ---------- */
+:root { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100; --series-5: #e87ba4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; } }
+:root[data-theme="dark"] { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis-label { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .series:hover { stroke-width: 3.5; }
+.chart .end-dot { stroke: var(--surface); stroke-width: 2; }
+.chart .end-label { font-size: 12px; font-weight: 600; fill: var(--ink); }
+.chart .end-value { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart .shift { stroke: var(--hidden); stroke-width: 1.25; stroke-dasharray: 4 4; }
+.chart .shift-label { fill: var(--hidden); font-size: 11px; font-weight: 600; }
+.legend .swatch-line { display: inline-block; width: 18px; height: 3px; border-radius: 2px; }
+.findings { display: grid; gap: 10px; padding-left: 1.25em; }
+.results-table tr.best td { background: var(--accent-soft); }
+.results-table th { white-space: normal; vertical-align: bottom; }
+.results-table th, .results-table td { padding: 8px 10px; }
