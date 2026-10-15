@@ -22,6 +22,7 @@
 <li><a href="index.html">Overview</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html" aria-current=page>Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -29,7 +30,7 @@
 <div class="phase-block"><p class="nav-label">Build status</p>
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
-<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
@@ -231,7 +232,7 @@
 <tbody>
 <tr><td>student</td><td><span><code>data_1gb</code></span><br>19.9% <small>×1.75</small></td><td><span class="changed"><code>data_5gb</code></span><br>R7.95 <small>×1.33</small></td><td><span><code>data_1gb</code></span><br>18.9% <small>×1.75</small></td><td><span><code>data_1gb</code></span><br>23.9% <small>×1.74</small></td><td><span><code>data_1gb</code></span><br>19.9% <small>×1.54</small></td></tr>
 <tr><td>young professional</td><td><span><code>data_5gb</code></span><br>12.2% <small>×1.38</small></td><td><span class="changed"><code>data_20gb</code></span><br>R10.93 <small>×1.28</small></td><td><span><code>data_5gb</code></span><br>11.6% <small>×1.41</small></td><td><span><code>data_5gb</code></span><br>14.6% <small>×1.30</small></td><td><span class="changed"><code>streaming_bundle</code></span><br>26.2% <small>×2.96</small></td></tr>
-<tr><td>family</td><td><span><code>funeral_cover</code></span><br>16.6% <small>×1.51</small></td><td><span><code>funeral_cover</code></span><br>R8.31 <small>×1.28</small></td><td><span><code>funeral_cover</code></span><br>15.7% <small>×1.51</small></td><td><span><code>funeral_cover</code></span><br>20.4% <small>×1.52</small></td><td><span><code>funeral_cover</code></span><br>16.6% <small>×1.51</small></td></tr>
+<tr><td>family</td><td><span><code>funeral_cover</code></span><br>16.6% <small>×1.51</small></td><td><span><code>funeral_cover</code></span><br>R8.31 <small>×1.28</small></td><td><span><code>funeral_cover</code></span><br>15.7% <small>×1.51</small></td><td><span><code>funeral_cover</code></span><br>20.4% <small>×1.52</small></td><td><span class="changed"><code>electricity_cashback</code></span><br>22.0% <small>×1.32</small></td></tr>
 <tr><td>small business</td><td><span><code>paylater_voucher</code></span><br>21.9% <small>×1.33</small></td><td><span class="changed"><code>data_20gb</code></span><br>R24.62 <small>×2.50</small></td><td><span><code>paylater_voucher</code></span><br>25.9% <small>×1.65</small></td><td><span class="changed"><code>data_20gb</code></span><br>19.3% <small>×1.52</small></td><td><span><code>paylater_voucher</code></span><br>21.9% <small>×1.33</small></td></tr>
 <tr><td>pensioner</td><td><span><code>airtime_r50_bonus</code></span><br>15.8% <small>×1.36</small></td><td><span class="changed"><code>funeral_cover</code></span><br>R5.43 <small>×3.47</small></td><td><span><code>airtime_r50_bonus</code></span><br>15.3% <small>×1.50</small></td><td><span class="changed"><code>electricity_cashback</code></span><br>22.1% <small>×1.26</small></td><td><span><code>airtime_r50_bonus</code></span><br>15.8% <small>×1.36</small></td></tr>
 </tbody></table></div>
@@ -244,7 +245,7 @@
 
 <section aria-labelledby="shift">
   <div class="section-head"><h2 id="shift">Behaviour shift</h2><span class="chip hidden">Hidden</span></div>
-  <p>Halfway through a simulation the world changes: a streaming bundle goes viral with young professionals and partly cannibalises their 5GB data bundle. Their favourite flips, and the old favourite also gets worse, which punishes a model that never forgets.</p>
+  <p>Halfway through a simulation the world changes in two ways at once. A streaming bundle goes viral with young professionals and partly cannibalises their 5GB data bundle: a <strong>rarely shown offer becomes a hit</strong>. An electricity tariff hike makes the cashback offer families' first choice: a <strong>well-known runner-up overtakes the favourite</strong>. The second kind is the one that needs forgetting, because the model is confident about the old rates (decision P9).</p>
 <!-- BEGIN generated:shift -->
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Segment</th><th scope="col">Offer</th><th scope="col" class=num>Base before</th><th scope="col" class=num>Base after</th><th scope="col" class=num>Segment take-up before</th><th scope="col" class=num>Segment take-up after</th></tr></thead>
@@ -252,6 +253,7 @@
 <tr><td><code>young_professional</code></td><td><code>streaming_bundle</code></td><td class=num>5.0%</td><td class=num>20.0%</td><td class=num>6.6%</td><td class=num>26.2%</td></tr>
 <tr><td><code>young_professional</code></td><td><code>data_5gb</code></td><td class=num>13.0%</td><td class=num>8.0%</td><td class=num>12.2%</td><td class=num>7.5%</td></tr>
 <tr><td><code>student</code></td><td><code>streaming_bundle</code></td><td class=num>8.0%</td><td class=num>12.0%</td><td class=num>8.6%</td><td class=num>12.9%</td></tr>
+<tr><td><code>family</code></td><td><code>electricity_cashback</code></td><td class=num>10.0%</td><td class=num>20.0%</td><td class=num>11.0%</td><td class=num>22.0%</td></tr>
 </tbody></table></div>
 <!-- END generated:shift -->
   <p class="source">From behaviour_shift in config/ground_truth.yaml</p>
@@ -321,7 +323,7 @@
 </tbody></table></div>
 <!-- END generated:attention -->
   <p>Because the model is this simple, the expected reward of any ranked list can be computed exactly: each position adds <em>P(nothing taken above it) × attention × p × value</em>. The regret oracle in Phase 5 uses that formula with the true probabilities.</p>
-  <div class="note"><p><strong>Consequence for learning (Phase 2).</strong> An <code>ignored</code> offer was usually never seen, so it says little about how appealing the offer is. The proposed rule learns from <code>taken_up</code> and <code>viewed</code> and skips <code>ignored</code>; see the <a href="decisions.html#learning">update rule</a>.</p></div>
+  <div class="note"><p><strong>Consequence for learning.</strong> An <code>ignored</code> offer was usually never seen, so it says little about how appealing the offer is. Policies learn from <code>taken_up</code> and <code>viewed</code> and skip <code>ignored</code> unless <code>learn_from_ignored</code> is set; see the <a href="algorithms.html#rewards">reward functions</a>.</p></div>
 </section>
 
 <p class="foot">Tables on this page are rebuilt from the simulator and config by <code>make docs</code>.</p>

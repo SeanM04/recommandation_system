@@ -22,6 +22,7 @@
 <li><a href="index.html">Overview</a></li>
 <li><a href="architecture.html" aria-current=page>Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -29,7 +30,7 @@
 <div class="phase-block"><p class="nav-label">Build status</p>
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
-<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
@@ -93,11 +94,11 @@
         <text class="t" x="404" y="231">Recommender API</text>
         <text class="s" x="404" y="251">FastAPI · Phase 3 · /health is live</text>
 
-        <rect class="box planned" x="388" y="316" width="244" height="60" rx="6"/>
+        <rect class="box built" x="388" y="316" width="244" height="60" rx="6"/>
         <text class="t" x="404" y="341">Bandit policies</text>
         <text class="s" x="404" y="361">random · static · ε-greedy · Thompson</text>
 
-        <rect class="box planned store" x="388" y="426" width="244" height="60" rx="6"/>
+        <rect class="box built store" x="388" y="426" width="244" height="60" rx="6"/>
         <text class="t" x="404" y="451">Options store</text>
         <text class="s" x="404" y="471">α, β, pulls per context key · SQLite</text>
 
@@ -128,7 +129,7 @@
         <text class="lbl" x="518" y="184">profile lookup</text>
         <path class="edge planned" d="M510 266V314" marker-end="url(#a1-ah)"/>
         <text class="lbl" x="518" y="294">rank · update</text>
-        <path class="edge planned" d="M510 378V424" marker-start="url(#a1-ah)" marker-end="url(#a1-ah)"/>
+        <path class="edge strong" d="M510 378V424" marker-start="url(#a1-ahs)" marker-end="url(#a1-ahs)"/>
         <text class="lbl" x="518" y="404">reads · writes</text>
         <path class="edge planned" d="M632 236H738" marker-end="url(#a1-ah)"/>
         <text class="lbl" x="686" y="228" text-anchor="middle">logs every call</text>
@@ -154,8 +155,8 @@
         <tr><td>Configuration</td><td>Loads and validates settings and the offer catalogue</td><td><code>src/recommender/config.py</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>Customer table</td><td>Reads and validates customer profiles</td><td><code>src/recommender/customers.py</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>Simulator</td><td>Synthetic population, hidden ground truth, response model, behaviour shift</td><td><code>src/recommender/simulator/</code></td><td><span class="chip built">Built</span></td></tr>
-        <tr><td>Bandit policies</td><td>Rank offers and learn from rewards; contextual keys; forgetting</td><td><code>src/recommender/algorithms/</code></td><td><span class="chip planned">Phase 2</span></td></tr>
-        <tr><td>Options store</td><td>Persist arm statistics per policy, context key and offer</td><td><code>src/recommender/store/</code></td><td><span class="chip planned">Phase 2</span></td></tr>
+        <tr><td>Bandit policies</td><td>Rank offers and learn from rewards; contextual keys; forgetting; pluggable rewards (<a href="algorithms.html">details</a>)</td><td><code>src/recommender/algorithms/</code></td><td><span class="chip built">Built</span></td></tr>
+        <tr><td>Options store</td><td>Persist arm statistics per policy, context key and offer</td><td><code>src/recommender/store/</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>API and event log</td><td>/invocations, /response, idempotency, logging every event</td><td><code>src/recommender/api/</code>, <code>events/</code></td><td><span class="chip planned">Phase 3</span></td></tr>
         <tr><td>Simulation loop</td><td>Drive 50,000 app opens and apply the behaviour shift</td><td><code>scripts/run_simulation.py</code></td><td><span class="chip planned">Phase 4</span></td></tr>
         <tr><td>Evaluation and dashboard</td><td>Take-up, revenue, regret, convergence; five dashboard pages</td><td><code>evaluation/</code>, <code>dashboard/</code></td><td><span class="chip planned">Phase 5</span></td></tr>
@@ -318,8 +319,8 @@
 │   ├── config.py            loads settings.yaml and offers.yaml
 │   ├── customers.py         reads and validates the customer table
 │   ├── api/main.py          FastAPI app (/health now, full API in Phase 3)
-│   ├── algorithms/          bandit policies                            Phase 2
-│   ├── store/               options store                              Phase 2
+│   ├── algorithms/          random, static, epsilon-greedy, Thompson, rewards
+│   ├── store/               options store: in-memory and SQL
 │   ├── events/              event log                                  Phase 3
 │   ├── simulator/           population, ground truth, settings         hidden
 │   └── evaluation/          metrics and regret                         Phase 5
@@ -348,7 +349,7 @@
 </section>
 
 <section aria-labelledby="storage">
-  <div class="section-head"><h2 id="storage">Storage design</h2><span class="chip planned">Phases 2–3</span></div>
+  <div class="section-head"><h2 id="storage">Storage design</h2><span class="chip built">Options store built</span><span class="chip planned">Event log in Phase 3</span></div>
   <p>SQLite through SQLAlchemy, so the same code runs on Postgres by changing the connection URL. The options store is the model; the event log is the audit trail it can be rebuilt from.</p>
   <div class="grid-2">
     <div class="table-wrap">
@@ -360,8 +361,8 @@
           <tr><td class="id">context_key</td><td>Slice of context, such as <code>family</code> or <code>family|payday</code></td></tr>
           <tr><td class="id">offer_id</td><td>The offer (arm)</td></tr>
           <tr><td class="id">alpha, beta</td><td>Beta belief about the take-up rate</td></tr>
-          <tr><td class="id">pulls</td><td>Times the offer was shown and counted</td></tr>
-          <tr><td class="id">total_reward</td><td>Sum of rewards, for epsilon-greedy means</td></tr>
+          <tr><td class="id">pulls</td><td>Rewards seen; an effective count once forgetting shrinks it</td></tr>
+          <tr><td class="id">total_reward</td><td>Sum of rewards; alpha and beta are derived from these two</td></tr>
           <tr><td class="id">updated_at</td><td>Last update time</td></tr>
         </tbody>
       </table>

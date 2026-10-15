@@ -22,6 +22,7 @@
 <li><a href="index.html">Overview</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html" aria-current=page>Tools &amp; quality</a></li>
@@ -29,7 +30,7 @@
 <div class="phase-block"><p class="nav-label">Build status</p>
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
-<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
@@ -64,15 +65,15 @@
 <tr><td><strong>Uvicorn</strong></td><td>API server</td><td>0.54.0</td><td>The standard ASGI server for FastAPI (<code>make run</code>).</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Pydantic</strong></td><td>Validation</td><td>2.14.1</td><td>Rejects bad config and offers at load; request schemas in Phase 3.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>PyYAML</strong></td><td>Configuration</td><td>6.0.3</td><td>Offers, settings and the hidden truth stay human-readable.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>NumPy</strong></td><td>Random draws, maths</td><td>2.5.4</td><td>One seeded generator makes every run reproducible; Beta sampling in Phase 2.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>NumPy</strong></td><td>Random draws, maths</td><td>2.5.4</td><td>Seeded generators make every run reproducible; Beta draws for Thompson sampling.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>pandas</strong></td><td>Tables</td><td>3.0.6</td><td>Customer table, take-up tables and, later, metrics.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>pytest</strong></td><td>Tests</td><td>9.1.1</td><td>Plain asserts and fixtures; every phase ships with tests.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>HTTPX 2</strong></td><td>Test client</td><td>2.13.1</td><td>Powers FastAPI's TestClient; replaces the deprecated httpx.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Ruff</strong></td><td>Lint and format</td><td>0.17.0</td><td>One fast tool for style, import order and common bugs.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Git</strong></td><td>Version control</td><td>–</td><td>Small, logical commits for each step.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Make</strong></td><td>Task runner</td><td>–</td><td>One entry point for every command; each target is a plain command.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>SQLite locally; Postgres by changing the connection URL.</td><td><span class="chip planned">Planned</span></td></tr>
-<tr><td><strong>SQLite</strong></td><td>Options store, event log</td><td>–</td><td>Zero-setup file database for local runs.</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>Core API only: the options store runs on SQLite locally, Postgres by URL.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>SQLite</strong></td><td>Options store, event log</td><td>–</td><td>Zero-setup file database for local runs; holds the options store today.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The simulator and dashboard call the API the way an app would.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards; quick to build five pages.</td><td><span class="chip planned">Planned</span></td></tr>
 <tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts.</td><td><span class="chip planned">Planned</span></td></tr>
@@ -142,7 +143,7 @@
 <tr><td>Best offer is clearly better than runner up</td><td class="num">1</td></tr>
 <tr><td>Payday changes the favourite for pensioners and small businesses</td><td class="num">1</td></tr>
 <tr><td>Revenue favourites are clear and differ from take up</td><td class="num">1</td></tr>
-<tr><td>Behaviour shift makes streaming the young professional favourite</td><td class="num">1</td></tr>
+<tr><td>Behaviour shift changes two favourites</td><td class="num">1</td></tr>
 <tr><td>Validation rejects ineligible offer</td><td class="num">1</td></tr>
 <tr><td>Validation rejects unknown effect key</td><td class="num">1</td></tr>
 <tr><td>Recommender code never imports the simulator</td><td class="num">1</td></tr>
@@ -156,6 +157,24 @@
 <tr><td>Expected value weights by value and position</td><td class="num">1</td></tr>
 <tr><td>Response model rejects bad input</td><td class="num">1</td></tr>
 <tr><td>Respond maps outcomes to offer ids</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_policies.py</code> · Bandit policies: ranking, learning, context keys, forgetting, convergence</th></tr>
+<tr><td>Context keys</td><td class="num">1</td></tr>
+<tr><td>Random policy returns distinct offers uniformly</td><td class="num">1</td></tr>
+<tr><td>Static policy ranks by frozen popularity</td><td class="num">1</td></tr>
+<tr><td>Static policy without history uses catalogue order</td><td class="num">1</td></tr>
+<tr><td>Epsilon zero is greedy</td><td class="num">1</td></tr>
+<tr><td>Epsilon greedy tries untried offers first</td><td class="num">1</td></tr>
+<tr><td>Epsilon one explores uniformly</td><td class="num">1</td></tr>
+<tr><td>Epsilon decays with evidence down to the floor</td><td class="num">1</td></tr>
+<tr><td>Epsilon greedy learns the best arm</td><td class="num">1</td></tr>
+<tr><td>Thompson converges to the best arm</td><td class="num">1</td></tr>
+<tr><td>Contextual policy learns separately per segment</td><td class="num">1</td></tr>
+<tr><td>Decay shrinks every offer in the context</td><td class="num">1</td></tr>
+<tr><td>Forgetting adapts when the best offer changes</td><td class="num">1</td></tr>
+<tr><td>Invalid arguments are rejected</td><td class="num">1</td></tr>
+<tr><td>Learning survives a restart with the sql store</td><td class="num">1</td></tr>
+<tr><td>Contextual thompson learns each segment favourite in the simulated world</td><td class="num">1</td></tr>
+<tr><td>Every bandit policy shares the update rule</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_population.py</code> · Synthetic population: reproducibility, realism, CSV round trip</th></tr>
 <tr><td>Same seed gives same population</td><td class="num">1</td></tr>
 <tr><td>Population has valid attributes</td><td class="num">1</td></tr>
@@ -164,6 +183,15 @@
 <tr><td>Csv round trip</td><td class="num">1</td></tr>
 <tr><td>Read customers rejects bad values</td><td class="num">1</td></tr>
 <tr><td>Sample context mostly follows habit</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_rewards.py</code> · Reward functions and the policy factory</th></tr>
+<tr><td>Binary reward</td><td class="num">1</td></tr>
+<tr><td>Margin reward scales by the top margin</td><td class="num">1</td></tr>
+<tr><td>Learning from ignored offers is configurable</td><td class="num">1</td></tr>
+<tr><td>Reward rejects unknown names and outcomes</td><td class="num">1</td></tr>
+<tr><td>Every configured policy is built</td><td class="num">1</td></tr>
+<tr><td>Static policy gets its batch trained table</td><td class="num">1</td></tr>
+<tr><td>Each policy has its own reproducible random stream</td><td class="num">1</td></tr>
+<tr><td>Settings reject bad policy config</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_store.py</code> · Options store: arm statistics, and identical in-memory and SQLite behaviour</th></tr>
 <tr><td>New arm is the uniform prior</td><td class="num">1</td></tr>
 <tr><td>Update adds reward to alpha and the rest to beta</td><td class="num">1</td></tr>
@@ -174,7 +202,7 @@
 <tr><td>Rows and reset</td><td class="num">1</td></tr>
 <tr><td>Sqlite store persists across connections</td><td class="num">1</td></tr>
 </tbody>
-<caption>55 test cases in 50 test functions.</caption></table></div>
+<caption>80 test cases in 75 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>

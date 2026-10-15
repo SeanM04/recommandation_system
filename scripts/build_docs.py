@@ -13,19 +13,28 @@ from __future__ import annotations
 
 import argparse
 import ast
+import inspect
 import re
 import sys
+import textwrap
 from collections.abc import Callable
 from functools import cached_property
 from html import escape
+from pathlib import Path
 
 import pandas as pd
 
+from recommender.algorithms.base import BanditPolicy
+from recommender.algorithms.epsilon_greedy import EpsilonGreedyPolicy
+from recommender.algorithms.rewards import make_reward
+from recommender.algorithms.static import StaticPolicy
+from recommender.algorithms.thompson import ThompsonSamplingPolicy
 from recommender.config import PROJECT_ROOT, load_offers, load_settings
-from recommender.domain import SEGMENTS, Context, Customer, Offer
+from recommender.domain import IGNORED, OUTCOMES, SEGMENTS, TAKEN_UP, Context, Customer, Offer
 from recommender.simulator.ground_truth import GroundTruth, take_up_table, winners
 from recommender.simulator.population import SEGMENT_PROFILES, generate_customers
 from recommender.simulator.settings import load_simulation_settings
+from recommender.store.options_store import ArmStats
 
 DOCS = PROJECT_ROOT / "docs"
 BLOCK = re.compile(
@@ -38,6 +47,7 @@ PAGES = [
     ("index.html", "Overview"),
     ("architecture.html", "Architecture"),
     ("simulation.html", "Simulated world"),
+    ("algorithms.html", "Policies"),
     ("workflows.html", "Workflows"),
     ("decisions.html", "Decisions"),
     ("stack.html", "Tools & quality"),
@@ -54,7 +64,7 @@ PHASES = [
     (
         2,
         "Algorithms",
-        "planned",
+        "built",
         "Random, static, epsilon-greedy and Thompson sampling policies, contextual keys, "
         "forgetting, pluggable rewards and the options store.",
     ),
@@ -98,7 +108,7 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
     ("PyYAML", "pyyaml", "Configuration", "built",
      "Offers, settings and the hidden truth stay human-readable."),
     ("NumPy", "numpy", "Random draws, maths", "built",
-     "One seeded generator makes every run reproducible; Beta sampling in Phase 2."),
+     "Seeded generators make every run reproducible; Beta draws for Thompson sampling."),
     ("pandas", "pandas", "Tables", "built",
      "Customer table, take-up tables and, later, metrics."),
     ("pytest", "pytest", "Tests", "built",
@@ -111,10 +121,10 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
      "Small, logical commits for each step."),
     ("Make", None, "Task runner", "built",
      "One entry point for every command; each target is a plain command."),
-    ("SQLAlchemy", "sqlalchemy", "Database access", "planned",
-     "SQLite locally; Postgres by changing the connection URL."),
-    ("SQLite", None, "Options store, event log", "planned",
-     "Zero-setup file database for local runs."),
+    ("SQLAlchemy", "sqlalchemy", "Database access", "built",
+     "Core API only: the options store runs on SQLite locally, Postgres by URL."),
+    ("SQLite", None, "Options store, event log", "built",
+     "Zero-setup file database for local runs; holds the options store today."),
     ("Requests", "requests", "HTTP client", "planned",
      "The simulator and dashboard call the API the way an app would."),
     ("Streamlit", "streamlit", "Dashboard", "planned",
@@ -563,6 +573,93 @@ def block_tests(src: Sources, page: str) -> str:
     )
 
 
+def _code(*objects: object) -> str:
+    """Source of classes or functions, as a code block captioned with the file it is in."""
+    path = Path(inspect.getsourcefile(objects[0])).resolve().relative_to(PROJECT_ROOT)
+    code = "\n\n".join(textwrap.dedent(inspect.getsource(obj)).rstrip() for obj in objects)
+    caption = f'<p class="source">{path.as_posix()}</p>'
+    return f"<pre><code>{escape(code)}</code></pre>\n{caption}"
+
+
+def block_code_armstats(src: Sources, page: str) -> str:
+    return _code(ArmStats)
+
+
+def block_code_thompson(src: Sources, page: str) -> str:
+    return _code(ThompsonSamplingPolicy)
+
+
+def block_code_egreedy(src: Sources, page: str) -> str:
+    return _code(
+        EpsilonGreedyPolicy.current_epsilon,
+        EpsilonGreedyPolicy.estimate,
+        EpsilonGreedyPolicy.rank,
+    )
+
+
+def block_code_update(src: Sources, page: str) -> str:
+    return _code(BanditPolicy.update)
+
+
+def block_code_static(src: Sources, page: str) -> str:
+    return _code(StaticPolicy.fit, StaticPolicy.rank)
+
+
+def block_policies(src: Sources, page: str) -> str:
+    active = src.settings.recommendation.active_policy
+    algorithm = {"random": "Random", "static": "Static (batch)",
+                 "epsilon_greedy": "Epsilon-greedy", "thompson": "Thompson sampling"}  # fmt: skip
+    rows = []
+    for name, spec in src.settings.policies.items():
+        learns = spec.type in ("epsilon_greedy", "thompson")
+        exploration = {
+            "random": "always random",
+            "static": "none",
+            "epsilon_greedy": f"ε = {spec.epsilon:g}",
+            "thompson": "by uncertainty",
+        }[spec.type]
+        label = f"<code>{name}</code>"
+        if name == active:
+            label += ' <span class="chip built">Active</span>'
+        rows.append(
+            [
+                label,
+                algorithm[spec.type],
+                spec.context.replace("_", " × ") if learns else "–",
+                f"γ = {spec.decay:g}" if learns and spec.decay < 1 else ("off" if learns else "–"),
+                exploration,
+            ]
+        )
+    return table(["Policy", "Algorithm", "Context key", "Forgetting", "Exploration"], rows)
+
+
+def block_rewards(src: Sources, page: str) -> str:
+    by_id = {offer.offer_id: offer for offer in src.offers}
+    examples = ["data_20gb", "funeral_cover", "airtime_r50_bonus"]
+    binary = make_reward("binary", src.offers)
+    margin = make_reward("margin", src.offers)
+    lenient = make_reward("binary", src.offers, learn_from_ignored=True)
+
+    def show(value: float | None) -> str:
+        return "no update" if value is None else f"{value:.3g}"
+
+    rows = [
+        [f"<code>{outcome}</code>", show(binary(by_id["data_1gb"], outcome))]
+        + [show(margin(by_id[offer_id], outcome)) for offer_id in examples]
+        + [show(lenient(by_id["data_1gb"], outcome))]
+        for outcome in OUTCOMES
+    ]
+    revenue_headers = [f"Revenue: {o} (R{by_id[o].margin_zar:.0f})" for o in examples]
+    headers = ["Outcome", "Binary", *revenue_headers, "Binary, learning from ignored"]
+    top_margin = max(o.margin_zar for o in src.offers)
+    note = (
+        f'<p class="source">Revenue reward = margin ÷ top margin (R{top_margin:.0f}). '
+        f"<code>{IGNORED}</code> makes no update unless learn_from_ignored is set; "
+        f"<code>{TAKEN_UP}</code> is the only outcome that earns.</p>"
+    )
+    return table(headers, rows, numeric=(1, 2, 3, 4, 5)) + "\n" + note
+
+
 BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "sidenav": block_sidenav,
     "phases": block_phases,
@@ -578,6 +675,13 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "decision-log": block_decision_log,
     "tools": block_tools,
     "tests": block_tests,
+    "policies": block_policies,
+    "rewards": block_rewards,
+    "code-armstats": block_code_armstats,
+    "code-thompson": block_code_thompson,
+    "code-egreedy": block_code_egreedy,
+    "code-update": block_code_update,
+    "code-static": block_code_static,
 }
 
 

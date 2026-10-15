@@ -22,6 +22,7 @@
 <li><a href="index.html">Overview</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html" aria-current=page>Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -29,7 +30,7 @@
 <div class="phase-block"><p class="nav-label">Build status</p>
 <ul class="phases">
 <li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
-<li><span>2 · Algorithms</span><span class="chip planned">Planned</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
 <li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
 <li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
 <li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
@@ -53,8 +54,8 @@
 </header>
 
 <section aria-labelledby="approach">
-  <div class="section-head"><h2 id="approach">Choosing the learning approach</h2><span class="chip planned">Phase 2</span></div>
-  <p>The first two questions explain why a batch-trained model falls short in a telco app. The bottom row explains the variants that Phase 2 builds: each question is answered both ways, and Phase 4 runs every combination on the same seed so the comparison is fair.</p>
+  <div class="section-head"><h2 id="approach">Choosing the learning approach</h2><span class="chip built">Built</span></div>
+  <p>The first two questions explain why a batch-trained model falls short in a telco app. The bottom row explains the variants built in Phase 2: each question is answered both ways in <a href="algorithms.html#configured">the configured policies</a>, and Phase 4 runs them on the same seed so the comparison is fair.</p>
   <figure class="fig">
     <div class="fig-scroll">
       <svg class="dg" viewBox="0 0 1000 510" style="min-width: 820px" role="img" aria-label="Decision tree. If the best offer never changes, a static batch model is enough. If it changes but we cannot learn from each response, we retrain in batches and lag behind. Otherwise use a multi-armed bandit, then decide three things: explore in proportion to uncertainty (Thompson sampling) or at a fixed rate (epsilon-greedy); keep statistics per segment (contextual) or shared; and forget old evidence or keep it all. The highlighted combination is Thompson sampling, contextual, with forgetting.">
@@ -143,7 +144,7 @@
 </section>
 
 <section aria-labelledby="learning">
-  <div class="section-head"><h2 id="learning">The update rule</h2><span class="chip proposed">Proposed for Phase 2</span></div>
+  <div class="section-head"><h2 id="learning">The update rule</h2><span class="chip built">Built</span></div>
   <p>What a policy learns from one response. The <code>ignored</code> branch follows from the response model: an offer nobody noticed carries no evidence about its appeal, so counting it as a failure would wrongly punish offers that were ranked lower.</p>
   <figure class="fig">
     <div class="fig-scroll">
@@ -158,10 +159,10 @@
         <text class="t" x="270" y="154" text-anchor="middle">Outcome?</text>
         <path class="edge strong" d="M176 150H202" marker-end="url(#t2-ah)"/>
 
-        <rect class="box planned" x="380" y="40" width="220" height="52" rx="6"/>
+        <rect class="box built" x="380" y="40" width="220" height="52" rx="6"/>
         <text class="t" x="490" y="62" text-anchor="middle">Reward r = 1</text>
         <text class="s" x="490" y="80" text-anchor="middle">revenue mode: margin ÷ top margin</text>
-        <rect class="box planned" x="380" y="124" width="220" height="52" rx="6"/>
+        <rect class="box built" x="380" y="124" width="220" height="52" rx="6"/>
         <text class="t" x="490" y="146" text-anchor="middle">Reward r = 0</text>
         <text class="s" x="490" y="164" text-anchor="middle">seen and passed over</text>
         <rect class="box term" x="380" y="208" width="220" height="52" rx="6"/>
@@ -175,13 +176,13 @@
         <path class="edge strong" d="M270 196V234H378" marker-end="url(#t2-ah)"/>
         <text class="lbl mono" x="324" y="226" text-anchor="middle">ignored</text>
 
-        <rect class="box planned" x="680" y="40" width="304" height="52" rx="6"/>
+        <rect class="box built" x="680" y="40" width="304" height="52" rx="6"/>
         <text class="t" x="832" y="62" text-anchor="middle">Forget a little (if decay is on)</text>
-        <text class="s" x="832" y="80" text-anchor="middle">older evidence × γ, e.g. γ = 0.999</text>
-        <rect class="box planned" x="680" y="124" width="304" height="52" rx="6"/>
+        <text class="s" x="832" y="80" text-anchor="middle">older evidence × γ, γ = 0.9998 by default</text>
+        <rect class="box built" x="680" y="124" width="304" height="52" rx="6"/>
         <text class="t" x="832" y="146" text-anchor="middle">Add the new evidence</text>
         <text class="s mono" x="832" y="164" text-anchor="middle">α += r · β += 1 − r · pulls += 1</text>
-        <rect class="box planned store" x="680" y="208" width="304" height="52" rx="6"/>
+        <rect class="box built store" x="680" y="208" width="304" height="52" rx="6"/>
         <text class="t" x="832" y="230" text-anchor="middle">Options-store row</text>
         <text class="s mono" x="832" y="248" text-anchor="middle">(policy, context_key, offer_id)</text>
 
@@ -192,12 +193,12 @@
         <path class="edge strong" d="M832 176V206" marker-end="url(#t2-ah)"/>
       </svg>
     </div>
-    <figcaption><span>The revenue-aware reward scales the margin into 0–1 so it still fits a Beta belief. The value of γ and whether decay applies to every offer in the context or only the one updated are Phase 2 decisions.</span></figcaption>
+    <figcaption><span>The revenue-aware reward scales the margin into 0–1 so it still fits a Beta belief. Forgetting shrinks every offer in the context, not just the one updated, so offers that stop being shown also lose stale confidence (decision P4).</span></figcaption>
   </figure>
 </section>
 
 <section aria-labelledby="keys">
-  <div class="section-head"><h2 id="keys">Context keys</h2><span class="chip proposed">Proposed for Phase 2</span></div>
+  <div class="section-head"><h2 id="keys">Context keys</h2><span class="chip built">Built</span></div>
   <p>The context key decides whose experience a policy pools. Finer keys personalise more but split the evidence thinner. Payday splitting only pays off because two segments change favourite in payday week (decision D13).</p>
   <figure class="fig">
     <div class="fig-scroll">
@@ -215,10 +216,10 @@
         <text class="t" x="600" y="64" text-anchor="middle">Split by</text>
         <text class="t" x="600" y="80" text-anchor="middle">payday week?</text>
 
-        <rect class="box planned" x="250" y="140" width="160" height="44" rx="6"/>
+        <rect class="box built" x="250" y="140" width="160" height="44" rx="6"/>
         <text class="t mono" x="330" y="159" text-anchor="middle">all</text>
         <text class="s" x="330" y="175" text-anchor="middle">one key for everyone</text>
-        <rect class="box planned" x="520" y="140" width="160" height="44" rx="6"/>
+        <rect class="box built" x="520" y="140" width="160" height="44" rx="6"/>
         <text class="t mono" x="600" y="159" text-anchor="middle">family</text>
         <text class="s" x="600" y="175" text-anchor="middle">per segment</text>
         <rect class="box pick" x="780" y="40" width="204" height="56" rx="6"/>
@@ -253,6 +254,7 @@
 <tr><td>S3</td><td><code>httpx2</code> instead of <code>httpx</code> for FastAPI's <code>TestClient</code>.</td><td>Starlette deprecates <code>httpx</code> for its test client and emits a warning; <code>httpx2</code> is the recommended replacement.</td></tr>
 <tr><td>S4</td><td>On Windows/OneDrive, create the local virtualenv <strong>outside</strong> OneDrive (for example <code>%USERPROFILE%\.venvs\telco-recommender</code>).</td><td>OneDrive sync locks files inside <code>.venv</code> and <code>pip install</code> fails with <code>WinError 32</code>. This does not affect Docker.</td></tr>
 <tr><td>S5</td><td><code>make</code> is the documented interface; every target is a single plain command, so it can be run by hand where <code>make</code> is not installed (for example Windows without Git-Bash make).</td><td>Keeps one source of truth for commands.</td></tr>
+<tr><td>S6</td><td>On Windows, keep the virtualenv path short (for example <code>C:\Users\&lt;you&gt;\.venvs\telco-recommender</code>).</td><td>Streamlit ships deeply nested files; in a long path they exceed Windows' 260-character limit and <code>pip install</code> fails with <code>WinError 206</code>.</td></tr>
 </tbody></table></div>
 <h3 id="log-phase-1-domain-and-data">Phase 1: Domain and data</h3>
 <div class="table-wrap"><table class="decision-log">
@@ -273,6 +275,21 @@
 <tr><td>D13</td><td>Payday <strong>changes the favourite</strong> in two segments. Pensioners: airtime for the rest of the month, electricity in grant week. Small businesses: pay-later in the mid-month cash squeeze, 20GB data in payday week. Other segments keep one favourite.</td><td>Without this the segment × payday context mode has nothing to learn and would lose to plain per-segment mode, because it splits the data for no benefit.</td></tr>
 <tr><td>D14</td><td>Funeral cover margin raised from R40 to R50. Every favourite, by take-up or by revenue, leads its runner-up by at least ×1.2 (tested).</td><td>Removes the family revenue near-tie (×1.02), which would have stopped any policy from settling. Revenue changes the favourite for students (5GB), young professionals (20GB), small businesses (20GB) and pensioners (funeral cover), which makes the revenue-aware reward worth demonstrating.</td></tr>
 <tr><td>D15</td><td><strong>Response model for a ranked list</strong> (in the ground truth): the customer scans from the top and notices position k with probability <code>attention = [1.0, 0.6, 0.4, 0.25, 0.15]</code>. A noticed offer is taken up with its true probability, and the first take-up ends the visit. Outcomes: noticed and taken = <code>taken_up</code>; noticed, not taken = <code>viewed</code>; not noticed (or below a take-up) = <code>ignored</code>.</td><td>Gives the API's three outcomes a precise meaning and makes position matter, so ranking order affects reward. It is simple enough to compute expected reward exactly, which the regret oracle needs. <em>Implication for Phase 2:</em> <code>ignored</code> says little about whether an offer appeals, so how policies learn from it has to be a deliberate choice.</td></tr>
+</tbody></table></div>
+<h3 id="log-phase-2-algorithms">Phase 2: Algorithms</h3>
+<div class="table-wrap"><table class="decision-log">
+<thead><tr><th scope="col">#</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>P1</td><td>Policies hold no state. The <strong>options store is the model</strong>: one row per (policy, context key, offer). There is one interface with two implementations, in-memory for simulations and SQLAlchemy Core (SQLite now, Postgres by URL) for the API, and both pass the same tests.</td><td>A restart, a second API worker or a dashboard all see the same model. Simulations stay fast because they skip I/O.</td></tr>
+<tr><td>P2</td><td>The store keeps <code>pulls</code> and <code>total_reward</code>. <code>alpha = 1 + total_reward</code> and <code>beta = 1 + pulls - total_reward</code> (a Beta(1, 1) prior) are derived, and are still written to the table for anyone querying it. <code>pulls</code> is a float.</td><td>The Beta belief can never disagree with the counts. With forgetting on, <code>pulls</code> becomes an effective count.</td></tr>
+<tr><td>P3</td><td>Contextual personalisation is a <code>context</code> option on each learning policy (<code>global</code>, <code>segment</code>, <code>segment_payday</code>) rather than a separate class. The option becomes the store's <code>context_key</code>.</td><td>One implementation of each algorithm. Every variant is a line of config, so variants can be compared like for like.</td></tr>
+<tr><td>P4</td><td>Forgetting: before each update, <strong>every</strong> offer's evidence in that context shrinks by γ towards the prior, and then the new reward is added (discounted Thompson sampling). The same rule applies to epsilon-greedy averages.</td><td>Offers that are not being shown must also lose stale confidence, otherwise a once-good offer would keep a high, certain estimate forever.</td></tr>
+<tr><td>P5</td><td>A reward function maps an outcome to a value in [0, 1], or <code>None</code> for no update. <code>taken_up</code> scores 1 (binary) or margin ÷ the catalogue's top margin (revenue-aware); <code>viewed</code> scores 0; <code>ignored</code> makes no update by default (<code>learn_from_ignored</code> turns it into 0).</td><td>Rewards stay on the scale a Beta belief needs. Skipping <code>ignored</code> avoids punishing offers for a low rank (decision D15).</td></tr>
+<tr><td>P6</td><td>Epsilon-greedy fills the slate one slot at a time: each slot explores with probability ε, otherwise takes the best average. Untried offers score 1.0 so each is tried early, ties break randomly, and ε can decay with the evidence in the context (<code>ε × decay^pulls</code>, floored at <code>min_epsilon</code>).</td><td>The textbook algorithm extended to a ranked list, with every behaviour visible in about 20 lines.</td></tr>
+<tr><td>P7</td><td>The static baseline is one global popularity table (average reward per offer), fitted from a historical log by <code>StaticPolicy.fit</code> and then frozen. With no history it uses catalogue order. Phase 4 fits it on a warm-up batch.</td><td>A fair stand-in for a batch-trained model: it learned from real data once, then stopped.</td></tr>
+<tr><td>P8</td><td>Each policy gets its own random stream, seeded from the global seed and a hash of its name.</td><td>Results are reproducible, and adding or removing one policy never changes another's results.</td></tr>
+<tr><td>P9</td><td>A quick experiment (50,000 app opens, 3 offers each, shift at the halfway point) showed that Thompson sampling <strong>without</strong> forgetting adapts to the streaming hit on its own, because the offer was rarely shown and its belief stayed wide. Forgetting at γ = 0.999 only cost take-up. So the shift gained a second event: families' well-known runner-up, electricity cashback, becomes their favourite (base 10% to 20%). With that, no forgetting ranked electricity first in 24% of family app opens after the shift, against 77% at γ = 0.9998. Take-up per app open after the shift rose from 0.278 to 0.299, at a cost of 0.233 to 0.228 before it. The default decay is <strong>0.9998</strong>.</td><td>Forgetting pays off only when the model is <em>confident</em> about something that changes. The shift now tests both kinds of change, and the default rate is the one that won on evidence rather than a guess.</td></tr>
+<tr><td>P10</td><td>Default slate size is 3 offers per app open (<code>number_of_offers</code>).</td><td>Matches a phone screen's offer carousel and the attention model's first three positions.</td></tr>
 </tbody></table></div>
 <h3 id="log-documentation">Documentation</h3>
 <div class="table-wrap"><table class="decision-log">

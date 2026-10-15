@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Policies</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="How each bandit policy ranks offers and learns from responses, with the code itself.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html" aria-current=page>Policies</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip planned">Planned</span></li>
+<li><span>4 · Simulator</span><span class="chip planned">Planned</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip planned">Planned</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip planned">Planned</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Policies · Phase 2</p>
+  <h1>How the policies rank and learn</h1>
+  <p class="lede">Every policy answers two questions: which offers to show for this app open, and what to learn from the response. The code on this page is copied from the source files when the docs are built, so it is always the code that runs.</p>
+  <ul class="toc">
+    <li><a href="#configured">Configured policies</a></li>
+    <li><a href="#interface">The interface</a></li>
+    <li><a href="#state">What a policy knows</a></li>
+    <li><a href="#thompson">Thompson sampling</a></li>
+    <li><a href="#egreedy">Epsilon-greedy</a></li>
+    <li><a href="#learning">Learning and forgetting</a></li>
+    <li><a href="#rewards">Rewards</a></li>
+    <li><a href="#baselines">Baselines</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="configured">
+  <div class="section-head"><h2 id="configured">Configured policies</h2><span class="chip built">Built</span></div>
+  <p>Each line in <code>settings.yaml</code> is a policy the API can serve and the simulator compares. The variants differ only in configuration, so a comparison between them isolates one idea at a time: personalisation, payday context, or forgetting.</p>
+<!-- BEGIN generated:policies -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Policy</th><th scope="col">Algorithm</th><th scope="col">Context key</th><th scope="col">Forgetting</th><th scope="col">Exploration</th></tr></thead>
+<tbody>
+<tr><td><code>random</code></td><td>Random</td><td>–</td><td>–</td><td>always random</td></tr>
+<tr><td><code>static</code></td><td>Static (batch)</td><td>–</td><td>–</td><td>none</td></tr>
+<tr><td><code>epsilon_greedy</code></td><td>Epsilon-greedy</td><td>global</td><td>off</td><td>ε = 0.1</td></tr>
+<tr><td><code>epsilon_greedy_segment</code></td><td>Epsilon-greedy</td><td>segment</td><td>off</td><td>ε = 0.1</td></tr>
+<tr><td><code>thompson</code></td><td>Thompson sampling</td><td>global</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment</code></td><td>Thompson sampling</td><td>segment</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_payday</code></td><td>Thompson sampling</td><td>segment × payday</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_decay</code> <span class="chip built">Active</span></td><td>Thompson sampling</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
+</tbody></table></div>
+<!-- END generated:policies -->
+  <p class="source">From config/settings.yaml · rebuilt by make docs</p>
+</section>
+
+<section aria-labelledby="interface">
+  <h2 id="interface">The interface</h2>
+  <p>Two methods. <code>rank(context, candidates, n)</code> returns up to <code>n</code> of the offers this customer is eligible for, best first, each with the score it was ranked by. <code>update(context, offer_id, reward)</code> takes one reward between 0 and 1. Policies hold no state of their own: what they know lives in the <a href="architecture.html#storage">options store</a>, so a restart or a second API worker sees the same model.</p>
+</section>
+
+<section aria-labelledby="state">
+  <h2 id="state">What a policy knows</h2>
+  <p>One <code>ArmStats</code> per offer and context key: how many rewards it has seen and their sum. The Beta belief that Thompson sampling uses is derived from those two numbers, so they can never disagree.</p>
+<!-- BEGIN generated:code-armstats -->
+<pre><code>@dataclass(frozen=True)
+class ArmStats:
+    &quot;&quot;&quot;What a policy knows about one offer in one context.
+
+    ``pulls`` counts the rewards seen and ``total_reward`` sums them. With forgetting
+    switched on both shrink over time, so ``pulls`` is an *effective* count, not an
+    integer. The Beta belief follows from them, so it can never disagree with them.
+    &quot;&quot;&quot;
+
+    pulls: float = 0.0
+    total_reward: float = 0.0
+
+    @property
+    def alpha(self) -&gt; float:
+        return PRIOR_ALPHA + self.total_reward
+
+    @property
+    def beta(self) -&gt; float:
+        return PRIOR_BETA + self.pulls - self.total_reward
+
+    @property
+    def mean(self) -&gt; float:
+        &quot;&quot;&quot;Posterior mean take-up rate: alpha / (alpha + beta).&quot;&quot;&quot;
+        return self.alpha / (self.alpha + self.beta)
+
+    def updated(self, reward: float) -&gt; ArmStats:
+        &quot;&quot;&quot;Add one reward in [0, 1]: alpha += reward, beta += 1 - reward.&quot;&quot;&quot;
+        return ArmStats(self.pulls + 1, self.total_reward + reward)
+
+    def decayed(self, gamma: float) -&gt; ArmStats:
+        &quot;&quot;&quot;Forget: shrink the evidence by ``gamma`` towards the Beta(1, 1) prior.&quot;&quot;&quot;
+        return ArmStats(self.pulls * gamma, self.total_reward * gamma)</code></pre>
+<p class="source">src/recommender/store/options_store.py</p>
+<!-- END generated:code-armstats -->
+</section>
+
+<section aria-labelledby="thompson">
+  <h2 id="thompson">Thompson sampling</h2>
+  <p>Draw one plausible take-up rate from each offer's belief and rank by the draws. A well-known offer draws close to its true rate every time; an offer with little evidence draws widely, so now and then it wins a slot and gets tested. Exploration is driven by uncertainty, with no rate to tune.</p>
+<!-- BEGIN generated:code-thompson -->
+<pre><code>class ThompsonSamplingPolicy(BanditPolicy):
+    &quot;&quot;&quot;Keep a Beta(alpha, beta) belief about each offer&#x27;s take-up rate, draw one
+    plausible rate from every belief, and rank the offers by their draws.
+
+    An offer we know little about has a wide belief, so it sometimes draws high and
+    gets shown: exploration happens in proportion to uncertainty, with nothing to tune.
+    &quot;&quot;&quot;
+
+    def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+        check_slate_size(n)
+        stats = self.stats(context, candidates)
+        draws = {
+            offer_id: float(self.rng.beta(arm.alpha, arm.beta)) for offer_id, arm in stats.items()
+        }
+        best = sorted(draws, key=draws.get, reverse=True)[:n]
+        return [ScoredOffer(offer_id, draws[offer_id]) for offer_id in best]</code></pre>
+<p class="source">src/recommender/algorithms/thompson.py</p>
+<!-- END generated:code-thompson -->
+</section>
+
+<section aria-labelledby="egreedy">
+  <h2 id="egreedy">Epsilon-greedy</h2>
+  <p>Mostly show the offers with the best average so far; with probability ε a slot goes to a random offer instead. Simple and predictable, but it explores blindly: it spends as much on offers it already knows are poor as on offers it knows nothing about.</p>
+<!-- BEGIN generated:code-egreedy -->
+<pre><code>def current_epsilon(self, stats: dict[str, ArmStats]) -&gt; float:
+    evidence = sum(arm.pulls for arm in stats.values())
+    return max(self.min_epsilon, self.epsilon * self.epsilon_decay**evidence)
+
+@staticmethod
+def estimate(arm: ArmStats) -&gt; float:
+    return arm.total_reward / arm.pulls if arm.pulls &gt; 0 else UNTRIED_SCORE
+
+def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+    check_slate_size(n)
+    stats = self.stats(context, candidates)
+    epsilon = self.current_epsilon(stats)
+    estimates = {offer_id: self.estimate(arm) for offer_id, arm in stats.items()}
+
+    # Shuffle, then sort best first: offers with equal estimates end up in random order.
+    offer_ids = list(estimates)
+    shuffled = [offer_ids[i] for i in self.rng.permutation(len(offer_ids))]
+    remaining = sorted(shuffled, key=estimates.get, reverse=True)
+
+    ranked = []
+    while remaining and len(ranked) &lt; n:
+        if self.rng.random() &lt; epsilon:
+            pick = remaining[self.rng.integers(len(remaining))]  # explore
+        else:
+            pick = remaining[0]  # exploit
+        remaining.remove(pick)
+        ranked.append(ScoredOffer(pick, estimates[pick]))
+    return ranked</code></pre>
+<p class="source">src/recommender/algorithms/epsilon_greedy.py</p>
+<!-- END generated:code-egreedy -->
+</section>
+
+<section aria-labelledby="learning">
+  <div class="section-head"><h2 id="learning">Learning and forgetting</h2><span class="chip built">Built</span></div>
+  <p>Both bandits share one update. With forgetting switched on, every offer in the context first loses a sliver of its evidence, then the new reward is added. Old evidence fades, so a change in behaviour shows through within a few thousand responses instead of being outvoted by months of history. The <a href="decisions.html#learning">update-rule tree</a> shows the same flow as a diagram.</p>
+<!-- BEGIN generated:code-update -->
+<pre><code>def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
+    &quot;&quot;&quot;Forget a little (if decay is on), then add the new evidence.&quot;&quot;&quot;
+    if not 0 &lt;= reward &lt;= 1:
+        raise ValueError(f&quot;reward must be in [0, 1], got {reward}&quot;)
+    key = self.key(context)
+    arms = self.store.get_context(self.name, key)
+    if self.decay &lt; 1:
+        arms = {offer: stats.decayed(self.decay) for offer, stats in arms.items()}
+    arms[offer_id] = arms.get(offer_id, ArmStats()).updated(reward)
+    changed = arms if self.decay &lt; 1 else {offer_id: arms[offer_id]}
+    self.store.put(self.name, key, changed)</code></pre>
+<p class="source">src/recommender/algorithms/base.py</p>
+<!-- END generated:code-update -->
+  <div class="note">
+    <p><strong>Why the default is γ = 0.9998.</strong> In a 50,000-app-open experiment, forgetting made no difference to a new hit offer, because Thompson sampling keeps testing offers it has rarely shown. It made a large difference when an offer the model was confident about changed: after the families' favourite switched, the policy without forgetting still ranked the old one first most of the time. 0.9998 had the best trade-off. Full numbers are in <a href="decisions.html#log-phase-2-algorithms">decision P9</a>.</p>
+  </div>
+</section>
+
+<section aria-labelledby="rewards">
+  <div class="section-head"><h2 id="rewards">Rewards</h2><span class="chip built">Built</span></div>
+  <p>A reward function turns the outcome of one shown offer into the number a policy learns from, or into no update at all. The configured reward is set by <code>recommendation.reward</code> in <code>settings.yaml</code>.</p>
+<!-- BEGIN generated:rewards -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Outcome</th><th scope="col" class=num>Binary</th><th scope="col" class=num>Revenue: data_20gb (R150)</th><th scope="col" class=num>Revenue: funeral_cover (R50)</th><th scope="col" class=num>Revenue: airtime_r50_bonus (R4)</th><th scope="col" class=num>Binary, learning from ignored</th></tr></thead>
+<tbody>
+<tr><td><code>taken_up</code></td><td class=num>1</td><td class=num>1</td><td class=num>0.333</td><td class=num>0.0267</td><td class=num>1</td></tr>
+<tr><td><code>viewed</code></td><td class=num>0</td><td class=num>0</td><td class=num>0</td><td class=num>0</td><td class=num>0</td></tr>
+<tr><td><code>ignored</code></td><td class=num>no update</td><td class=num>no update</td><td class=num>no update</td><td class=num>no update</td><td class=num>0</td></tr>
+</tbody></table></div>
+<p class="source">Revenue reward = margin ÷ top margin (R150). <code>ignored</code> makes no update unless learn_from_ignored is set; <code>taken_up</code> is the only outcome that earns.</p>
+<!-- END generated:rewards -->
+  <p class="source">Computed with the reward functions in src/recommender/algorithms/rewards.py</p>
+</section>
+
+<section aria-labelledby="baselines">
+  <h2 id="baselines">Baselines</h2>
+  <p>Two policies that never learn online set the bar. <strong>Random</strong> shows offers in random order: the floor. <strong>Static</strong> is the batch-trained model a bank or telco often runs today: one popularity table fitted from a historical log, the same for every customer, frozen until the next retrain.</p>
+<!-- BEGIN generated:code-static -->
+<pre><code>@classmethod
+def fit(cls, history: Iterable[tuple[str, float]], name: str = &quot;static&quot;) -&gt; StaticPolicy:
+    &quot;&quot;&quot;The batch training job: average reward per offer over a log of (offer_id, reward).&quot;&quot;&quot;
+    totals: dict[str, float] = defaultdict(float)
+    counts: dict[str, int] = defaultdict(int)
+    for offer_id, reward in history:
+        totals[offer_id] += reward
+        counts[offer_id] += 1
+    return cls({offer_id: totals[offer_id] / counts[offer_id] for offer_id in counts}, name)
+
+def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+    check_slate_size(n)
+    scores = {offer.offer_id: self.popularity.get(offer.offer_id, 0.0) for offer in candidates}
+    best = sorted(scores, key=scores.get, reverse=True)[:n]  # stable: ties keep catalogue order
+    return [ScoredOffer(offer_id, scores[offer_id]) for offer_id in best]</code></pre>
+<p class="source">src/recommender/algorithms/static.py</p>
+<!-- END generated:code-static -->
+</section>
+
+<p class="foot">Code excerpts are taken from <code>src/recommender/</code> by <code>make docs</code>; edit the source, never this page.</p>
+</main>
+</div>
+</body>
+</html>
