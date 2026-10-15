@@ -14,8 +14,8 @@ venv/
 .env
 
 # Generated data, databases and simulation output
-data/
-results/
+/data/
+/results/
 *.db
 
 # Editors / OS
