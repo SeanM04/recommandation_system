@@ -25,6 +25,10 @@ TIMES_OF_DAY = ("morning", "afternoon", "evening", "night")
 DAYS_OF_WEEK = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 CHANNELS = ("app", "ussd", "sms")
 
+# What the app reports back for each offer it showed.
+TAKEN_UP, VIEWED, IGNORED = "taken_up", "viewed", "ignored"
+OUTCOMES = (TAKEN_UP, VIEWED, IGNORED)
+
 SALARY_PAYDAY = 25  # most South African salaries land on the 25th
 GRANT_PAYDAYS = range(1, 8)  # SASSA older-person grants are paid in the first week
 LOW_SPEND_ZAR = 200

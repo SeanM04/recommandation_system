@@ -125,6 +125,16 @@ effects:
     when: {province: [Limpopo, Mpumalanga, North West]}
     multiply: {roaming_pack: 1.5}
 
+# How a customer reacts to the ranked list shown in one app open. They scan from
+# the top and notice the offer at position k with probability attention[k]. A
+# noticed offer is taken up with its true probability, and the first take-up ends
+# the visit (at most one take-up per app open).
+#   noticed and taken    -> taken_up
+#   noticed, not taken   -> viewed
+#   never noticed        -> ignored   (as is everything below a take-up)
+response:
+  attention: [1.0, 0.6, 0.4, 0.25, 0.15]
+
 # Applied mid-simulation (see Phase 4) to test whether a policy can adapt.
 behaviour_shift:
   description: >-

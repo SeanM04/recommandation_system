@@ -5,6 +5,7 @@ never sees these numbers; it has to learn them from customer responses.
 
     p(take-up) = base_take_up[segment][offer] x every matching context effect   (capped)
 
+``ResponseModel`` turns those probabilities into outcomes for a ranked list of offers.
 The numbers live in ``config/ground_truth.yaml``.
 """
 
@@ -20,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from recommender.config import read_yaml
-from recommender.domain import SEGMENTS, Context, Customer, Offer
+from recommender.domain import IGNORED, SEGMENTS, TAKEN_UP, VIEWED, Context, Customer, Offer
 from recommender.simulator.population import sample_context
 
 CONTEXT_ATTRIBUTES = {f.name for f in fields(Context)} | {"is_weekend", "spend_band"}
@@ -47,12 +48,69 @@ class Effect:
 
 
 @dataclass(frozen=True)
+class ResponseModel:
+    """How a customer reacts to the ranked list of offers shown in one app open.
+
+    They scan from the top and notice position k with probability ``attention[k]``. A
+    noticed offer is taken up with its true probability, and the first take-up ends the
+    visit. Noticed but not taken is ``viewed``; never noticed is ``ignored``.
+    """
+
+    attention: tuple[float, ...] = (1.0,)
+
+    def __post_init__(self) -> None:
+        if not self.attention or any(not 0 <= a <= 1 for a in self.attention):
+            raise ValueError("attention must be a non-empty list of values between 0 and 1")
+
+    @property
+    def max_offers(self) -> int:
+        """The longest list the model can respond to."""
+        return len(self.attention)
+
+    def draw(self, probabilities: Sequence[float], rng: np.random.Generator) -> list[str]:
+        """Draw an outcome per shown offer, given true take-up probabilities in rank order."""
+        self._check_length(probabilities)
+        outcomes = []
+        taken = False
+        for attention, p in zip(self.attention, probabilities, strict=False):
+            if taken or rng.random() >= attention:
+                outcomes.append(IGNORED)
+            elif rng.random() < p:
+                outcomes.append(TAKEN_UP)
+                taken = True
+            else:
+                outcomes.append(VIEWED)
+        return outcomes
+
+    def expected_value(
+        self, probabilities: Sequence[float], values: Sequence[float] | None = None
+    ) -> float:
+        """Expected reward of a ranked list (``values`` default to 1, i.e. take-ups).
+
+        Each position adds P(no take-up above it) x attention x p x value.
+        """
+        self._check_length(probabilities)
+        values = [1.0] * len(probabilities) if values is None else values
+        still_browsing, total = 1.0, 0.0
+        for attention, p, value in zip(self.attention, probabilities, values, strict=False):
+            take_up = attention * p
+            total += still_browsing * take_up * value
+            still_browsing *= 1 - take_up
+        return total
+
+    def _check_length(self, probabilities: Sequence[float]) -> None:
+        if len(probabilities) > self.max_offers:
+            raise ValueError(f"at most {self.max_offers} offers can be shown")
+
+
+@dataclass(frozen=True)
 class GroundTruth:
     """True take-up probabilities, before or after the behaviour shift."""
 
     base_take_up: Mapping[str, Mapping[str, float]]
     effects: tuple[Effect, ...]
     max_probability: float
+    response: ResponseModel = field(default_factory=ResponseModel)
     shift_description: str = ""
     shift_base_take_up: Mapping[str, Mapping[str, float]] = field(default_factory=dict)
     is_shifted: bool = False
@@ -66,6 +124,7 @@ class GroundTruth:
             base_take_up=raw["base_take_up"],
             effects=tuple(Effect(**effect) for effect in raw.get("effects", [])),
             max_probability=raw["max_probability"],
+            response=ResponseModel(attention=tuple(raw["response"]["attention"])),
             shift_description=shift.get("description", ""),
             shift_base_take_up=shift.get("base_take_up", {}),
         )
@@ -130,6 +189,14 @@ class GroundTruth:
     def take_up_probability(self, context: Context, offer: Offer) -> float:
         """True probability that this customer, in this moment, takes up ``offer``."""
         return self.probabilities(context, [offer])[offer.offer_id]
+
+    def respond(
+        self, context: Context, shown: Sequence[Offer], rng: np.random.Generator
+    ) -> dict[str, str]:
+        """Simulate the customer's reaction to a ranked list: outcome per offer_id."""
+        probabilities = self.probabilities(context, shown)
+        outcomes = self.response.draw([probabilities[o.offer_id] for o in shown], rng)
+        return {offer.offer_id: outcome for offer, outcome in zip(shown, outcomes, strict=True)}
 
 
 def take_up_table(

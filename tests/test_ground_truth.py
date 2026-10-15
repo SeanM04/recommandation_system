@@ -3,12 +3,19 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from recommender.config import PROJECT_ROOT, load_offers, load_settings
-from recommender.domain import SEGMENTS, Context, Customer
-from recommender.simulator.ground_truth import Effect, GroundTruth, take_up_table, winners
+from recommender.domain import IGNORED, OUTCOMES, SEGMENTS, TAKEN_UP, VIEWED, Context, Customer
+from recommender.simulator.ground_truth import (
+    Effect,
+    GroundTruth,
+    ResponseModel,
+    take_up_table,
+    winners,
+)
 from recommender.simulator.population import generate_customers
 from recommender.simulator.settings import load_simulation_settings
 
@@ -201,3 +208,57 @@ def test_payday_context_flows_from_calendar(truth: GroundTruth, customers) -> No
     normal = Context.build(student, day=date(2026, 9, 10), time_of_day="night")
     data = OFFERS_BY_ID["data_1gb"]
     assert truth.take_up_probability(payday, data) > truth.take_up_probability(normal, data)
+
+
+# --- response model for a ranked list -------------------------------------------------
+
+
+def test_response_model_is_loaded_from_yaml(truth: GroundTruth) -> None:
+    assert truth.response.attention == (1.0, 0.6, 0.4, 0.25, 0.15)
+    assert truth.response.max_offers == 5
+
+
+def test_top_offer_taken_ends_the_visit() -> None:
+    model = ResponseModel(attention=(1.0, 1.0, 1.0))
+    outcomes = model.draw([1.0, 1.0, 1.0], np.random.default_rng(0))
+    assert outcomes == [TAKEN_UP, IGNORED, IGNORED]
+
+
+def test_noticed_but_not_taken_is_viewed_and_unnoticed_is_ignored() -> None:
+    model = ResponseModel(attention=(1.0, 0.0))
+    assert model.draw([0.0, 1.0], np.random.default_rng(0)) == [VIEWED, IGNORED]
+
+
+def test_at_most_one_take_up_per_visit(truth: GroundTruth) -> None:
+    rng = np.random.default_rng(1)
+    for _ in range(500):
+        outcomes = truth.response.draw([0.9, 0.9, 0.9], rng)
+        assert outcomes.count(TAKEN_UP) <= 1
+        assert set(outcomes) <= set(OUTCOMES)
+
+
+def test_simulated_take_ups_match_expected_value(truth: GroundTruth) -> None:
+    probabilities = [0.3, 0.2, 0.1]
+    rng = np.random.default_rng(2)
+    draws = [truth.response.draw(probabilities, rng).count(TAKEN_UP) for _ in range(20_000)]
+    assert np.mean(draws) == pytest.approx(truth.response.expected_value(probabilities), abs=0.01)
+
+
+def test_expected_value_weights_by_value_and_position() -> None:
+    model = ResponseModel(attention=(1.0, 0.5))
+    assert model.expected_value([0.5], values=[10.0]) == pytest.approx(5.0)
+    # second slot: reached with prob 0.5 (no take-up above), noticed with prob 0.5
+    assert model.expected_value([0.5, 0.4]) == pytest.approx(0.5 + 0.5 * 0.5 * 0.4)
+
+
+def test_response_model_rejects_bad_input() -> None:
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        ResponseModel(attention=(1.0, 1.5))
+    with pytest.raises(ValueError, match="at most 1 offers"):
+        ResponseModel(attention=(1.0,)).draw([0.1, 0.2], np.random.default_rng(0))
+
+
+def test_respond_maps_outcomes_to_offer_ids(truth: GroundTruth) -> None:
+    shown = [OFFERS_BY_ID["funeral_cover"], OFFERS_BY_ID["electricity_cashback"]]
+    outcomes = truth.respond(make_context("family"), shown, np.random.default_rng(3))
+    assert list(outcomes) == ["funeral_cover", "electricity_cashback"]

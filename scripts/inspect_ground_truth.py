@@ -66,6 +66,11 @@ def main() -> None:
     print(_favourites(table(truth.after_shift()), ".1%"))
     print(f"\n  Shift: {truth.shift_description}")
 
+    _heading("Response model")
+    attention = ", ".join(f"#{k} {a:.0%}" for k, a in enumerate(truth.response.attention, 1))
+    print(f"  Chance of noticing each position: {attention}")
+    print("  At most one take-up per app open; noticed but not taken = viewed.")
+
 
 if __name__ == "__main__":
     main()
