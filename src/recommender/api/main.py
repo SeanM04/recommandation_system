@@ -172,7 +172,11 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
                 f"{body.invocation_id!r}; shown: {list(invocation.shown)}",
             )
 
-        reward = services.reward(offer, body.outcome)
+        reward_fn = (
+            services.rewards.get(invocation.policy)
+            or services.rewards[services.settings.recommendation.active_policy]
+        )  # a policy since removed from the config still gets its response logged
+        reward = reward_fn(offer, body.outcome)
         try:  # log first: the event log is the record the model can be rebuilt from
             services.events.record_response(
                 invocation_id=body.invocation_id,
@@ -207,6 +211,7 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
                 type=spec.type,
                 context=spec.context,
                 decay=spec.decay,
+                reward=services.settings.reward_for(name),
                 learns=services.policies[name].learns,
                 active=name == active,
             )

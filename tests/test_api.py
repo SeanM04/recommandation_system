@@ -221,3 +221,13 @@ def test_metrics_count_events_and_report_latency(client: TestClient) -> None:
     latency = metrics["latency"]["POST /invocations"]
     assert latency["count"] >= 1
     assert latency["p50_ms"] <= latency["p95_ms"] <= latency["max_ms"]
+
+
+def test_revenue_policy_learns_from_margin(client: TestClient) -> None:
+    body = invoke(client, "C00003", policy="thompson_segment_revenue")
+    offer_id = body["offers"][0]["offer_id"]
+    result = respond(client, body["invocation_id"], offer_id, "taken_up").json()
+    top = max(offer.margin_zar for offer in OFFERS.values())
+    assert result["reward"] == pytest.approx(OFFERS[offer_id].margin_zar / top)
+    policies = {p["name"]: p for p in client.get("/policies").json()}
+    assert policies["thompson_segment_revenue"]["reward"] == "margin"

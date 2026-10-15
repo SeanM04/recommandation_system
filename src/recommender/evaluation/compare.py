@@ -16,7 +16,7 @@ import pandas as pd
 
 from recommender.algorithms.factory import build_policy
 from recommender.algorithms.random_policy import RandomPolicy
-from recommender.algorithms.rewards import binary_reward, make_reward
+from recommender.algorithms.rewards import binary_reward
 from recommender.algorithms.static import StaticPolicy
 from recommender.config import Settings
 from recommender.evaluation.metrics import summarize
@@ -64,11 +64,6 @@ def run_comparison(
     progress=print,
 ) -> Comparison:
     """Every policy in ``settings.policies``, on every seed, through the same world."""
-    reward = make_reward(
-        settings.recommendation.reward,
-        world.offers,
-        learn_from_ignored=settings.recommendation.learn_from_ignored,
-    )
     n_offers = settings.recommendation.number_of_offers
     summaries, round_logs, snapshots = [], [], []
     for seed in seeds:
@@ -97,7 +92,7 @@ def run_comparison(
                 rounds=rounds,
                 shift_round=shift_round,
                 n_offers=n_offers,
-                reward=reward,
+                reward=settings.reward_function(name, world.offers),
                 seed=seed,
                 snapshot=snapshot if record_beliefs else None,
                 snapshot_every=snapshot_every,

@@ -13,7 +13,7 @@ from sqlalchemy import Engine, text
 
 from recommender.algorithms.base import Policy
 from recommender.algorithms.factory import build_policies
-from recommender.algorithms.rewards import RewardFn, make_reward
+from recommender.algorithms.rewards import RewardFn
 from recommender.api.schemas import ContextOverrides
 from recommender.config import Settings, load_offers
 from recommender.customers import CustomerRepository, read_customers
@@ -34,7 +34,7 @@ class Services:
     events: EventLog
     store: SqlOptionsStore
     policies: dict[str, Policy]
-    reward: RewardFn
+    rewards: dict[str, RewardFn]  # per policy: what it learns from
     timezone: ZoneInfo
     rank_locks: dict[str, threading.Lock]  # numpy generators are not thread-safe
 
@@ -60,11 +60,7 @@ class Services:
             popularity=events.average_rewards(),
             seed=settings.seed + os.getpid(),
         )
-        reward = make_reward(
-            settings.recommendation.reward,
-            list(offers.values()),
-            learn_from_ignored=settings.recommendation.learn_from_ignored,
-        )
+        rewards = {name: settings.reward_function(name, list(offers.values())) for name in policies}
         logger.info(
             "api ready",
             extra={
@@ -82,7 +78,7 @@ class Services:
             events=events,
             store=store,
             policies=policies,
-            reward=reward,
+            rewards=rewards,
             timezone=ZoneInfo(settings.timezone),
             rank_locks={name: threading.Lock() for name in policies},
         )

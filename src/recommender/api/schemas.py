@@ -103,6 +103,7 @@ class PolicyInfo(BaseModel):
     type: str
     context: str
     decay: float
+    reward: str
     learns: bool
     active: bool
 

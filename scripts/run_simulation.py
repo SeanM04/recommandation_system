@@ -20,7 +20,6 @@ import time
 import requests
 
 from recommender.algorithms.factory import build_policy
-from recommender.algorithms.rewards import make_reward
 from recommender.algorithms.static import StaticPolicy
 from recommender.config import PROJECT_ROOT, load_settings
 from recommender.db import make_engine
@@ -61,11 +60,7 @@ def main() -> None:
         policy = build_policy(
             name, settings.policies[name], store, seed=args.seed, popularity=popularity
         )
-        reward = make_reward(
-            settings.recommendation.reward,
-            world.offers,
-            learn_from_ignored=settings.recommendation.learn_from_ignored,
-        )
+        reward = settings.reward_function(name, world.offers)
         log = simulate(
             policy,
             world,

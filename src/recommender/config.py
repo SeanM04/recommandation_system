@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.engine import URL
 
+from recommender.algorithms.rewards import RewardFn, make_reward
 from recommender.domain import CONTEXT_MODES, Offer
 
 PROJECT_ROOT = Path(os.environ.get("RECOMMENDER_HOME", Path(__file__).resolve().parents[2]))
@@ -47,6 +49,7 @@ class PolicySpec(BaseModel):
     epsilon: float = Field(0.1, ge=0, le=1)
     epsilon_decay: float = Field(1.0, gt=0, le=1)
     min_epsilon: float = Field(0.0, ge=0, le=1)
+    reward: Literal["binary", "margin"] | None = None  # None: recommendation.reward
 
     @field_validator("context")
     @classmethod
@@ -84,6 +87,18 @@ class Settings(BaseModel):
                 f"active_policy {self.recommendation.active_policy!r} is not in policies"
             )
         return self
+
+    def reward_for(self, policy: str) -> str:
+        """The reward a policy learns from: its own, or the global default."""
+        return self.policies[policy].reward or self.recommendation.reward
+
+    def reward_function(self, policy: str, offers: Sequence[Offer]) -> RewardFn:
+        """The configured reward function for ``policy``."""
+        return make_reward(
+            self.reward_for(policy),
+            offers,
+            learn_from_ignored=self.recommendation.learn_from_ignored,
+        )
 
     @property
     def database_url(self) -> str:

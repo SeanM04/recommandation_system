@@ -82,3 +82,12 @@ def test_settings_reject_bad_policy_config() -> None:
     raw["policies"]["bad"] = {"type": "thompson", "context": "province"}
     with pytest.raises(ValidationError):
         Settings.model_validate(raw)
+
+
+def test_a_policy_can_learn_from_its_own_reward() -> None:
+    settings = load_settings()
+    assert settings.reward_for("thompson_segment_revenue") == "margin"
+    assert settings.reward_for("thompson_segment") == settings.recommendation.reward
+    revenue = settings.reward_function("thompson_segment_revenue", list(OFFERS.values()))
+    top = max(offer.margin_zar for offer in OFFERS.values())
+    assert revenue(OFFERS["funeral_cover"], TAKEN_UP) == pytest.approx(50 / top)
