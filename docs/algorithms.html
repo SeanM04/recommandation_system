@@ -64,17 +64,17 @@
   <p>Each line in <code>settings.yaml</code> is a policy the API can serve and the simulator compares. The variants differ only in configuration, so a comparison between them isolates one idea at a time: personalisation, payday context, or forgetting.</p>
 <!-- BEGIN generated:policies -->
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Policy</th><th scope="col">Algorithm</th><th scope="col">Context key</th><th scope="col">Forgetting</th><th scope="col">Exploration</th></tr></thead>
+<thead><tr><th scope="col">Policy</th><th scope="col">Algorithm</th><th scope="col">Reward</th><th scope="col">Context key</th><th scope="col">Forgetting</th><th scope="col">Exploration</th></tr></thead>
 <tbody>
-<tr><td><code>random</code></td><td>Random</td><td>–</td><td>–</td><td>always random</td></tr>
-<tr><td><code>static</code></td><td>Static (batch)</td><td>–</td><td>–</td><td>none</td></tr>
-<tr><td><code>epsilon_greedy</code></td><td>Epsilon-greedy</td><td>global</td><td>off</td><td>ε = 0.1</td></tr>
-<tr><td><code>epsilon_greedy_segment</code></td><td>Epsilon-greedy</td><td>segment</td><td>off</td><td>ε = 0.1</td></tr>
-<tr><td><code>thompson</code></td><td>Thompson sampling</td><td>global</td><td>off</td><td>by uncertainty</td></tr>
-<tr><td><code>thompson_segment</code></td><td>Thompson sampling</td><td>segment</td><td>off</td><td>by uncertainty</td></tr>
-<tr><td><code>thompson_segment_payday</code></td><td>Thompson sampling</td><td>segment × payday</td><td>off</td><td>by uncertainty</td></tr>
-<tr><td><code>thompson_segment_decay</code> <span class="chip built">Active</span></td><td>Thompson sampling</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
-<tr><td><code>thompson_segment_revenue</code></td><td>Thompson sampling</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
+<tr><td><code>random</code></td><td>Random</td><td>–</td><td>–</td><td>–</td><td>always random</td></tr>
+<tr><td><code>static</code></td><td>Static (batch)</td><td>–</td><td>–</td><td>–</td><td>none</td></tr>
+<tr><td><code>epsilon_greedy</code></td><td>Epsilon-greedy</td><td>binary</td><td>global</td><td>off</td><td>ε = 0.1</td></tr>
+<tr><td><code>epsilon_greedy_segment</code></td><td>Epsilon-greedy</td><td>binary</td><td>segment</td><td>off</td><td>ε = 0.1</td></tr>
+<tr><td><code>thompson</code></td><td>Thompson sampling</td><td>binary</td><td>global</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment</code></td><td>Thompson sampling</td><td>binary</td><td>segment</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_payday</code></td><td>Thompson sampling</td><td>binary</td><td>segment × payday</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_decay</code> <span class="chip built">Active</span></td><td>Thompson sampling</td><td>binary</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_revenue</code></td><td>Thompson sampling</td><td>margin</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
 </tbody></table></div>
 <!-- END generated:policies -->
   <p class="source">From config/settings.yaml · rebuilt by make docs</p>

@@ -148,6 +148,58 @@
 
 <section aria-labelledby="method">
   <h2 id="method">Method</h2>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 840 290" style="min-width: 720px" role="img" aria-label="How one app open is scored. The policy ranks offers from the context alone. The true probabilities, hidden from the policy, give the expected take-ups of the policy's list and of the oracle's list, which ranks by the true probabilities. Regret is the oracle's expected take-ups minus the policy's. Separately, one random draw of the customer's response gives the reward the policy learns from.">
+        <defs>
+          <marker id="r1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+        <rect class="box built" x="16" y="120" width="150" height="56" rx="6"/>
+        <text class="t" x="91" y="144" text-anchor="middle">App open</text>
+        <text class="s" x="91" y="162" text-anchor="middle">customer, day, time</text>
+
+        <rect class="box built" x="200" y="30" width="170" height="56" rx="6"/>
+        <text class="t" x="285" y="54" text-anchor="middle">Policy ranks</text>
+        <text class="s" x="285" y="72" text-anchor="middle">sees the context only</text>
+        <rect class="box built secret" x="200" y="120" width="170" height="56" rx="6"/>
+        <text class="t" x="285" y="144" text-anchor="middle">True take-up p</text>
+        <text class="s" x="285" y="162" text-anchor="middle">per eligible offer</text>
+
+        <rect class="box built" x="420" y="30" width="180" height="56" rx="6"/>
+        <text class="t" x="510" y="54" text-anchor="middle">Expected take-ups</text>
+        <text class="s" x="510" y="72" text-anchor="middle">of the policy's list</text>
+        <rect class="box built secret" x="420" y="120" width="180" height="56" rx="6"/>
+        <text class="t" x="510" y="144" text-anchor="middle">Oracle's expected</text>
+        <text class="s" x="510" y="162" text-anchor="middle">best p first, same model</text>
+        <rect class="box built" x="420" y="210" width="180" height="56" rx="6"/>
+        <text class="t" x="510" y="234" text-anchor="middle">Simulated response</text>
+        <text class="s" x="510" y="252" text-anchor="middle">one random draw</text>
+
+        <rect class="box pick" x="640" y="75" width="184" height="56" rx="6"/>
+        <text class="t" x="732" y="99" text-anchor="middle">Regret</text>
+        <text class="s" x="732" y="117" text-anchor="middle">oracle − policy, never &lt; 0</text>
+        <rect class="box built" x="640" y="210" width="184" height="56" rx="6"/>
+        <text class="t" x="732" y="234" text-anchor="middle">Reward → update</text>
+        <text class="s" x="732" y="252" text-anchor="middle">what the policy learns</text>
+
+        <path class="edge strong" d="M166 148H183V58H198" marker-end="url(#r1-ah)"/>
+        <path class="edge strong" d="M166 148H198" marker-end="url(#r1-ah)"/>
+        <path class="edge strong" d="M370 58H418" marker-end="url(#r1-ah)"/>
+        <text class="lbl" x="394" y="50" text-anchor="middle">its list</text>
+        <path class="edge strong" d="M370 148H395V80H418" marker-end="url(#r1-ah)"/>
+        <path class="edge strong" d="M395 148H418" marker-end="url(#r1-ah)"/>
+        <path class="edge strong" d="M395 148V238H418" marker-end="url(#r1-ah)"/>
+        <text class="lbl hidden-text" x="401" y="196">p</text>
+        <path class="edge strong" d="M600 58H620V95H638" marker-end="url(#r1-ah)"/>
+        <path class="edge strong" d="M600 148H620V115H638" marker-end="url(#r1-ah)"/>
+        <path class="edge strong" d="M600 238H638" marker-end="url(#r1-ah)"/>
+      </svg>
+    </div>
+    <figcaption>
+      <span>Scoring uses expected values from the response model, so regret reflects the choice and not the luck of one draw. Learning uses the single random draw, exactly as a live system would. Amber boxes use the hidden truth; the policy never sees them.</span>
+      <span class="legend"><span><i class="zone"></i>uses the hidden truth</span></span>
+    </figcaption>
+  </figure>
   <ul>
     <li><strong>The same app opens for everyone.</strong> Arrivals (which customer, which day, which time of day) come from their own random stream, so every policy faces the identical sequence. Customer responses use a second stream.</li>
     <li><strong>An oracle for scoring.</strong> For every app open, the oracle ranks the eligible offers by their true probability. Regret is the oracle's expected take-ups minus the policy's expected take-ups for the list it actually showed, using the response model. Expected values measure the choice, not the luck of one draw.</li>
@@ -160,8 +212,12 @@
 
 <section aria-labelledby="reproduce">
   <h2 id="reproduce">Reproduce</h2>
-<pre><code>make compare     # every policy, 10 seeds, 50,000 app opens each (about 7 minutes)
-make docs        # rebuild this page from docs/data/comparison.json</code></pre>
+<pre><code>make compare      # every policy, 10 seeds, 50,000 app opens each (about 7 minutes)
+make docs         # rebuild this page from docs/data/comparison.json
+make simulate     # one policy, fast mode: 50,000 app opens in about 5 seconds
+python scripts/run_simulation.py --mode api      # the same loop through the running API
+python scripts/run_simulation.py --persist       # save the learned model to the database
+make experiment   # the focused forgetting experiment behind decision P9</code></pre>
   <p>Full outputs land in <code>results/</code>: the headline table as CSV and Markdown, one row per policy and seed, every app open of the first seed as Parquet, and the learning policies' beliefs over time for the dashboard.</p>
 </section>
 

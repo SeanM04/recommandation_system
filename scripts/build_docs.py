@@ -647,12 +647,15 @@ def block_policies(src: Sources, page: str) -> str:
             [
                 label,
                 algorithm[spec.type],
+                src.settings.reward_for(name) if learns else "–",
                 spec.context.replace("_", " × ") if learns else "–",
                 f"γ = {spec.decay:g}" if learns and spec.decay < 1 else ("off" if learns else "–"),
                 exploration,
             ]
         )
-    return table(["Policy", "Algorithm", "Context key", "Forgetting", "Exploration"], rows)
+    return table(
+        ["Policy", "Algorithm", "Reward", "Context key", "Forgetting", "Exploration"], rows
+    )
 
 
 def block_rewards(src: Sources, page: str) -> str:
