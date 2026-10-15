@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     Table,
     delete,
+    func,
     select,
     update,
 )
@@ -105,6 +106,17 @@ class SqlOptionsStore(OptionsStore):
         # the database, so two requests running at once cannot overwrite each other.
         with self.engine.begin() as connection:
             if decay < 1:
+                if connection.dialect.name == "postgresql":
+                    # Forgetting locks every row in the context. Two requests locking them in
+                    # different orders deadlock (seen with 4 workers), so updates to one
+                    # context queue on a lock of their own first. SQLite locks the whole file.
+                    connection.execute(
+                        select(
+                            func.pg_advisory_xact_lock(
+                                func.hashtext(policy), func.hashtext(context_key)
+                            )
+                        )
+                    )
                 connection.execute(forget)
             connection.execute(add)
 

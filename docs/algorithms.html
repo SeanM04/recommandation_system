@@ -248,6 +248,17 @@ def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list
     # the database, so two requests running at once cannot overwrite each other.
     with self.engine.begin() as connection:
         if decay &lt; 1:
+            if connection.dialect.name == &quot;postgresql&quot;:
+                # Forgetting locks every row in the context. Two requests locking them in
+                # different orders deadlock (seen with 4 workers), so updates to one
+                # context queue on a lock of their own first. SQLite locks the whole file.
+                connection.execute(
+                    select(
+                        func.pg_advisory_xact_lock(
+                            func.hashtext(policy), func.hashtext(context_key)
+                        )
+                    )
+                )
             connection.execute(forget)
         connection.execute(add)</code></pre>
 <p class="source">src/recommender/store/sql.py</p>

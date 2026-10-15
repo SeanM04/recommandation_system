@@ -118,6 +118,33 @@ def test_concurrent_learning_with_decay_matches_the_sequential_result(store: Opt
     assert store.get_context("thompson", "family")["a"].pulls == pytest.approx(expected)
 
 
+def test_concurrent_learning_with_decay_across_many_offers(store: OptionsStore) -> None:
+    """Real traffic: eight request threads, each learning about different offers in the same
+    context. Every update forgets all offers in the context, so the updates must take their
+    locks in one order (on Postgres, rows locked in different orders deadlock)."""
+    gamma, threads_n, per_thread = 0.99, 16, 60
+    offers = [f"offer_{i}" for i in range(12)]
+    errors: list[Exception] = []
+
+    def worker(seed: int) -> None:
+        for i in range(per_thread):
+            offer = offers[(seed * 5 + i * 7) % 12]
+            try:
+                store.learn("thompson", "family", offer, 1.0, decay=gamma)
+            except Exception as error:  # noqa: BLE001 - collected, then asserted on
+                errors.append(error)
+
+    threads = [threading.Thread(target=worker, args=(n,)) for n in range(threads_n)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not errors, f"{len(errors)} updates failed, e.g. {errors[0]!r}"
+    total = sum(arm.pulls for arm in store.get_context("thompson", "family").values())
+    updates = threads_n * per_thread
+    assert total == pytest.approx((1 - gamma**updates) / (1 - gamma))  # none lost
+
+
 def test_policies_and_context_keys_are_isolated(store: OptionsStore) -> None:
     store.put("thompson", "family", {"a": ArmStats(10, 3)})
     assert store.get_context("thompson", "student") == {}
