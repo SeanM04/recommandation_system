@@ -3,6 +3,9 @@
 Runs the API either as a local uvicorn process (one worker) or in the Docker image with
 several worker processes (``--docker``), against the configured database. On Postgres it
 works inside a throwaway ``benchmark`` schema, so the real tables are never touched.
+Or it measures an API that is already running (``--url``), such as the docker compose
+stack, where the API and Postgres share one Docker network; that API logs and learns
+from the benchmark traffic in its own database.
 For each level of concurrency it sends app opens, each followed by a response for every
 offer shown, and reports p50/p95 and throughput. Then it stops the server and drops the
 schema.
@@ -11,6 +14,8 @@ Usage:
     python scripts/benchmark_api.py                               (make benchmark)
     python scripts/benchmark_api.py --docker --workers 4 --clients 1,4,8,16
                                                                   (make benchmark-docker)
+    python scripts/benchmark_api.py --url http://localhost:8000 --clients 1,4,8,16
+                                                                  (make benchmark-compose)
 Needs data/customers.csv (make data); --docker also needs the image (make docker-build).
 """
 
@@ -101,6 +106,13 @@ class LocalServer:
         self.process.terminate()
         self.process.wait(timeout=15)
         self.log.close()
+
+
+class RunningServer:
+    """An API someone else started and will stop."""
+
+    def stop(self) -> None:
+        return None
 
 
 class DockerServer:
@@ -199,22 +211,26 @@ def main() -> None:
     parser.add_argument("--opens", type=int, default=300, help="app opens per client")
     parser.add_argument("--docker", action="store_true", help="run the API in Docker")
     parser.add_argument("--workers", type=int, default=4, help="uvicorn workers (Docker)")
+    parser.add_argument("--url", help="measure an API that is already running, e.g. compose")
     args = parser.parse_args()
     levels = [int(n) for n in args.clients.split(",")]
 
     (PROJECT_ROOT / "results").mkdir(exist_ok=True)
-    database_url, cleanup = benchmark_database()
-    port = spare_port()
-    base = f"http://127.0.0.1:{port}"
-    server = (
-        DockerServer(database_url, port, args.workers)
-        if args.docker
-        else LocalServer(database_url, port)
-    )
-    workers = args.workers if args.docker else 1
+    if args.url:
+        base, server, cleanup = args.url.rstrip("/"), RunningServer(), lambda: None
+        where = f"running API at {base}"
+    else:
+        database_url, cleanup = benchmark_database()
+        port = spare_port()
+        base = f"http://127.0.0.1:{port}"
+        if args.docker:
+            server = DockerServer(database_url, port, args.workers)
+            where = f"Docker, {args.workers} workers"
+        else:
+            server = LocalServer(database_url, port)
+            where = "local process, 1 worker"
     try:
         health = wait_until_healthy(base)
-        where = f"Docker, {workers} workers" if args.docker else "local process, 1 worker"
         print(f"API up ({where}; {health['database']}; policy {health['active_policy']})")
         customers = [c["customer_id"] for c in requests.get(f"{base}/customers?limit=500").json()]
         run_level(base, customers, clients=2, opens=10)  # warm up connections and workers
@@ -238,7 +254,11 @@ def main() -> None:
            if max(lvl[e]["p95_ms"] for e in ENDPOINTS) < TARGET_P95_MS]  # fmt: skip
     print(f"\np95 < {TARGET_P95_MS:.0f} ms at: {met or 'no level'} concurrent client(s)")
 
-    name = "benchmark_docker.json" if args.docker else "benchmark_api.json"
+    name = (
+        "benchmark_running.json" if args.url
+        else "benchmark_docker.json" if args.docker
+        else "benchmark_api.json"
+    )  # fmt: skip
     out = PROJECT_ROOT / "results" / name
     payload = {"server": where, "database": health["database"], "levels": results}
     out.write_text(json.dumps(payload, indent=2))

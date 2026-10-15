@@ -1,4 +1,4 @@
-# The recommender API (and, from Phase 5, the dashboard) in one image.
+# One image for the API, the dashboard and the simulation scripts.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -17,6 +17,9 @@ RUN pip install -r requirements.txt
 COPY pyproject.toml ./
 COPY src ./src
 COPY config ./config
+COPY scripts ./scripts
+COPY dashboard ./dashboard
+COPY .streamlit ./.streamlit
 RUN pip install --no-deps . \
     && useradd --create-home --uid 10001 recommender \
     && mkdir -p /app/data /app/results \

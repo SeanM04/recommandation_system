@@ -1,0 +1,99 @@
+# The whole system with one command:  docker compose up --build
+#   API        http://localhost:8000  (interactive docs at /docs)
+#   Dashboard  http://localhost:8501
+# Self-contained: Postgres runs in its own container, separate from any local database.
+# Start again from nothing with:  docker compose down --volumes
+# Ports in use? API_PORT=8010 DASHBOARD_PORT=8510 docker compose up --build
+name: telco-recommender
+
+x-database: &database
+  RECOMMENDER_DATABASE_URL: postgresql+psycopg://postgres:${COMPOSE_DB_PASSWORD:-recommender}@db:5432/Telco_Dynamic_Recomender
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: Telco_Dynamic_Recomender
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${COMPOSE_DB_PASSWORD:-recommender}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d Telco_Dynamic_Recomender"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # One-off: the customer population, before the API starts serving.
+  init:
+    build: .
+    image: telco-recommender:latest
+    command: ["python", "scripts/generate_customers.py"]
+    environment:
+      <<: *database
+    healthcheck:
+      disable: true  # a job, not a server
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    image: telco-recommender:latest
+    environment:
+      <<: *database
+      WEB_CONCURRENCY: "4"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  dashboard:
+    image: telco-recommender:latest
+    command:
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    environment:
+      <<: *database
+      RECOMMENDER_API_URL: http://api:8000
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    volumes:
+      - results:/app/results
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # One-off: 1,000 app opens through the API over the network (watch them arrive in the
+  # dashboard's live view), then a 3-seed comparison for the results pages. Exits when done.
+  simulate:
+    image: telco-recommender:latest
+    command:
+      - sh
+      - -c
+      - >-
+        python scripts/run_simulation.py --mode api --url http://api:8000 --rounds 1000 &&
+        python scripts/compare_algorithms.py --seeds 3 --no-docs
+    environment:
+      <<: *database
+    healthcheck:
+      disable: true
+    volumes:
+      - results:/app/results
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  results:

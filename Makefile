@@ -1,6 +1,9 @@
 PYTHON ?= python
 
-.PHONY: install db data truth simulate compare dashboard screenshots experiment run benchmark docker-build docker-api benchmark-docker test lint format docs
+.PHONY: help install db data truth simulate compare dashboard screenshots experiment run benchmark docker-build docker-api benchmark-docker up down benchmark-compose test lint format docs
+
+help:  ## List the targets
+	@grep -E '^[a-z-]+:.*## ' Makefile | sed -E 's/:.*## /	/' | expand -t 20
 
 install:  ## Install dependencies and the package in editable mode
 	$(PYTHON) -m pip install -r requirements.txt
@@ -38,7 +41,7 @@ run:  ## Start the recommender API on http://localhost:8000 (docs at /docs)
 benchmark:  ## Measure API latency end to end (real server, database and HTTP)
 	$(PYTHON) scripts/benchmark_api.py --clients 1,4,8
 
-docker-build:  ## Build the image (API now; the dashboard joins it in Phase 5)
+docker-build:  ## Build the image (API, dashboard and scripts in one)
 	docker build -t telco-recommender:latest .
 
 docker-api:  ## Run the API in Docker on port 8000 (4 workers), using the database in .env
@@ -46,6 +49,16 @@ docker-api:  ## Run the API in Docker on port 8000 (4 workers), using the databa
 
 benchmark-docker:  ## Latency at 1, 4, 8 and 16 concurrent clients against the API in Docker
 	$(PYTHON) scripts/benchmark_api.py --docker --workers 4 --clients 1,4,8,16
+
+up:  ## The whole system in Docker: Postgres, API (:8000), dashboard (:8501), a first simulation
+	docker compose up --build -d
+	@echo "API http://localhost:8000/docs  dashboard http://localhost:8501  (simulation: docker compose logs -f simulate)"
+
+down:  ## Stop the Docker system and delete its data
+	docker compose down --volumes
+
+benchmark-compose:  ## Latency against the compose API, which shares a Docker network with Postgres
+	$(PYTHON) scripts/benchmark_api.py --url http://localhost:8000 --clients 1,4,8,16
 
 test:  ## Run the test suite
 	$(PYTHON) -m pytest

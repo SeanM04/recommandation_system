@@ -11,8 +11,6 @@ results/
 docs/
 tests/
 notebooks/
-dashboard/
-scripts/
 **/__pycache__/
 .pytest_cache/
 .ruff_cache/
