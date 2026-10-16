@@ -430,3 +430,30 @@ main, main > section, section section, .page-head { grid-template-columns: minma
 .results-table th, .results-table td { padding: 8px 10px; }
 img { max-width: 100%; height: auto; }
 .fig > img { display: block; width: 100%; border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--line); }
+
+/* ---------- Mermaid diagrams ---------- */
+/* Until (or unless) the library renders it, a diagram shows its source as text. */
+pre.mermaid {
+  background: var(--surface);
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+pre.mermaid[data-processed="true"] { text-align: center; color: var(--ink); }
+pre.mermaid svg { max-width: 100%; height: auto; }
+
+/* ---------- model cards ---------- */
+.models { display: grid; gap: 14px; }
+.model { gap: 10px; }
+.model h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.model h3 code { font-size: 0.8em; }
+.model dl { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.model dt { font-weight: 600; font-size: 0.86rem; color: var(--ink); }
+.model dd { margin: 0; font-size: 0.92rem; color: var(--muted); min-width: 0; }
+@media (max-width: 640px) {
+  .model dl { grid-template-columns: 1fr; gap: 2px; }
+  .model dd { margin-bottom: 8px; }
+}

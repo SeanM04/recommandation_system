@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recommender Models</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Every model in the recommender, one by one: the idea, how it ranks and learns, its role, where it is used, its settings and its results.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" defer></script>
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="product.html">Product</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
+<li><a href="models.html" aria-current=page>Models</a></li>
+<li><a href="api.html">API</a></li>
+<li><a href="results.html">Results</a></li>
+<li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip built">Built</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Models</p>
+  <h1>Every model, one by one</h1>
+  <p class="lede">Nine policies decide which three offers each customer sees. They are built from four ideas: learning online, personalising by segment, exploring by doubt, and forgetting. Each one adds a single idea to another, so comparing them shows what each idea is worth. Behind them sit a handful of supporting models: the belief each policy keeps, the reward it learns from, and the simulated customers it is tested on.</p>
+  <ul class="toc">
+    <li><a href="#family">How the policies relate</a></li>
+    <li><a href="#logic">How each kind decides and learns</a></li>
+    <li><a href="#cards">The nine policies</a></li>
+    <li><a href="#supporting">The models behind the models</a></li>
+    <li><a href="#use">How they are used here</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="family">
+  <h2 id="family">How the policies relate</h2>
+  <p>Read top to bottom: every arrow adds one idea. Each box shows how much of what was possible the policy achieved in the published run: the take-ups an oracle that knows every customer's true preferences would have won.</p>
+  <figure class="fig">
+<!-- BEGIN generated:model-tree -->
+<pre class="mermaid">
+flowchart TD
+  R["Random offers&lt;br/&gt;53% of possible"] -- "learns from history" --> S["Fixed popularity ranking&lt;br/&gt;61% of possible"]
+  S["Fixed popularity ranking&lt;br/&gt;61% of possible"] -- "learns online" --> EG["Epsilon-greedy, one model&lt;br/&gt;66% of possible"]
+  S["Fixed popularity ranking&lt;br/&gt;61% of possible"] -- "learns online, explores by doubt" --> T["Thompson sampling, one model&lt;br/&gt;68% of possible"]
+  EG["Epsilon-greedy, one model&lt;br/&gt;66% of possible"] -- "+ segments" --> EGS["Epsilon-greedy per segment&lt;br/&gt;88% of possible"]
+  T["Thompson sampling, one model&lt;br/&gt;68% of possible"] -- "+ segments" --> TS["Thompson sampling per segment&lt;br/&gt;92% of possible"]
+  TS["Thompson sampling per segment&lt;br/&gt;92% of possible"] -- "+ payday week" --> TSP["Thompson per segment and payday week&lt;br/&gt;92% of possible"]
+  TS["Thompson sampling per segment&lt;br/&gt;92% of possible"] -- "+ forgetting" --> TSD["Thompson per segment, with forgetting&lt;br/&gt;93% of possible&lt;br/&gt;serving"]
+  TSD["Thompson per segment, with forgetting&lt;br/&gt;93% of possible&lt;br/&gt;serving"] -- "learns from margin" --> TSR["Thompson with forgetting, from revenue&lt;br/&gt;72% of possible"]
+  classDef serving stroke-width:3px
+  class TSD serving
+</pre>
+<!-- END generated:model-tree -->
+    <figcaption><span>The biggest single step is learning per segment. Forgetting adds little on average but recovers far faster after customers change (see the <a href="dashboard.html#shift">Behaviour shift</a> page). The revenue policy scores lower here because the measure is take-ups; it earns the most revenue per app open (its card below). Generated from config/settings.yaml and the published results.</span></figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="logic">
+  <h2 id="logic">How each kind decides and learns</h2>
+  <p>There are four kinds of model. The variants of each differ only in configuration, so the same flow applies to all of them.</p>
+
+  <h3>The baselines: random offers and the fixed popularity ranking</h3>
+  <figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  subgraph random["Random offers: learns nothing"]
+    R1["App open"] --> R2["A random number&lt;br/&gt;per eligible offer"] --> R3["Show the three highest"]
+  end
+  subgraph static["Fixed popularity ranking: learns once, offline"]
+    S0["History log"] --> S1["Average reward&lt;br/&gt;per offer"]
+    S2["App open"] --> S3["Score the eligible offers&lt;br/&gt;by that average"]
+    S1 --> S3
+    S3 --> S4["Show the top three,&lt;br/&gt;the same for everyone"]
+  end
+</pre>
+    <figcaption><span>Neither updates while serving. The fixed ranking is fitted on a warm-up month in the comparison, and on the event log when the API starts.</span></figcaption>
+  </figure>
+
+  <h3>Epsilon-greedy: exploit the best average, explore a fixed share of the time</h3>
+  <figure class="fig">
+<pre class="mermaid">
+flowchart TD
+  A["App open"] --> B["Average reward per eligible offer&lt;br/&gt;never shown: 1.0, so it gets tried"]
+  B --> C{"For the next slot:&lt;br/&gt;random draw below ε?"}
+  C -- "yes, ε of the time" --> D["A random remaining offer&lt;br/&gt;(explore)"]
+  C -- "no" --> E["The best remaining average&lt;br/&gt;(exploit)"]
+  D --> F{"Three offers shown?"}
+  E --> F
+  F -- "no" --> C
+  F -- "yes" --> G["Customer responds"]
+  G --> H["Count + 1, sum + reward&lt;br/&gt;ignored: no update"]
+  H -- "next app open" --> B
+</pre>
+    <figcaption><span>Simple and predictable, but it explores blindly: one slot in ten goes to a random offer, even after it knows an offer is poor. Code: src/recommender/algorithms/epsilon_greedy.py.</span></figcaption>
+  </figure>
+
+  <h3>Thompson sampling: explore in proportion to doubt</h3>
+  <figure class="fig">
+<pre class="mermaid">
+flowchart TD
+  A["App open: a customer and a moment"] --> B["Context key&lt;br/&gt;everyone · segment · segment and payday week"]
+  B --> C["Belief for each eligible offer&lt;br/&gt;Beta(α, β) from the options store"]
+  C --> D["Draw one plausible take-up rate&lt;br/&gt;from each belief"]
+  D --> E["Show the three highest draws"]
+  E --> F{"Customer's response&lt;br/&gt;to each offer"}
+  F -- "taken up" --> G["Reward 1&lt;br/&gt;(or margin ÷ top margin)"]
+  F -- "viewed" --> H["Reward 0"]
+  F -- "ignored" --> I["No update:&lt;br/&gt;it may never have been seen"]
+  G --> J{"Forgetting on?"}
+  H --> J
+  J -- "yes" --> K["Shrink every offer's evidence&lt;br/&gt;in this context by γ"]
+  J -- "no" --> L["α + reward, β + (1 − reward)"]
+  K --> L
+  L -- "next app open" --> C
+</pre>
+    <figcaption><span>A sure offer draws close to its rate every time; an offer it knows little about draws widely and now and then wins a slot. That is all the exploration there is. Code: src/recommender/algorithms/thompson.py and base.py.</span></figcaption>
+  </figure>
+  <p>The <a href="algorithms.html">Policies</a> page shows the code of each, copied from the source when the docs are built.</p>
+</section>
+
+<section aria-labelledby="cards">
+  <h2 id="cards">The nine policies</h2>
+  <p>Each card says what the model is for here and where you will meet it, then its configuration and how it did on the same 50,000 app opens as every other policy.</p>
+<!-- BEGIN generated:model-cards -->
+<div class="models">
+<article class="card model" id="model-random">
+<h3>Random offers <code>random</code></h3>
+<dl>
+<dt>The idea</dt><dd>Shows the eligible offers in a random order.</dd>
+<dt>How it ranks</dt><dd>Draws a random number for each offer the customer is eligible for and shows the three highest.</dd>
+<dt>How it learns</dt><dd>Nothing.</dd>
+<dt>Settings</dt><dd>none</dd>
+<dt>Its role here</dt><dd>The floor. A policy that can't beat random offers isn't learning anything.</dd>
+<dt>Where it's used</dt><dd>The comparison; the bottom bar of the comparison page's ladder. Any request can ask for it with <code>?policy=random</code>.</dd>
+<dt>Results</dt><dd>149 take-ups per 1,000 app opens · 52.6% of what was possible · regret 6,728 ± 17 · R5.80 revenue per app open · #9 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-static">
+<h3>Fixed popularity ranking <code>static</code></h3>
+<dl>
+<dt>The idea</dt><dd>Last month's most popular offers, the same for everyone, frozen until the next retrain.</dd>
+<dt>How it ranks</dt><dd>Scores each eligible offer by its average reward in a historical log and shows the top three; ties keep catalogue order.</dd>
+<dt>How it learns</dt><dd>Never online. It is fitted once: on a 5,000-app-open warm-up month in the comparison, and on the event log when the API starts.</dd>
+<dt>Settings</dt><dd>fitted from history; no settings</dd>
+<dt>Its role here</dt><dd>The usual batch approach, and the bar the brief asks to beat. Called the fixed popularity ranking in the dashboard.</dd>
+<dt>Where it's used</dt><dd>The comparison; the baseline in every dashboard story. Any request can ask for it with <code>?policy=static</code>.</dd>
+<dt>Results</dt><dd>172 take-ups per 1,000 app opens · 60.8% of what was possible · regret 5,563 ± 703 · R4.42 revenue per app open · #8 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-epsilon-greedy">
+<h3>Epsilon-greedy, one model <code>epsilon_greedy</code></h3>
+<dl>
+<dt>The idea</dt><dd>Mostly the offers with the best average so far; now and then a random one.</dd>
+<dt>How it ranks</dt><dd>For each of the three slots: with probability ε pick a random remaining offer (explore), otherwise the best remaining average (exploit). An offer never shown scores 1.0, so every offer is tried early.</dd>
+<dt>How it learns</dt><dd>Counts responses and sums rewards per offer, for all customers together.</dd>
+<dt>Settings</dt><dd>beliefs everyone together; ε = 0.1; reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>The classic simple bandit with one view of everyone: learning without personalisation or smart exploration.</dd>
+<dt>Where it's used</dt><dd>The comparison. Any request can ask for it with <code>?policy=epsilon_greedy</code>.</dd>
+<dt>Results</dt><dd>186 take-ups per 1,000 app opens · 65.9% of what was possible · regret 4,836 ± 359 · R4.97 revenue per app open · #7 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-epsilon-greedy-segment">
+<h3>Epsilon-greedy per segment <code>epsilon_greedy_segment</code></h3>
+<dl>
+<dt>The idea</dt><dd>Epsilon-greedy, with a separate average per customer segment.</dd>
+<dt>How it ranks</dt><dd>As epsilon-greedy, using the customer's segment's averages.</dd>
+<dt>How it learns</dt><dd>Counts and sums per offer and segment.</dd>
+<dt>Settings</dt><dd>beliefs per segment; ε = 0.1; reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>Personalised but exploring blindly: the comparison point for Thompson sampling with the same segments.</dd>
+<dt>Where it's used</dt><dd>The comparison; the Explore vs exploit page (it never stops exploring). Any request can ask for it with <code>?policy=epsilon_greedy_segment</code>.</dd>
+<dt>Results</dt><dd>250 take-ups per 1,000 app opens · 88.1% of what was possible · regret 1,690 ± 381 · R9.94 revenue per app open · #4 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-thompson">
+<h3>Thompson sampling, one model <code>thompson</code></h3>
+<dl>
+<dt>The idea</dt><dd>Keeps a belief about each offer's take-up rate and shows the offers whose beliefs drew highest.</dd>
+<dt>How it ranks</dt><dd>Draws one plausible take-up rate from each offer's Beta belief and shows the three highest draws. Offers it is unsure about sometimes draw high and get tested: that is all the exploration there is.</dd>
+<dt>How it learns</dt><dd>A take-up adds 1 to α, a view adds 1 to β; one belief per offer for all customers.</dd>
+<dt>Settings</dt><dd>beliefs everyone together; reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>Thompson sampling without personalisation: isolates what segments add.</dd>
+<dt>Where it's used</dt><dd>The comparison; the comparison page's ladder (one model for everyone). Any request can ask for it with <code>?policy=thompson</code>.</dd>
+<dt>Results</dt><dd>193 take-ups per 1,000 app opens · 67.7% of what was possible · regret 4,582 ± 274 · R5.09 revenue per app open · #6 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-thompson-segment">
+<h3>Thompson sampling per segment <code>thompson_segment</code></h3>
+<dl>
+<dt>The idea</dt><dd>Thompson sampling with one belief per offer and customer segment.</dd>
+<dt>How it ranks</dt><dd>As Thompson sampling, drawing from the customer's segment's beliefs.</dd>
+<dt>How it learns</dt><dd>Per offer and segment. Evidence only accumulates.</dd>
+<dt>Settings</dt><dd>beliefs per segment; reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>Personalisation on its own, and the policy without forgetting that the stories compare forgetting against.</dd>
+<dt>Where it's used</dt><dd>The comparison; the Explore vs exploit and Behaviour shift pages. Any request can ask for it with <code>?policy=thompson_segment</code>.</dd>
+<dt>Results</dt><dd>261 take-ups per 1,000 app opens · 92.4% of what was possible · regret 1,078 ± 166 · R10.01 revenue per app open · #2 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-thompson-segment-payday">
+<h3>Thompson per segment and payday week <code>thompson_segment_payday</code></h3>
+<dl>
+<dt>The idea</dt><dd>Thompson sampling per segment and payday week.</dd>
+<dt>How it ranks</dt><dd>Draws from the beliefs for the customer's segment in this part of the month: payday week or the rest.</dd>
+<dt>How it learns</dt><dd>Two beliefs per offer and segment, one for payday week and one for the rest of the month.</dd>
+<dt>Settings</dt><dd>beliefs per segment and payday week; reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>Tests whether payday context helps: pensioners and small businesses want different offers at payday. It splits the evidence in two to find out.</dd>
+<dt>Where it's used</dt><dd>The comparison. Any request can ask for it with <code>?policy=thompson_segment_payday</code>.</dd>
+<dt>Results</dt><dd>261 take-ups per 1,000 app opens · 92.3% of what was possible · regret 1,099 ± 127 · R10.16 revenue per app open · #3 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-thompson-segment-decay">
+<h3>Thompson per segment, with forgetting <code>thompson_segment_decay</code> <span class="chip built">Serving</span></h3>
+<dl>
+<dt>The idea</dt><dd>Thompson sampling per segment that slowly forgets old evidence.</dd>
+<dt>How it ranks</dt><dd>As Thompson sampling per segment.</dd>
+<dt>How it learns</dt><dd>Before each update, every offer's evidence in the segment shrinks by γ, then the new response is added, so old behaviour fades.</dd>
+<dt>Settings</dt><dd>beliefs per segment; forgetting γ = 0.9998 (memory ≈ 5,000 responses); reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>The policy the API serves. Forgetting costs a little in quiet times and recovers much faster when customers change.</dd>
+<dt>Where it's used</dt><dd>Serving every app open; the learner in every dashboard story; Try it's default. Any request can ask for it with <code>?policy=thompson_segment_decay</code>.</dd>
+<dt>Results</dt><dd>263 take-ups per 1,000 app opens · 92.7% of what was possible · regret 1,041 ± 39 · R9.68 revenue per app open · #1 of 9</dd>
+</dl>
+</article>
+<article class="card model" id="model-thompson-segment-revenue">
+<h3>Thompson with forgetting, from revenue <code>thompson_segment_revenue</code></h3>
+<dl>
+<dt>The idea</dt><dd>The served policy, learning from margin instead of take-ups.</dd>
+<dt>How it ranks</dt><dd>As Thompson sampling per segment with forgetting.</dd>
+<dt>How it learns</dt><dd>A take-up teaches the offer's margin divided by the top margin instead of 1, so high-margin offers count for more.</dd>
+<dt>Settings</dt><dd>beliefs per segment; forgetting γ = 0.9998 (memory ≈ 5,000 responses); reward: margin ÷ top margin</dd>
+<dt>Its role here</dt><dd>Shows that what a policy learns from is a business choice: more revenue for fewer take-ups.</dd>
+<dt>Where it's used</dt><dd>The comparison; the comparison page's next steps. Any request can ask for it with <code>?policy=thompson_segment_revenue</code>.</dd>
+<dt>Results</dt><dd>205 take-ups per 1,000 app opens · 72.4% of what was possible · regret 3,916 ± 92 · R13.37 revenue per app open · #5 of 9</dd>
+</dl>
+</article>
+</div>
+<p class="source">Settings from config/settings.yaml; results from the published run (10 seeds × 50,000 app opens) · rebuilt by make docs</p>
+<!-- END generated:model-cards -->
+</section>
+
+<section aria-labelledby="supporting">
+  <h2 id="supporting">The models behind the models</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Model</th><th scope="col">What it does</th><th scope="col">Used by</th><th scope="col">Code</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Beta belief</strong></td><td>What a policy believes about one offer's take-up rate in one context. It starts at Beta(1, 1), "anything from 0 to 100% is equally likely"; then α = 1 + rewards and β = 1 + responses − rewards. Its mean, α ÷ (α + β), is the expected take-up rate, and its width is the doubt.</td><td>Thompson sampling; the options store keeps responses and rewards, and the database computes α and β from them.</td><td><code>store/options_store.py</code>, <code>store/sql.py</code></td></tr>
+        <tr><td><strong>Forgetting</strong></td><td>Before each update, all the evidence in the context is multiplied by γ, then the new response is added. Evidence levels off at about 1 ÷ (1 − γ) responses, so old behaviour fades.</td><td>The two policies with forgetting (γ = 0.9998, about 5,000 responses).</td><td><code>algorithms/base.py</code>, <code>store/</code></td></tr>
+        <tr><td><strong>Context key</strong></td><td>Which belief a response updates and a ranking reads: one for everyone, one per segment, or one per segment and part of the month.</td><td>Every learning policy.</td><td><code>algorithms/base.py</code></td></tr>
+        <tr><td><strong>Rewards</strong></td><td>Turn one outcome into what a policy learns: 1 for a take-up and 0 for a view (binary), or the offer's margin ÷ the top margin for a take-up (revenue). An ignored offer teaches nothing by default.</td><td>Set per policy in <code>settings.yaml</code>; see the <a href="algorithms.html#rewards">reward table</a>.</td><td><code>algorithms/rewards.py</code></td></tr>
+        <tr><td><strong>Ground truth</strong></td><td>The hidden probability that a given customer takes up a given offer at a given moment: a base rate per segment and offer, adjusted by 14 context effects (payday week, time of day, device, contract, spend and more), capped at 90%. It changes at the behaviour shift.</td><td>The simulator only. No policy ever sees it.</td><td><code>simulator/ground_truth.py</code>; see <a href="simulation.html">Simulated world</a></td></tr>
+        <tr><td><strong>Response model</strong></td><td>How a customer reads a list of offers: they notice the offer in position 1, 2, 3 … with probability 1.0, 0.6, 0.4, 0.25, 0.15, and take up at most one per app open.</td><td>The simulator; the reason ignored offers teach nothing.</td><td><code>simulator/ground_truth.py</code></td></tr>
+        <tr><td><strong>Oracle</strong></td><td>Shows the three offers with the highest true probability. Regret is the oracle's expected take-ups minus the policy's: take-ups lost to not knowing.</td><td>The comparison and every results page.</td><td><code>simulator/engine.py</code></td></tr>
+        <tr><td><strong>Story measures</strong></td><td>Chance of being best (drawn from the Beta beliefs), exploration share, evidence, time to switch (the new favourite leads 80% of the segment's last 100 app opens), and every claim counted seed by seed.</td><td>The dashboard's Algorithm comparison, Explore vs exploit and Behaviour shift pages.</td><td><code>evaluation/story.py</code>, <code>exploration.py</code>, <code>adaptation.py</code>, <code>metrics.py</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="use">
+  <h2 id="use">How they are used here</h2>
+  <ol>
+    <li><strong>Serving.</strong> Every app open is ranked by the policy named in <code>recommendation.active_policy</code> in <code>settings.yaml</code>. Any request can ask for another with <code>?policy=</code>, which is how an A/B test or a holdout would run. Each policy keeps its own beliefs in the options store, so all nine can learn side by side.</li>
+    <li><strong>Learning.</strong> <code>POST /response</code> looks up which policy served the app open, turns the outcome into that policy's reward, and updates its belief in one database transaction.</li>
+    <li><strong>Comparing.</strong> The simulator runs all nine on the identical 50,000 app opens, 10 times with different seeds, against the oracle. The <a href="results.html">Results</a> page and the dashboard read what it saves.</li>
+    <li><strong>Explaining.</strong> The dashboard's stories cast four of them: the serving policy as the learner, the fixed popularity ranking as the baseline, Thompson per segment as the learner without forgetting, and epsilon-greedy per segment as the explorer that never stops.</li>
+  </ol>
+</section>
+
+<p class="foot">The cards and the family tree are generated from <code>config/settings.yaml</code> and <code>docs/data/comparison.json</code> by <code>make docs</code>.</p>
+</main>
+</div>
+</body>
+</html>

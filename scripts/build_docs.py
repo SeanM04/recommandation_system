@@ -49,9 +49,11 @@ BLOCK = re.compile(
 
 PAGES = [
     ("index.html", "Overview"),
+    ("product.html", "Product"),
     ("architecture.html", "Architecture"),
     ("simulation.html", "Simulated world"),
     ("algorithms.html", "Policies"),
+    ("models.html", "Models"),
     ("api.html", "API"),
     ("results.html", "Results"),
     ("dashboard.html", "Dashboard"),
@@ -1108,6 +1110,222 @@ def block_adaptation(src: Sources, page: str) -> str:
     return table(head, body, cls="adaptation", numeric=tuple(range(2, 2 + len(policies))))
 
 
+# --- Models page: one card per configured policy ------------------------------------------
+# The prose for each model. Settings and results come from settings.yaml and the published
+# run, so the cards can't drift from the code or the numbers.
+MODEL_NOTES = {
+    "random": {
+        "idea": "Shows the eligible offers in a random order.",
+        "ranks": "Draws a random number for each offer the customer is eligible for and shows "
+        "the three highest.",
+        "learns": "Nothing.",
+        "role": "The floor. A policy that can't beat random offers isn't learning anything.",
+        "used": "The comparison; the bottom bar of the comparison page's ladder.",
+    },
+    "static": {
+        "idea": "Last month's most popular offers, the same for everyone, frozen until the next "
+        "retrain.",
+        "ranks": "Scores each eligible offer by its average reward in a historical log and shows "
+        "the top three; ties keep catalogue order.",
+        "learns": "Never online. It is fitted once: on a 5,000-app-open warm-up month in the "
+        "comparison, and on the event log when the API starts.",
+        "role": "The usual batch approach, and the bar the brief asks to beat. Called the "
+        "fixed popularity ranking in the dashboard.",
+        "used": "The comparison; the baseline in every dashboard story.",
+    },
+    "epsilon_greedy": {
+        "idea": "Mostly the offers with the best average so far; now and then a random one.",
+        "ranks": "For each of the three slots: with probability ε pick a random remaining offer "
+        "(explore), otherwise the best remaining average (exploit). An offer never shown scores "
+        "1.0, so every offer is tried early.",
+        "learns": "Counts responses and sums rewards per offer, for all customers together.",
+        "role": "The classic simple bandit with one view of everyone: learning without "
+        "personalisation or smart exploration.",
+        "used": "The comparison.",
+    },
+    "epsilon_greedy_segment": {
+        "idea": "Epsilon-greedy, with a separate average per customer segment.",
+        "ranks": "As epsilon-greedy, using the customer's segment's averages.",
+        "learns": "Counts and sums per offer and segment.",
+        "role": "Personalised but exploring blindly: the comparison point for Thompson sampling "
+        "with the same segments.",
+        "used": "The comparison; the Explore vs exploit page (it never stops exploring).",
+    },
+    "thompson": {
+        "idea": "Keeps a belief about each offer's take-up rate and shows the offers whose "
+        "beliefs drew highest.",
+        "ranks": "Draws one plausible take-up rate from each offer's Beta belief and shows the "
+        "three highest draws. Offers it is unsure about sometimes draw high and get tested: "
+        "that is all the exploration there is.",
+        "learns": "A take-up adds 1 to α, a view adds 1 to β; one belief per offer for all "
+        "customers.",
+        "role": "Thompson sampling without personalisation: isolates what segments add.",
+        "used": "The comparison; the comparison page's ladder (one model for everyone).",
+    },
+    "thompson_segment": {
+        "idea": "Thompson sampling with one belief per offer and customer segment.",
+        "ranks": "As Thompson sampling, drawing from the customer's segment's beliefs.",
+        "learns": "Per offer and segment. Evidence only accumulates.",
+        "role": "Personalisation on its own, and the policy without forgetting that the "
+        "stories compare forgetting against.",
+        "used": "The comparison; the Explore vs exploit and Behaviour shift pages.",
+    },
+    "thompson_segment_payday": {
+        "idea": "Thompson sampling per segment and payday week.",
+        "ranks": "Draws from the beliefs for the customer's segment in this part of the month: "
+        "payday week or the rest.",
+        "learns": "Two beliefs per offer and segment, one for payday week and one for the rest "
+        "of the month.",
+        "role": "Tests whether payday context helps: pensioners and small businesses want "
+        "different offers at payday. It splits the evidence in two to find out.",
+        "used": "The comparison.",
+    },
+    "thompson_segment_decay": {
+        "idea": "Thompson sampling per segment that slowly forgets old evidence.",
+        "ranks": "As Thompson sampling per segment.",
+        "learns": "Before each update, every offer's evidence in the segment shrinks by γ, then "
+        "the new response is added, so old behaviour fades.",
+        "role": "The policy the API serves. Forgetting costs a little in quiet times and "
+        "recovers much faster when customers change.",
+        "used": "Serving every app open; the learner in every dashboard story; Try it's default.",
+    },
+    "thompson_segment_revenue": {
+        "idea": "The served policy, learning from margin instead of take-ups.",
+        "ranks": "As Thompson sampling per segment with forgetting.",
+        "learns": "A take-up teaches the offer's margin divided by the top margin instead of 1, "
+        "so high-margin offers count for more.",
+        "role": "Shows that what a policy learns from is a business choice: more revenue for "
+        "fewer take-ups.",
+        "used": "The comparison; the comparison page's next steps.",
+    },
+}
+MODEL_NAMES = {
+    "random": "Random offers",
+    "static": "Fixed popularity ranking",
+    "epsilon_greedy": "Epsilon-greedy, one model",
+    "epsilon_greedy_segment": "Epsilon-greedy per segment",
+    "thompson": "Thompson sampling, one model",
+    "thompson_segment": "Thompson sampling per segment",
+    "thompson_segment_payday": "Thompson per segment and payday week",
+    "thompson_segment_decay": "Thompson per segment, with forgetting",
+    "thompson_segment_revenue": "Thompson with forgetting, from revenue",
+}
+CONTEXT_NAMES = {
+    "global": "everyone together",
+    "segment": "per segment",
+    "segment_payday": "per segment and payday week",
+}
+
+
+def _settings_text(spec, src: Sources) -> str:
+    """One line describing a policy's configuration in plain words."""
+    if spec.type == "random":
+        return "none"
+    if spec.type == "static":
+        return "fitted from history; no settings"
+    parts = [f"beliefs {CONTEXT_NAMES.get(spec.context, spec.context)}"]
+    if spec.type == "epsilon_greedy":
+        parts.append(f"ε = {spec.epsilon:g}")
+        if spec.epsilon_decay < 1:
+            parts.append(
+                f"ε shrinks by {spec.epsilon_decay:g} per response to {spec.min_epsilon:g}"
+            )
+    if spec.decay < 1:
+        parts.append(
+            f"forgetting γ = {spec.decay:g} (memory ≈ {1 / (1 - spec.decay):,.0f} responses)"
+        )
+    reward = spec.reward or src.settings.recommendation.reward
+    parts.append("reward: margin ÷ top margin" if reward == "margin" else "reward: 1 per take-up")
+    return "; ".join(parts)
+
+
+def block_model_tree(src: Sources, page: str) -> str:
+    """The family tree of the policies as a Mermaid flowchart: each arrow adds one idea, each
+    box shows its share of what was possible in the published run."""
+    data = _results()
+    share = {row["policy"]: row["share_of_oracle"] for row in data["table"]} if data else {}
+    active = src.settings.recommendation.active_policy
+
+    def node(key: str, policy: str) -> str:
+        """A Mermaid box for ``policy``: its name, share of possible, and whether it serves."""
+        text = escape(MODEL_NAMES.get(policy, policy))
+        if policy in share:
+            text += f"&lt;br/&gt;{share[policy]:.0%} of possible"
+        if policy == active:
+            text += "&lt;br/&gt;serving"
+        return f'{key}["{text}"]'
+
+    edges = [
+        ("R", "random", "S", "static", "learns from history"),
+        ("S", "static", "EG", "epsilon_greedy", "learns online"),
+        ("S", "static", "T", "thompson", "learns online, explores by doubt"),
+        ("EG", "epsilon_greedy", "EGS", "epsilon_greedy_segment", "+ segments"),
+        ("T", "thompson", "TS", "thompson_segment", "+ segments"),
+        ("TS", "thompson_segment", "TSP", "thompson_segment_payday", "+ payday week"),
+        ("TS", "thompson_segment", "TSD", "thompson_segment_decay", "+ forgetting"),
+        ("TSD", "thompson_segment_decay", "TSR", "thompson_segment_revenue", "learns from margin"),
+    ]
+    configured = set(src.settings.policies)
+    lines = ["flowchart TD"]
+    for a, pa, b, pb, label in edges:
+        if pa in configured and pb in configured:
+            lines.append(f'  {node(a, pa)} -- "{label}" --> {node(b, pb)}')
+    keys = {p: k for k, p in [(e[0], e[1]) for e in edges] + [(e[2], e[3]) for e in edges]}
+    if active in keys:
+        lines.append("  classDef serving stroke-width:3px")
+        lines.append(f"  class {keys[active]} serving")
+    return '<pre class="mermaid">\n' + "\n".join(lines) + "\n</pre>"
+
+
+def block_model_cards(src: Sources, page: str) -> str:
+    """One card per configured policy: the idea, how it ranks and learns, its role and where it
+    is used here, its settings, and its results in the published run."""
+    data = _results()
+    results = {row["policy"]: row for row in data["table"]} if data else {}
+    order = {row["policy"]: i + 1 for i, row in enumerate(data["table"])} if data else {}
+    active = src.settings.recommendation.active_policy
+    cards = []
+    for name, spec in src.settings.policies.items():
+        notes = MODEL_NOTES.get(name, {})
+        rows = [
+            ("The idea", notes.get("idea", "")),
+            ("How it ranks", notes.get("ranks", "")),
+            ("How it learns", notes.get("learns", "")),
+            ("Settings", _settings_text(spec, src)),
+            ("Its role here", notes.get("role", "")),
+            (
+                "Where it's used",
+                notes.get("used", "") + f" Any request can ask for it with "
+                f"<code>?policy={escape(name)}</code>.",
+            ),
+        ]
+        if name in results:
+            r = results[name]
+            rows.append(
+                (
+                    "Results",
+                    f"{r['take_up_rate'] * 1000:,.0f} take-ups per 1,000 app opens · "
+                    f"{r['share_of_oracle']:.1%} of what was possible · regret "
+                    f"{r['regret']:,.0f} ± {r['regret_sd']:,.0f} · R{r['revenue_per_open']:.2f} "
+                    f"revenue per app open · #{order[name]} of {len(results)}",
+                )
+            )
+        items = "\n".join(f"<dt>{label}</dt><dd>{text}</dd>" for label, text in rows)
+        badge = ' <span class="chip built">Serving</span>' if name == active else ""
+        cards.append(
+            f'<article class="card model" id="model-{name.replace("_", "-")}">\n'
+            f"<h3>{escape(MODEL_NAMES.get(name, name))} <code>{escape(name)}</code>{badge}</h3>\n"
+            f"<dl>\n{items}\n</dl>\n</article>"
+        )
+    caption = (
+        f'<p class="source">Settings from config/settings.yaml; results from the published run '
+        f"({data['seeds']} seeds × {data['rounds']:,} app opens) · rebuilt by make docs</p>"
+        if data
+        else '<p class="source">Settings from config/settings.yaml · no results yet</p>'
+    )
+    return '<div class="models">\n' + "\n".join(cards) + "\n</div>\n" + caption
+
+
 BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "sidenav": block_sidenav,
     "phases": block_phases,
@@ -1136,6 +1354,8 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "findings": block_findings,
     "regret-chart": block_regret_chart,
     "adaptation": block_adaptation,
+    "model-tree": block_model_tree,
+    "model-cards": block_model_cards,
     "md-results": block_md_results,
     "md-findings": block_md_findings,
     "md-headline": block_md_headline,

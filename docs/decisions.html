@@ -20,9 +20,11 @@
 <div><p class="nav-label">Pages</p>
 <ul class="pages">
 <li><a href="index.html">Overview</a></li>
+<li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
+<li><a href="models.html">Models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
@@ -389,6 +391,8 @@
 <tr><td>DOC4</td><td><code>docs/data/</code> is tracked; ignore rules for generated data are anchored to the project root (<code>/data/</code>, <code>/results/</code>).</td><td>The unanchored <code>data/</code> rule also matched <code>docs/data/</code>, so the Results page's data had never been committed and a fresh clone could not rebuild it.</td></tr>
 <tr><td>DOC3</td><td>The README carries its own Mermaid architecture diagram.</td><td>GitHub renders Mermaid inside Markdown, and the README is the first thing a reviewer sees.</td></tr>
 <tr><td>DOC5</td><td><strong>A Claude Code hook requires a docstring on every function Claude writes</strong> (<code>.claude/hooks/require_docstrings.py</code>, registered in <code>.claude/settings.json</code>). After each Write or Edit of a Python file, it checks the functions whose <code>def</code> is in the new text and reports any without a docstring back to Claude, which adds them before carrying on. Functions named <code>test_*</code> are exempt.</td><td>Enforced at the moment the code is written, not in review. Checking only new functions keeps a one-line fix from turning into a sweep of the whole file. Test names already say what they check. The hook uses only the standard library, and <code>tests/test_docstring_hook.py</code> covers it.</td></tr>
+<tr><td>DOC6</td><td><strong>Mermaid for the product map, the model logic and the app map.</strong> The Product, Models and Dashboard pages write their diagrams in Mermaid, loaded from a pinned CDN version (10.9.1) and redrawn when the theme changes. The existing hand-drawn SVG diagrams stay.</td><td>Mermaid suits flows that change with the product: the source is a few readable lines in the page. Offline, the library doesn't load and the source shows as text, so nothing is lost. This is the one exception to DOC1's no-libraries rule.</td></tr>
+<tr><td>DOC7</td><td><strong>A card per model, generated.</strong> On the Models page, each policy's settings and results, and the family tree's figures, are generated from <code>settings.yaml</code> and the published run. Only the prose about each model's idea and role is written by hand, in <code>scripts/build_docs.py</code>.</td><td>Adding or retuning a policy updates its card and its place in the tree with <code>make docs</code>; the numbers can't drift from the results.</td></tr>
 </tbody></table></div>
 <!-- END generated:decision-log -->
   <p class="source">From DECISIONS.md · rebuilt by make docs</p>

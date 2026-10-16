@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
 <link rel="stylesheet" href="assets/docs.css">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" defer></script>
 <script src="assets/docs.js"></script>
 </head>
 <body>
@@ -20,9 +21,11 @@
 <div><p class="nav-label">Pages</p>
 <ul class="pages">
 <li><a href="index.html">Overview</a></li>
+<li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
 <li><a href="algorithms.html">Policies</a></li>
+<li><a href="models.html">Models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html" aria-current=page>Dashboard</a></li>
@@ -47,9 +50,11 @@
 <header class="page-head">
   <p class="eyebrow">Dashboard · Phase 5</p>
   <h1>Watching the recommender learn</h1>
-  <p class="lede">Everyone signs in first. Then five Streamlit pages: the live event log, the comparison told as a data story, the beliefs behind each ranking, the behaviour shift, and a page where you play the customer and watch the model update. Admins also manage users and API keys.</p>
+  <p class="lede">Everyone signs in first. Then six Streamlit pages: the live event log; three pages that tell the results as stories (which policy wins, how it explores, how it adapts); a page where you play the customer and watch the model update; and, for admins, users and API keys.</p>
   <ul class="toc">
     <li><a href="#run">Run it</a></li>
+    <li><a href="#map">Map of the app</a></li>
+    <li><a href="#pages">Page by page</a></li>
     <li><a href="#sign-in">Signing in</a></li>
     <li><a href="#live">Live view</a></li>
     <li><a href="#comparison">Algorithm comparison</a></li>
@@ -64,10 +69,60 @@
 
 <section aria-labelledby="run">
   <div class="section-head"><h2 id="run">Run it</h2><span class="chip built">Built</span></div>
-<pre><code>make install     # once
-make simulate    # customers, a 3-seed comparison, 1,000 app opens through the API
-make dashboard   # http://localhost:8501</code></pre>
+<pre><code>python manage.py migrate      # once: tables and customers
+python manage.py simulate     # results for the story pages, 1,000 app opens
+python manage.py runserver    # the API and the dashboard: http://localhost:8501</code></pre>
+  <p>Or, with <code>make</code>: <code>make install</code>, <code>make simulate</code>, <code>make dashboard</code>.</p>
   <p>That is the brief's definition of done, verified on a fresh clone with no <code>.env</code>: everything falls back to a local SQLite file and no API server is needed. <code>make simulate</code> takes about four minutes there. Run <code>make compare</code> instead for the published 10-seed results; every results page says which run it is showing.</p>
+</section>
+
+<section aria-labelledby="map">
+  <h2 id="map">Map of the app</h2>
+  <figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  IN["Sign in&lt;br/&gt;(first visit: create the admin)"] --> ROLE{"Role"}
+  ROLE -- "viewer" --> V
+  ROLE -- "admin" --> V
+  ROLE -- "admin" --> AD
+  subgraph V["Every signed-in user"]
+    L["Live view&lt;br/&gt;what is happening now"]
+    C["Algorithm comparison&lt;br/&gt;which policy wins, and by how much"]
+    E["Explore vs exploit&lt;br/&gt;how it decides what to try"]
+    S["Behaviour shift&lt;br/&gt;what happens when customers change"]
+  end
+  subgraph AD["Admins also"]
+    T["Try it&lt;br/&gt;be the customer; changes the model"]
+    U["Users and API keys&lt;br/&gt;who can sign in and call the API"]
+  end
+  L -. "reads" .-> DB[("Event log and&lt;br/&gt;options store")]
+  C -. "reads" .-> RES[("results/")]
+  E -. "reads" .-> RES
+  S -. "reads" .-> RES
+  T -. "calls" .-> API["API"]
+  API -.-> DB
+  U -. "reads, writes" .-> ACC[("users, api_keys")]
+</pre>
+    <figcaption><span>Each page answers one question. The three story pages read a saved simulation run; the live view reads the database the API writes to; Try it goes through the API like a real app.</span></figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="pages">
+  <h2 id="pages">Page by page</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Page</th><th scope="col">Who</th><th scope="col">The question it answers</th><th scope="col">What it has, top to bottom</th><th scope="col">You can</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Sign in</strong></td><td>Everyone</td><td>Who are you?</td><td>Username and password. On an empty database: create the admin account instead.</td><td>Sign in; after five failures, wait 30 seconds</td></tr>
+        <tr><td><a href="#live"><strong>Live view</strong></a></td><td>Everyone</td><td>What is the recommender doing right now?</td><td>App opens logged, offers taken up, take-up per app open; the serving policy; the latest 15 app opens with every offer shown and what happened to it; the serving policy's top three offers per segment, with their expected take-up. Refreshes every 3 seconds.</td><td>Watch a simulation arrive</td></tr>
+        <tr><td><a href="#comparison"><strong>Algorithm comparison</strong></a></td><td>Everyone</td><td>Which way of choosing offers wins, and by how much?</td><td>Headline finding; the setting; 1 · the problem (what was possible, what the fixed ranking gets, what it leaves); 2 · three findings with one chart each; 3 · the answer; 4 · what to do next; then the full table, curves and convergence.</td><td>Pick the policies on the detailed curves</td></tr>
+        <tr><td><a href="#beliefs"><strong>Explore vs exploit</strong></a></td><td>Everyone</td><td>How does it decide when to try something new?</td><td>Headline; the dilemma (how much it explored at first); 2 · chance of being best early and before the shift, exploration over time against epsilon-greedy, the evidence behind the beliefs with and without forgetting; 3 · the answer; 4 · next steps; then the belief explorer.</td><td>Follow a segment; explore any policy, context and point in the run</td></tr>
+        <tr><td><a href="#shift"><strong>Behaviour shift</strong></a></td><td>Everyone</td><td>What happens when customers change?</td><td>Headline; what changed; the old and new favourite for a segment; 2 · when each policy switched, how take-ups followed, what forgetting costs and saves; 3 · the answer; 4 · next steps; then rolling charts and which offer led over time.</td><td>Follow young professionals or families; pick policies and the rolling window</td></tr>
+        <tr><td><a href="#try"><strong>Try it</strong></a></td><td>Admins</td><td>What would this customer see, and how does one response change the model?</td><td>Segment, customer and policy; the moment (day, time of day, payday week); Open the app; three ranked offers with their scores; for each, take up, viewed or ignore; the reward and the belief before and after.</td><td>Open the app as any customer and respond; every click is real learning</td></tr>
+        <tr><td><a href="#users"><strong>Users and API keys</strong></a></td><td>Admins</td><td>Who can sign in, and which systems can call the API?</td><td>Users with role, created and last sign-in; add a user; change a password or remove a user; whether the API requires keys; the keys (first characters only); create a key, shown once; revoke a key.</td><td>Manage accounts and keys</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section aria-labelledby="sign-in">
