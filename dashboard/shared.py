@@ -51,9 +51,14 @@ def results_dir() -> Path:
     return Path(os.environ.get("RECOMMENDER_RESULTS", PROJECT_ROOT / "results"))
 
 
-@st.cache_data
+@st.cache_resource(max_entries=16)
 def _read(path: str, modified: float) -> pd.DataFrame:
-    # ``modified`` is part of the cache key, so a new run is picked up without a restart.
+    """One shared, read-only copy of a results file per saved run.
+
+    ``modified`` is part of the cache key, so a new run is picked up without a restart.
+    A resource cache hands every page the same frame instead of a fresh copy per page load
+    (the per-app-open log is 450,000 rows), so pages must never change it in place.
+    """
     return pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
 
 

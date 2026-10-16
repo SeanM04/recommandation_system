@@ -110,6 +110,17 @@ def test_comparison_tells_the_story_in_order(dashboard) -> None:
     assert "Serve" in answer
 
 
+def test_explore_vs_exploit_tells_the_story_in_order(dashboard) -> None:
+    """The dilemma, three findings, the answer, next steps; numbers counted on this run."""
+    app = page("beliefs").run()
+    assert not app.exception, [error.value for error in app.exception]
+    assert "explores while it's unsure" in app.title[0].value
+    sections = [header.value.split(" · ")[0] for header in app.header]
+    assert sections == ["1", "2", "3", "4"]
+    assert len(app.subheader) == 3  # one per finding
+    assert "of 2 runs" in " ".join(block.value for block in app.markdown)
+
+
 def test_try_it_updates_the_model(dashboard) -> None:
     """Open the app as a customer, take up the first offer, see the belief move."""
     app = page("try_it").run()
