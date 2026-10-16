@@ -14,10 +14,18 @@ from sqlalchemy.dialects import postgresql, sqlite
 metadata = MetaData()
 
 
+SQLITE_BUSY_TIMEOUT_S = 30  # SQLite has one writer at a time; the others wait this long
+
+
 def make_engine(url: str) -> Engine:
     """An engine for ``url``, creating the folder of a SQLite file if needed."""
     if url.startswith("sqlite:///"):
         Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
+        # The driver's default wait is 5 seconds: too short when the API, the dashboard and
+        # a simulation write at once on a busy machine ("database is locked").
+        return create_engine(
+            url, pool_pre_ping=True, connect_args={"timeout": SQLITE_BUSY_TIMEOUT_S}
+        )
     return create_engine(url, pool_pre_ping=True)
 
 
