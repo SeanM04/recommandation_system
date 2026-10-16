@@ -144,7 +144,7 @@ Other endpoints: `GET /offers`, `GET /customers?segment=student`, `GET /policies
 | Page | Shows |
 |---|---|
 | Live view | App opens and outcomes as they arrive, and the serving policy's current top offers per segment |
-| Algorithm comparison | The results table, cumulative regret, take-ups and revenue per policy, and how fast each converged |
+| Algorithm comparison | The findings as a data story: what a fixed ranking leaves on the table, three findings with one chart each, the answer and next steps; the full results underneath |
 | Explore vs exploit | The Beta belief behind every offer at any point in a run |
 | Behaviour shift | How quickly each policy noticed the new favourites after the shift |
 | Try it (admins) | Play a customer: open the app, take up or ignore offers, and watch the belief move |

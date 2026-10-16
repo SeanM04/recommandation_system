@@ -47,14 +47,16 @@
 <header class="page-head">
   <p class="eyebrow">Dashboard · Phase 5</p>
   <h1>Watching the recommender learn</h1>
-  <p class="lede">Five Streamlit pages: the live event log, the head-to-head comparison, the beliefs behind each ranking, the behaviour shift, and a page where you play the customer and watch the model update.</p>
+  <p class="lede">Everyone signs in first. Then five Streamlit pages: the live event log, the comparison told as a data story, the beliefs behind each ranking, the behaviour shift, and a page where you play the customer and watch the model update. Admins also manage users and API keys.</p>
   <ul class="toc">
     <li><a href="#run">Run it</a></li>
+    <li><a href="#sign-in">Signing in</a></li>
     <li><a href="#live">Live view</a></li>
     <li><a href="#comparison">Algorithm comparison</a></li>
     <li><a href="#beliefs">Explore vs exploit</a></li>
     <li><a href="#shift">Behaviour shift</a></li>
     <li><a href="#try">Try it</a></li>
+    <li><a href="#users">Users and API keys</a></li>
     <li><a href="#data">Where the data comes from</a></li>
     <li><a href="#tests">How it is tested</a></li>
   </ul>
@@ -68,6 +70,12 @@ make dashboard   # http://localhost:8501</code></pre>
   <p>That is the brief's definition of done, verified on a fresh clone with no <code>.env</code>: everything falls back to a local SQLite file and no API server is needed. <code>make simulate</code> takes about four minutes there. Run <code>make compare</code> instead for the published 10-seed results; every results page says which run it is showing.</p>
 </section>
 
+<section aria-labelledby="sign-in">
+  <h2 id="sign-in">Signing in</h2>
+  <p>Accounts live in the <code>users</code> table of the project database, with passwords stored only as salted hashes. On an empty database the first screen creates the admin account instead (or run <code>python manage.py createsuperuser</code>). Viewers see the live view and the results; admins also get Try it, which changes the model, and Users and API keys. A sign-in lasts for the browser tab.</p>
+  <figure class="fig"><img src="assets/screenshots/sign-in.png" alt="The sign-in page: username and password fields under the dashboard's name." loading="lazy"><figcaption><span>Reads and writes the users table. Decisions AC1–AC6.</span></figcaption></figure>
+</section>
+
 <section aria-labelledby="live">
   <h2 id="live">Live view</h2>
   <p>App opens and their outcomes as they reach the event log, refreshing every 3 seconds, and the serving policy's current top three offers per context. Start a simulation through the API (<code>python scripts/run_simulation.py --mode api</code>) and watch it fill.</p>
@@ -76,8 +84,16 @@ make dashboard   # http://localhost:8501</code></pre>
 
 <section aria-labelledby="comparison">
   <h2 id="comparison">Algorithm comparison</h2>
-  <p>The results table, cumulative regret, take-ups and revenue for any set of policies (each keeps one colour on every chart), and convergence: how many app opens each policy needed before each segment's best offer led, from the start and again after the shift.</p>
-  <figure class="fig"><img src="assets/screenshots/comparison.png" alt="Algorithm comparison: the results table and cumulative regret curves per policy, with the behaviour shift marked." loading="lazy"><figcaption><span>Reads results/: comparison.csv, comparison_rounds.parquet, convergence.csv.</span></figcaption></figure>
+  <p>Told as a data story, following Brent Dykes' storytelling arc, so the message gets through to someone who reads it once:</p>
+  <ol>
+    <li><strong>A headline that is the finding</strong> ("53% more take-ups than a fixed ranking"), not the topic.</li>
+    <li><strong>Setting and hook:</strong> what was possible (284 take-ups per 1,000 app opens), what the fixed popularity ranking gets (172), and what it leaves on the table.</li>
+    <li><strong>Three rising insights, one chart and one message each:</strong> the learner overtakes the fixed ranking after about 700 app opens and keeps pulling away; learning per customer segment is the biggest single step; when customers changed, only the learner followed. Colour goes only to what the message is about; everything else is grey, and the key points are annotated.</li>
+    <li><strong>The aha moment:</strong> "91 more take-ups for every 1,000 app opens", with how many runs agree and the honest note that the closest variants tie.</li>
+    <li><strong>What to do next:</strong> serve the policy, decide between take-ups and revenue, prove it on real traffic with a holdout, keep watching.</li>
+  </ol>
+  <p>Plain names replace policy ids for a business reader. Every number and claim is computed from the run on disk by <code>recommender.evaluation.story</code>, so a 3-seed run says "of 3 runs" and never borrows the published numbers. The full table, curves for any set of policies and convergence sit in an expander at the end.</p>
+  <figure class="fig"><img src="assets/screenshots/comparison.png" alt="Algorithm comparison as a story: the headline finding, the hook figures 284, 172 and 112 take-ups per 1,000 app opens, and the first finding's chart of extra take-ups over the fixed ranking." loading="lazy"><figcaption><span>Reads results/: comparison.csv, comparison_by_seed.csv, comparison_rounds.parquet, convergence.csv.</span></figcaption></figure>
 </section>
 
 <section aria-labelledby="beliefs">
@@ -95,7 +111,14 @@ make dashboard   # http://localhost:8501</code></pre>
 <section aria-labelledby="try">
   <h2 id="try">Try it</h2>
   <p>Pick a segment, a customer, a policy and optionally the moment; open the app; then take up, view or ignore each offer and see the belief for that offer update. It calls the API server if one is running, otherwise the same FastAPI app inside the dashboard, so the code path is identical. Every click is real learning in the database.</p>
-  <figure class="fig"><img src="assets/screenshots/try-it.png" alt="Try it: three ranked offers for a student; the first was taken up and the belief rose from 21.8 percent to 22.1 percent." loading="lazy"><figcaption><span>Calls POST /invocations, POST /response and GET /policies/{name}/state.</span></figcaption></figure>
+  <p>Admins only, since every click changes the model.</p>
+  <figure class="fig"><img src="assets/screenshots/try-it.png" alt="Try it: three ranked offers for a student; the first, a savings pocket, was taken up and its belief rose from 5.0 percent to 9.5 percent on little evidence." loading="lazy"><figcaption><span>Calls POST /invocations, POST /response and GET /policies/{name}/state.</span></figcaption></figure>
+</section>
+
+<section aria-labelledby="users">
+  <h2 id="users">Users and API keys</h2>
+  <p>Admins only. Add users as viewers or admins, change passwords, remove users, and create or revoke API keys. A new key is shown once and stored only as a hash. Whether the API requires keys is one setting in <code>.env</code>: <code>RECOMMENDER_REQUIRE_API_KEY</code>.</p>
+  <figure class="fig"><img src="assets/screenshots/users.png" alt="Users and API keys: a table of users with roles and last sign-in, forms to add a user and change a password, and the API keys section." loading="lazy"><figcaption><span>Reads and writes the users and api_keys tables.</span></figcaption></figure>
 </section>
 
 <section aria-labelledby="data">
@@ -105,10 +128,11 @@ make dashboard   # http://localhost:8501</code></pre>
       <thead><tr><th>Page</th><th>Reads</th><th>Up to date</th></tr></thead>
       <tbody>
         <tr><td>Live view</td><td>Event log and options store in the database</td><td>Every 3 seconds</td></tr>
-        <tr><td>Algorithm comparison</td><td><code>results/comparison.csv</code>, <code>comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
+        <tr><td>Algorithm comparison</td><td><code>results/comparison.csv</code>, <code>comparison_by_seed.csv</code>, <code>comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
         <tr><td>Explore vs exploit</td><td><code>results/comparison_snapshots.parquet</code></td><td>When a new run is saved</td></tr>
         <tr><td>Behaviour shift</td><td><code>results/comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
         <tr><td>Try it</td><td>The API</td><td>Live</td></tr>
+        <tr><td>Users and API keys</td><td>The users and api_keys tables</td><td>Live</td></tr>
       </tbody>
     </table>
   </div>
