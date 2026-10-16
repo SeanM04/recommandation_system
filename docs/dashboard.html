@@ -98,14 +98,26 @@ make dashboard   # http://localhost:8501</code></pre>
 
 <section aria-labelledby="beliefs">
   <h2 id="beliefs">Explore vs exploit</h2>
-  <p>Each offer's Beta belief for a chosen policy and context at any point in the run, and how the means moved. Wide curves are offers the policy is still testing; a narrow curve far to the right is one it trusts.</p>
-  <figure class="fig"><img src="assets/screenshots/beliefs.png" alt="Explore vs exploit: Beta density curves per offer for families, with electricity and funeral cover narrow and far right, other offers wide and low." loading="lazy"><figcaption><span>Reads results/comparison_snapshots.parquet (beliefs every 2,500 app opens).</span></figcaption></figure>
+  <p>The same storytelling arc. Headline: it explores while it's unsure, then commits (43% of app opens at first, about 5% once confident). The hook is the dilemma: exploring costs take-ups now, not exploring costs them forever. Three findings follow:</p>
+  <ol>
+    <li><strong>Its doubt decides how much it explores.</strong> The chance each offer is the best, after 2,500 app opens and just before the shift, for a segment you pick. Thompson sampling shows an offer first exactly that often, so the bars are also how much it explores.</li>
+    <li><strong>Exploration fades as confidence grows; epsilon-greedy never stops.</strong> The share of app opens spent away from each segment's usual first offer, per 2,500 app opens.</li>
+    <li><strong>Forgetting keeps just enough doubt to notice a change.</strong> The responses behind the beliefs level off near 5,000 with forgetting and pile up past 25,000 without.</li>
+  </ol>
+  <p>Then the answer (Thompson against epsilon-greedy on the same segments, counted by run) and next steps. The Beta density curves, the table and how the beliefs moved, for any policy, context and point in the run, sit in an expander. The numbers come from <code>recommender.evaluation.exploration</code>.</p>
+  <figure class="fig"><img src="assets/screenshots/beliefs.png" alt="Explore vs exploit as a story: the headline, the dilemma with 43 percent explored in the first 2,500 app opens, and the first finding's chance-of-being-best bars for young professionals." loading="lazy"><figcaption><span>Reads results/: comparison_snapshots.parquet (beliefs every 2,500 app opens), comparison_rounds.parquet, comparison.csv, comparison_by_seed.csv.</span></figcaption></figure>
 </section>
 
 <section aria-labelledby="shift">
   <h2 id="shift">Behaviour shift</h2>
-  <p>For young professionals and families, the share of app opens with the new favourite ranked first, take-up per app open, how many app opens each policy needed to adapt, and which offer led over time.</p>
-  <figure class="fig"><img src="assets/screenshots/shift.png" alt="Behaviour shift: share of young-professional app opens with the streaming bundle first; the policy with forgetting jumps to 100 percent about 4,000 app opens before the one without." loading="lazy"><figcaption><span>Reads results/: comparison_rounds.parquet and convergence.csv; the new favourites come from the simulator.</span></figcaption></figure>
+  <p>The same arc. Headline: when customers changed, the learner followed, losing 87% fewer take-ups than the fixed ranking after the change. The hook is the change itself for a segment you pick (young professionals' favourite went from the 5GB data bundle to the streaming bundle) and how often the fixed ranking showed the new favourite first: never. Three findings follow:</p>
+  <ol>
+    <li><strong>The learner switched within 1,460 app opens; without forgetting, 5,601.</strong> For families: 7,980, and without forgetting not within the run.</li>
+    <li><strong>Take-ups followed.</strong> Young professionals went from 177 to 309 take-ups per 1,000 app opens with the learner; the fixed ranking stayed at 85&ndash;86.</li>
+    <li><strong>Forgetting is why:</strong> it cost 93 take-ups before the change and saved 130 after, counted by run.</li>
+  </ol>
+  <p>Then the answer and next steps. The rolling charts for any set of policies and window, and which offer led over time, sit in an expander. The numbers come from <code>recommender.evaluation.adaptation</code>; the favourites before and after come from the simulator's ground truth.</p>
+  <figure class="fig"><img src="assets/screenshots/shift.png" alt="Behaviour shift as a story: the headline, the change from the 5GB data bundle to the streaming bundle for young professionals, and the start of the first finding's chart." loading="lazy"><figcaption><span>Reads results/: comparison_rounds.parquet, convergence.csv, comparison.csv, comparison_by_seed.csv; the favourites come from the simulator.</span></figcaption></figure>
 </section>
 
 <section aria-labelledby="try">
@@ -129,8 +141,8 @@ make dashboard   # http://localhost:8501</code></pre>
       <tbody>
         <tr><td>Live view</td><td>Event log and options store in the database</td><td>Every 3 seconds</td></tr>
         <tr><td>Algorithm comparison</td><td><code>results/comparison.csv</code>, <code>comparison_by_seed.csv</code>, <code>comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
-        <tr><td>Explore vs exploit</td><td><code>results/comparison_snapshots.parquet</code></td><td>When a new run is saved</td></tr>
-        <tr><td>Behaviour shift</td><td><code>results/comparison_rounds.parquet</code>, <code>convergence.csv</code></td><td>When a new run is saved</td></tr>
+        <tr><td>Explore vs exploit</td><td><code>results/comparison_snapshots.parquet</code>, <code>comparison_rounds.parquet</code>, <code>comparison.csv</code>, <code>comparison_by_seed.csv</code></td><td>When a new run is saved</td></tr>
+        <tr><td>Behaviour shift</td><td><code>results/comparison_rounds.parquet</code>, <code>convergence.csv</code>, <code>comparison.csv</code>, <code>comparison_by_seed.csv</code></td><td>When a new run is saved</td></tr>
         <tr><td>Try it</td><td>The API</td><td>Live</td></tr>
         <tr><td>Users and API keys</td><td>The users and api_keys tables</td><td>Live</td></tr>
       </tbody>
