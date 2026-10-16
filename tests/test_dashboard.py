@@ -121,6 +121,18 @@ def test_explore_vs_exploit_tells_the_story_in_order(dashboard) -> None:
     assert "of 2 runs" in " ".join(block.value for block in app.markdown)
 
 
+def test_behaviour_shift_tells_the_story_in_order(dashboard) -> None:
+    """The change, three findings, the answer, next steps, for each segment that changed."""
+    app = page("shift").run()
+    assert not app.exception, [error.value for error in app.exception]
+    assert "When customers changed" in app.title[0].value
+    assert [h.value.split(" · ")[0] for h in app.header] == ["1", "2", "3", "4"]
+    assert "of 2 runs" in " ".join(block.value for block in app.markdown)
+    app.selectbox[0].set_value("family").run()
+    assert not app.exception, [error.value for error in app.exception]
+    assert "families" in app.subheader[1].value
+
+
 def test_try_it_updates_the_model(dashboard) -> None:
     """Open the app as a customer, take up the first offer, see the belief move."""
     app = page("try_it").run()
