@@ -89,6 +89,7 @@ body {
 p, ul, ol, dl, figure, pre, h1, h2, h3 { margin: 0; }
 p, li { max-width: 70ch; }
 ul, ol { padding-left: 1.25em; display: grid; gap: 4px; }
+li { min-width: 0; } /* a code block inside scrolls instead of widening the page */
 a { color: var(--accent); text-underline-offset: 2px; }
 a:focus-visible, button:focus-visible, td:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 strong { font-weight: 600; }

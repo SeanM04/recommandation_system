@@ -210,5 +210,5 @@ docs/                  HTML documentation (open docs/index.html)
 ## Documentation
 
 - [WRITEUP.md](WRITEUP.md): the problem, the approach, the results and what production would need, in two pages.
-- [docs/index.html](docs/index.html): the product map, architecture, the simulated world, the policies and every model one by one, the API, results, the dashboard page by page, workflows and tools, with diagrams. Open it in a browser.
+- [docs/index.html](docs/index.html): the product map, architecture, the simulated world, the policies and every model one by one, the API, results, the dashboard page by page, running and operating it, workflows and tools, with diagrams. Open it in a browser.
 - [DECISIONS.md](DECISIONS.md): every ambiguity in the brief and how it was resolved.

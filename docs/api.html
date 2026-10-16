@@ -28,6 +28,7 @@
 <li><a href="api.html" aria-current=page>API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="operations.html">Run &amp; operate</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -55,6 +56,7 @@
     <li><a href="#endpoints">Endpoints</a></li>
     <li><a href="#examples">Examples</a></li>
     <li><a href="#errors">Errors</a></li>
+    <li><a href="#keys">API keys</a></li>
     <li><a href="#events">Event log</a></li>
     <li><a href="#concurrency">Concurrency</a></li>
     <li><a href="#latency">Latency</a></li>
@@ -64,9 +66,9 @@
 
 <section aria-labelledby="run">
   <div class="section-head"><h2 id="run">Run it</h2><span class="chip built">Built</span></div>
-<pre><code>make db      # tables in Postgres (Telco_Dynamic_Recomender) or SQLite
-make data    # 5,000 customers into data/customers.csv and the customers table
-make run     # API on http://localhost:8000, interactive docs at /docs</code></pre>
+<pre><code>python manage.py migrate                  # tables and the 5,000 customers
+python manage.py runserver --no-dashboard # API on http://localhost:8000, docs at /docs</code></pre>
+  <p>Or <code>make db</code>, <code>make data</code> and <code>make run</code>. The port comes from <code>API_PORT</code> in <code>.env</code>; <a href="operations.html">Run &amp; operate</a> has every way to start it.</p>
   <p>FastAPI also serves an interactive version of every endpoint at <code>/docs</code>, generated from the same Pydantic schemas the API validates with.</p>
 </section>
 
@@ -74,16 +76,16 @@ make run     # API on http://localhost:8000, interactive docs at /docs</code></p
   <h2 id="endpoints">Endpoints</h2>
 <!-- BEGIN generated:endpoints -->
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">What it does</th></tr></thead>
+<thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">What it does</th><th scope="col">Needs an API key</th></tr></thead>
 <tbody>
-<tr><td><code>GET</code></td><td><code>/health</code></td><td>Liveness and readiness: is the database reachable, and what is being served.</td></tr>
-<tr><td><code>GET</code></td><td><code>/offers</code></td><td>The offer catalogue.</td></tr>
-<tr><td><code>GET</code></td><td><code>/customers</code></td><td>A few customer ids, for trying the API out.</td></tr>
-<tr><td><code>POST</code></td><td><code>/invocations</code></td><td>Rank offers for one app open, and log the invocation and every offer shown.</td></tr>
-<tr><td><code>POST</code></td><td><code>/response</code></td><td>Record what happened to one shown offer, and update the model immediately.</td></tr>
-<tr><td><code>GET</code></td><td><code>/policies</code></td><td>Every configured policy; any of them can serve a request via ?policy=.</td></tr>
-<tr><td><code>GET</code></td><td><code>/policies/{name}/state</code></td><td>What a policy has learned: its rows in the options store.</td></tr>
-<tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Per-policy take-up and revenue from the event log; latency per endpoint.</td></tr>
+<tr><td><code>GET</code></td><td><code>/health</code></td><td>Liveness and readiness: is the database reachable, and what is being served.</td><td>never</td></tr>
+<tr><td><code>GET</code></td><td><code>/offers</code></td><td>The offer catalogue.</td><td>when keys are on</td></tr>
+<tr><td><code>GET</code></td><td><code>/customers</code></td><td>A few customer ids, for trying the API out.</td><td>when keys are on</td></tr>
+<tr><td><code>POST</code></td><td><code>/invocations</code></td><td>Rank offers for one app open, and log the invocation and every offer shown.</td><td>when keys are on</td></tr>
+<tr><td><code>POST</code></td><td><code>/response</code></td><td>Record what happened to one shown offer, and update the model immediately.</td><td>when keys are on</td></tr>
+<tr><td><code>GET</code></td><td><code>/policies</code></td><td>Every configured policy; any of them can serve a request via ?policy=.</td><td>when keys are on</td></tr>
+<tr><td><code>GET</code></td><td><code>/policies/{name}/state</code></td><td>What a policy has learned: its rows in the options store.</td><td>when keys are on</td></tr>
+<tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Per-policy take-up and revenue from the event log; latency per endpoint.</td><td>when keys are on</td></tr>
 </tbody></table></div>
 <!-- END generated:endpoints -->
   <p class="source">From the FastAPI app's routes and docstrings · rebuilt by make docs</p>
@@ -129,12 +131,28 @@ curl http://localhost:8000/metrics</code></pre>
     <table>
       <thead><tr><th class="num">Status</th><th>When</th><th>Example detail</th></tr></thead>
       <tbody>
+        <tr><td class="num">401</td><td>API keys are required and the request has no valid <code>X-API-Key</code> header</td><td><code>missing or invalid API key: send one in the X-API-Key header</code></td></tr>
         <tr><td class="num">404</td><td>Unknown customer, invocation, offer, policy or segment</td><td><code>unknown customer 'C99999'</code></td></tr>
         <tr><td class="num">409</td><td>A response for this invocation and offer was already recorded</td><td><code>a response for offer 'data_1gb' in invocation '…' was already recorded</code></td></tr>
         <tr><td class="num">422</td><td>Malformed body, unknown field, bad enum value, too many offers, or an offer that was not shown in that invocation</td><td><code>offer 'data_20gb' was not shown in invocation '…'</code></td></tr>
       </tbody>
     </table>
   </div>
+</section>
+
+<section aria-labelledby="keys">
+  <div class="section-head"><h2 id="keys">API keys</h2><span class="chip built">Built</span></div>
+  <p>API keys decide which <em>programs</em> may call the API; the dashboard's sign-in decides which <em>people</em> may use the dashboard. In production the callers are systems: the app's backend, a USSD menu, an SMS campaign.</p>
+  <div class="note warn"><p><strong>Why they matter here.</strong> <code>POST /response</code> changes the model at once. Without keys, anyone who can reach the API could open the app as a made-up customer and report "taken up" for one offer again and again, and the model would learn that this offer is everyone's favourite. The API already accepts a response only for an offer that was shown, and only once, but only a key stops strangers from creating app opens to respond to.</p></div>
+  <ul>
+    <li><strong>Off by default</strong>, so a clean machine works as it is. Turn them on with <code>RECOMMENDER_REQUIRE_API_KEY=true</code> in <code>.env</code> and restart the API.</li>
+    <li><strong>Every endpoint but <code>/health</code></strong> then needs an <code>X-API-Key</code> header (the endpoint table above says which); <code>/health</code> stays open for load balancers. A missing or wrong key gets 401.</li>
+    <li><strong>Creating keys:</strong> <code>python manage.py createapikey --label mobile-app</code>, or the dashboard's Users and API keys page. A key is 32 random bytes, shown once, and stored only as a SHA-256 hash; each has a label and can be revoked on its own if it leaks.</li>
+    <li><strong>The project's own clients</strong> (the dashboard's Try it, the simulator, the benchmark) send the key in <code>RECOMMENDER_API_KEY</code>. In the interactive docs at <code>/docs</code>, the <strong>Authorize</strong> button takes a key.</li>
+  </ul>
+<pre><code>curl -s -X POST localhost:8000/invocations -H "Content-Type: application/json" \
+     -H "X-API-Key: rk_..." -d '{"customer_id": "C00042"}'</code></pre>
+  <p class="source">Decision AC5 · src/recommender/accounts.py and api/main.py</p>
 </section>
 
 <section aria-labelledby="events">
@@ -168,13 +186,15 @@ curl http://localhost:8000/metrics</code></pre>
 
 <section aria-labelledby="concurrency">
   <div class="section-head"><h2 id="concurrency">Correctness under concurrency</h2><span class="chip built">Tested</span></div>
-  <p>A real-time API serves many requests at once, and every shortcut that is safe one request at a time can lose or double-count learning when two arrive together. Each risk below has a protection in the database or the code, and a test that fails if the protection breaks. Two of them were found by probing the running system, not by reading the code.</p>
+  <p>A real-time API serves many requests at once, and every shortcut that is safe one request at a time can lose or double-count learning when two arrive together. Each risk below has a protection in the database or the code, and a test that fails if the protection breaks. Three of them were found by probing the running system, not by reading the code.</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Risk</th><th>Protection</th><th>Proven by</th></tr></thead>
       <tbody>
         <tr><td>Two copies of one response are both counted</td><td>Primary key <code>(invocation_id, offer_id)</code> and <code>INSERT … ON CONFLICT DO NOTHING RETURNING</code>: no row back means a duplicate, answered with 409 (decisions A2, A13)</td><td>8 threads send one response at once: exactly 1 is recorded, on SQLite and Postgres</td></tr>
         <tr><td>Two updates to one offer overwrite each other</td><td>Learning is one transaction whose statements compute from the row's current value in the database (P11)</td><td>4 threads × 100 updates: all 400 counted, in memory, SQLite and Postgres</td></tr>
+        <tr><td>Two forgetting updates to one segment deadlock</td><td>Forgetting writes every row in the segment, so updates to one segment first take a Postgres advisory lock of their own and run one at a time, in a fixed order (Q2)</td><td>Found under load: 4 workers and 16 clients in Docker Compose failed with <code>deadlock detected</code>; none after the fix, from 1 to 16 clients. 16 threads × 60 updates across 12 offers: nothing fails or is lost</td></tr>
+        <tr><td>SQLite writers give up while waiting</td><td>SQLite allows one writer at a time; the others now wait up to 30 seconds instead of 5</td><td>The same 16-thread test on SQLite, on a heavily loaded machine</td></tr>
         <tr><td>Workers starting together collide creating tables</td><td>Table creation holds a Postgres advisory lock (A14)</td><td>6 processes start at once on an empty schema without an error</td></tr>
         <tr><td>Threads share one random generator</td><td>Each policy's ranking holds a lock (A9)</td><td>NumPy generators are documented as not thread-safe</td></tr>
         <tr><td>Several workers draw identical Thompson samples</td><td>Each server process seeds its own random stream (A15)</td><td>Seeds differ by process id</td></tr>
@@ -199,7 +219,7 @@ curl http://localhost:8000/metrics</code></pre>
   </div>
   <p class="source">One uvicorn worker and Postgres 18 on the same laptop, 150 app opens per client · decision A16</p>
   <div class="note warn">
-    <p><strong>Where the limit is.</strong> Server-side timings match the client's, and turning off synchronous commits changed nothing, so the database and disk are not the bottleneck. One Python process is CPU-bound at about 5 ms of work per request. The way to scale is more worker processes. The Docker image runs 4, but on this Windows laptop Docker Desktop made things slower, because every database call crosses from its Linux VM to Postgres on Windows. On Linux, with the database on the same network, more workers is the standard answer; Phase 6 measures it with docker-compose.</p>
+    <p><strong>Where the limit is.</strong> Server-side timings match the client's, and turning off synchronous commits changed nothing, so the database and disk are not the bottleneck. One Python process is CPU-bound at about 5 ms of work per request. The way to scale is more worker processes, measured below with Docker Compose.</p>
   </div>
   <h3>What limits throughput</h3>
   <p>p95 climbs past the target at 8 concurrent clients. Each likely cause was tested on its own:</p>
@@ -212,11 +232,26 @@ curl http://localhost:8000/metrics</code></pre>
         <tr><td>The load generator</td><td>Compare the server's own timings with the client's</td><td>Server p95 165–175 ms against client 170–180 ms: the time is spent in the server</td></tr>
         <tr><td>Per-request Python overhead</td><td>Pure ASGI timing middleware, one joined query, SQL aggregate</td><td>Throughput unchanged (113, 189, 158 req/s): not the main cost</td></tr>
         <tr><td><strong>One Python process is CPU-bound</strong></td><td>Elimination: about 5 ms of work per request caps one process near 190 req/s</td><td><strong>The limit.</strong> More worker processes are the remedy</td></tr>
-        <tr><td>More workers through Docker Desktop</td><td>The same load against 4 workers in a container</td><td>Slower on Windows (p95 55 ms at 1 client): every database call crosses the VM boundary</td></tr>
+        <tr><td>More workers through Docker Desktop</td><td>The same load against 4 workers in a container, from the Windows host</td><td>Slower (p95 55 ms at 1 client). Not the database: Docker Desktop's port forwarding adds about 45 ms to every POST. Measured from inside the Docker network, the same stack answers in 15 ms (below)</td></tr>
       </tbody>
     </table>
   </div>
   <p class="source">Decision A16 · reproduce with make benchmark and make benchmark-docker</p>
+  <h3>Four workers, with Postgres on the same network</h3>
+  <p>The Docker Compose stack: 4 API workers and Postgres 17 in containers on one network, measured from a container on that network, so the host's port forwarding is not in the path.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="num">Concurrent clients</th><th class="num">/invocations p95</th><th class="num">/response p95</th><th class="num">Requests per second</th><th>Target met</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="num">15.3 ms</td><td class="num">18.0 ms</td><td class="num">80</td><td>Yes</td></tr>
+        <tr><td class="num">4</td><td class="num">22.2 ms</td><td class="num">24.7 ms</td><td class="num">224</td><td>Yes</td></tr>
+        <tr><td class="num">8</td><td class="num">93.4 ms</td><td class="num">103.0 ms</td><td class="num">116</td><td>No</td></tr>
+        <tr><td class="num">16</td><td class="num">133.6 ms</td><td class="num">138.5 ms</td><td class="num">167</td><td>No</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="source">Durable commits (the default) · Docker Desktop on a Windows laptop · decision Q3</p>
+  <p>Past four clients, writing each commit to Docker Desktop's virtual disk dominates: with <code>synchronous_commit=off</code> the same stack reached 291 requests a second with p95 38 ms at 8 clients. Durable commits stay on, because the event log is the source of truth; turning them off loses the last few hundred milliseconds of commits in a crash, a trade to make deliberately in production. <a href="operations.html#performance">Run &amp; operate</a> has the full story.</p>
   <p>Every response also carries an <code>X-Response-Time-ms</code> header, each request is logged as one JSON line, and <code>GET /metrics</code> reports a rolling p50 and p95 per endpoint for the running server.</p>
 </section>
 
@@ -224,7 +259,7 @@ curl http://localhost:8000/metrics</code></pre>
   <div class="section-head"><h2 id="docker">Run it in Docker</h2><span class="chip built">Built</span></div>
 <pre><code>make docker-build   # image telco-recommender:latest (python:3.12-slim, non-root)
 make docker-api     # API on http://localhost:8000 with 4 workers, database from .env</code></pre>
-  <p>The image holds no secrets: <code>make docker-api</code> passes <code>.env</code> with <code>--env-file</code> and points <code>DB_HOST</code> at <code>host.docker.internal</code>, so the container reaches Postgres on the host. The worker count comes from <code>WEB_CONCURRENCY</code> (4 by default), and a health check calls <code>/health</code> every 10 seconds. See <a href="architecture.html#deployment">Deployment</a> for what this costs on Windows.</p>
+  <p>The image holds no secrets: <code>make docker-api</code> passes <code>.env</code> with <code>--env-file</code> and points <code>DB_HOST</code> at <code>host.docker.internal</code>, so the container reaches Postgres on the host. The worker count comes from <code>WEB_CONCURRENCY</code> (4 by default), and a health check calls <code>/health</code> every 10 seconds. For the whole system, database and dashboard included, use <a href="operations.html#compose">Docker Compose</a>.</p>
 </section>
 
 <p class="foot">The endpoint table and event-log schema are generated from the code by <code>make docs</code>; the latency figures come from <code>make benchmark</code>.</p>

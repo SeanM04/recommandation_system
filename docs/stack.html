@@ -28,6 +28,7 @@
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="operations.html">Run &amp; operate</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html" aria-current=page>Tools &amp; quality</a></li>
@@ -68,10 +69,10 @@
 <tr><td><strong>Python</strong></td><td>Language</td><td>3.11+</td><td>Readable, typed code; the bandit maths is plain Python and NumPy.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>FastAPI</strong></td><td>Real-time API</td><td>0.143.1</td><td>Eight endpoints with Pydantic validation and interactive docs generated at /docs.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Uvicorn</strong></td><td>API server</td><td>0.54.0</td><td>The standard ASGI server for FastAPI (<code>make run</code>).</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>Pydantic</strong></td><td>Validation</td><td>2.14.1</td><td>Rejects bad config and offers at load; request schemas in Phase 3.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Pydantic</strong></td><td>Validation</td><td>2.14.1</td><td>Rejects bad config and offers at load, and validates every API request.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>PyYAML</strong></td><td>Configuration</td><td>6.0.3</td><td>Offers, settings and the hidden truth stay human-readable.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>NumPy</strong></td><td>Random draws, maths</td><td>2.5.4</td><td>Seeded generators make every run reproducible; Beta draws for Thompson sampling.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>pandas</strong></td><td>Tables</td><td>3.0.6</td><td>Customer table, take-up tables and, later, metrics.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>pandas</strong></td><td>Tables</td><td>3.0.6</td><td>Customer table, take-up tables, metrics and the results files.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>pytest</strong></td><td>Tests</td><td>9.1.1</td><td>Plain asserts and fixtures; every phase ships with tests.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>HTTPX 2</strong></td><td>Test client</td><td>2.13.1</td><td>Powers FastAPI's TestClient; replaces the deprecated httpx.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Ruff</strong></td><td>Lint and format</td><td>0.17.0</td><td>One fast tool for style, import order and common bugs.</td><td><span class="chip built">Built</span></td></tr>
@@ -82,12 +83,13 @@
 <tr><td><strong>SQLAlchemy</strong></td><td>Database access</td><td>2.1.4</td><td>Core API only: one code path for Postgres and SQLite, upserts via ON CONFLICT.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>SQLite</strong></td><td>Fallback database</td><td>–</td><td>Used when no Postgres URL is configured, so a clean machine runs with no server.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>python-dotenv</strong></td><td>Local secrets</td><td>1.2.4</td><td>Loads the database URL from a git-ignored <code>.env</code> file.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The latency benchmark (and later the simulator) call the API as an app would.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards: five pages, a live view refreshing every 3 seconds.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Requests</strong></td><td>HTTP client</td><td>2.34.2</td><td>The benchmark, the simulator and the dashboard call the API as an app would.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Streamlit</strong></td><td>Dashboard</td><td>1.66.0</td><td>Python-only dashboards: six pages behind a sign-in, a live view refreshing every 3 s.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Plotly</strong></td><td>Charts</td><td>7.1.0</td><td>Interactive regret, reward and Beta-distribution charts with hover.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Playwright</strong></td><td>Screenshots</td><td>1.64.0   # dashboard screenshots (uses the installed Chrome or Edge)</td><td>Drives the installed Chrome or Edge to screenshot the dashboard (dev only).</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Docker</strong></td><td>Packaging</td><td>–</td><td>The API image: slim, non-root, health-checked, 4 workers; secrets via --env-file.</td><td><span class="chip built">Built</span></td></tr>
-<tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>Starts the API, dashboard and a Postgres container with one command (Phase 6).</td><td><span class="chip planned">Planned</span></td></tr>
+<tr><td><strong>Docker Compose</strong></td><td>Packaging</td><td>–</td><td>The whole system with one command: Postgres, the API (4 workers), the dashboard, and one-off jobs that load the customers and run a first simulation.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Mermaid</strong></td><td>Docs diagrams</td><td>–</td><td>The product map, model logic and app map in these docs; pinned, drawn in the browser.</td><td><span class="chip built">Built</span></td></tr>
 </tbody></table></div>
 <!-- END generated:tools -->
   <p class="source">Versions from requirements.txt · rebuilt by make docs</p>
@@ -131,14 +133,14 @@
 <div class="table-wrap"><table class="tests">
 <thead><tr><th scope="col">What the test guarantees</th><th scope="col" class="num">Cases</th></tr></thead>
 <tbody>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_accounts.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_accounts.py</code> · Accounts: password hashing, sign-in, validation, unique names and API keys, on SQLite and Postgres</th></tr>
 <tr><td>Passwords are salted hashes checked exactly</td><td class="num">1</td></tr>
 <tr><td>Sign in with the right password only</td><td class="num">1</td></tr>
 <tr><td>Invalid accounts are refused</td><td class="num">4</td></tr>
 <tr><td>Usernames are unique</td><td class="num">1</td></tr>
 <tr><td>Change password and remove</td><td class="num">1</td></tr>
 <tr><td>Api keys are stored hashed and can be revoked</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_adaptation.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_adaptation.py</code> · Behaviour-shift measures: switching, take-ups before and after, what forgetting costs and saves</th></tr>
 <tr><td>First share tracks the new favourite</td><td class="num">1</td></tr>
 <tr><td>Take ups before and after</td><td class="num">1</td></tr>
 <tr><td>The story of the shift</td><td class="num">1</td></tr>
@@ -161,17 +163,17 @@
 <tr><td>Static policy state shows its frozen table</td><td class="num">1</td></tr>
 <tr><td>Metrics count events and report latency</td><td class="num">1</td></tr>
 <tr><td>Revenue policy learns from margin</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_api_keys.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_api_keys.py</code> · The API with keys required: refused without a valid key, /health open, off by default</th></tr>
 <tr><td>Calls without a valid key are refused</td><td class="num">1</td></tr>
 <tr><td>A valid key is accepted and health needs none</td><td class="num">1</td></tr>
 <tr><td>Keys are off by default</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_cli.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_cli.py</code> · python manage.py: migrate, createsuperuser, createuser, createapikey, and a busy port refused</th></tr>
 <tr><td>Migrate creates the tables and loads the customers</td><td class="num">1</td></tr>
 <tr><td>Createsuperuser without prompts</td><td class="num">1</td></tr>
 <tr><td>Createuser asks for the password twice</td><td class="num">1</td></tr>
 <tr><td>Createapikey prints a working key</td><td class="num">1</td></tr>
 <tr><td>Runserver refuses a port in use</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_daily.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_daily.py</code> · Nightly roll-up: counts per offer, local-day boundaries, safe reruns, on SQLite and Postgres</th></tr>
 <tr><td>Day bounds follow the local calendar</td><td class="num">1</td></tr>
 <tr><td>One row per offer with every outcome counted</td><td class="num">1</td></tr>
 <tr><td>App opens count on their local day</td><td class="num">1</td></tr>
@@ -195,7 +197,7 @@
 <tr><td>Generated blocks are up to date</td><td class="num">1</td></tr>
 <tr><td>Every link between pages resolves</td><td class="num">1</td></tr>
 <tr><td>Element ids are unique within each page</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_docstring_hook.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_docstring_hook.py</code> · The Claude Code hook that requires a docstring on every new function</th></tr>
 <tr><td>A written file must document every function but tests</td><td class="num">1</td></tr>
 <tr><td>An edit is checked only where it wrote functions</td><td class="num">1</td></tr>
 <tr><td>Documented code and other files pass</td><td class="num">1</td></tr>
@@ -216,7 +218,7 @@
 <tr><td>Simultaneous duplicates are recorded exactly once</td><td class="num">1</td></tr>
 <tr><td>Average rewards per offer</td><td class="num">1</td></tr>
 <tr><td>Table creation is safe when workers start together</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_exploration.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_exploration.py</code> · Explore-vs-exploit measures: exploration share, chance of being best, evidence</th></tr>
 <tr><td>Exploration share counts app opens away from the favourite</td><td class="num">1</td></tr>
 <tr><td>Each segment has its own favourite</td><td class="num">1</td></tr>
 <tr><td>Chance of best grows with evidence</td><td class="num">1</td></tr>
@@ -307,7 +309,7 @@
 <tr><td>Sqlite store persists across connections</td><td class="num">1</td></tr>
 <tr><td>Alpha and beta are computed by the database</td><td class="num">1</td></tr>
 <tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
-<tr><th colspan="2" scope="rowgroup"><code>tests/test_story.py</code> · </th></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_story.py</code> · The comparison story&#x27;s numbers on a hand-made run</th></tr>
 <tr><td>The story of a run</td><td class="num">1</td></tr>
 <tr><td>When the learner overtakes the baseline</td><td class="num">1</td></tr>
 <tr><td>Gap curve samples the cumulative lead</td><td class="num">1</td></tr>

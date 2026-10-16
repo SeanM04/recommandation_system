@@ -28,6 +28,7 @@
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="operations.html">Run &amp; operate</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -118,7 +119,7 @@
 
         <rect class="box built" x="740" y="426" width="244" height="60" rx="6"/>
         <text class="t" x="756" y="451">Dashboard</text>
-        <text class="s" x="756" y="471">Streamlit · five pages</text>
+        <text class="s" x="756" y="471">Streamlit · six pages</text>
 
         <path class="edge strong" d="M244 126H386" marker-end="url(#a1-ahs)"/>
         <text class="lbl" x="315" y="118" text-anchor="middle">writes</text>
@@ -149,7 +150,7 @@
     </div>
     <figcaption>
       <span>The amber zone is the simulated world. Only customer profiles leave it, because a real business holds those too. Evaluation is the one other reader of the truth, offline, to compute regret.</span>
-      <span class="legend"><span><i></i>built</span><span><i class="dash"></i>planned</span><span><i class="zone"></i>hidden from the recommender</span></span>
+      <span class="legend"><span><i></i>built</span><span><i class="zone"></i>hidden from the recommender</span></span>
     </figcaption>
   </figure>
 
@@ -317,7 +318,7 @@
   <p>The API runs two ways: as one local process (<code>make run</code>), or as a container with four worker processes (<code>make docker-api</code>). Both use the same Postgres database. The difference that matters on this laptop is the path every database call takes.</p>
   <figure class="fig">
     <div class="fig-scroll">
-      <svg class="dg" viewBox="0 0 1000 360" style="min-width: 820px" role="img" aria-label="Two deployments compared. Native: a client calls one uvicorn process on port 8000, which talks to Postgres on port 5432, all on the Windows laptop; p95 11 ms at one client. Docker: the client calls port 8000, forwarded into a container with four uvicorn workers inside Docker Desktop's Linux VM; every database call leaves the VM to reach Postgres on Windows through host.docker.internal; p95 55 ms at one client on this laptop.">
+      <svg class="dg" viewBox="0 0 1000 360" style="min-width: 820px" role="img" aria-label="Two deployments compared. Native: a client calls one uvicorn process on port 8000, which talks to Postgres on port 5432, all on the Windows laptop; p95 11 ms at one client. Docker: the client calls port 8000, forwarded into a container with four uvicorn workers inside Docker Desktop's Linux VM; the container reaches Postgres on Windows through host.docker.internal; p95 55 ms at one client measured from the host, most of it added by Docker Desktop's port forwarding.">
         <defs>
           <marker id="d1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
           <marker id="d1-ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah blocked"/></marker>
@@ -356,17 +357,17 @@
         <rect class="box built store" x="800" y="186" width="168" height="60" rx="6"/>
         <text class="t" x="884" y="210" text-anchor="middle">Postgres 18</text>
         <text class="s" x="884" y="230" text-anchor="middle">on Windows</text>
-        <path class="edge strong" d="M656 132V184" marker-end="url(#d1-ah)"/>
-        <text class="lbl" x="664" y="144">port 8000 forwarded</text>
-        <path class="edge blocked" d="M760 216H798" marker-end="url(#d1-ahb)"/>
+        <path class="edge blocked" d="M656 132V184" marker-end="url(#d1-ahb)"/>
+        <text class="lbl" x="664" y="144">port 8000 forwarded: +45 ms per POST</text>
+        <path class="edge strong" d="M760 216H798" marker-end="url(#d1-ah)"/>
         <text class="lbl mono" x="884" y="264" text-anchor="middle">via host.docker.internal</text>
         <text class="t" x="552" y="300">p95 55 ms at 1 client on this laptop</text>
-        <text class="s hidden-text" x="552" y="320">every database call crosses the VM boundary</text>
+        <text class="s hidden-text" x="552" y="320">mostly the port forwarding, not the database</text>
       </svg>
     </div>
     <figcaption>
-      <span>Several workers are the way past one process's CPU limit, but only when the database is close. On Windows, Docker Desktop puts the containers in a VM, so each of the 3–5 database calls per request pays an extra network hop. On Linux, or with Postgres in a container on the same Docker network (Phase 6, docker-compose), that hop disappears. Measured numbers: decision A16.</span>
-      <span class="legend"><span><i class="zone"></i>Docker Desktop's VM</span><span><i class="blocked"></i>crosses the VM boundary</span></span>
+      <span>Several workers are the way past one process's CPU limit. On this Windows laptop the container looked slower, and Phase 6 found why: Docker Desktop's port forwarding adds about 45 ms to every POST from the host. It was first put down to the database calls crossing the VM; measured from inside the Docker network, the same stack answers in 15 ms at one client and 22 ms at four. A Linux server has no such hop. Numbers: decisions A16 and Q3, and <a href="operations.html#performance">Run &amp; operate</a>.</span>
+      <span class="legend"><span><i class="zone"></i>Docker Desktop's VM</span><span><i class="blocked"></i>the slow hop: Docker Desktop's port forwarding</span></span>
     </figcaption>
   </figure>
 </section>
@@ -395,7 +396,7 @@
 │                            experiment_forgetting, benchmark_api, build_docs
 ├── tests/                   pytest suite, including the architecture guards
 ├── docs/                    these pages
-├── dashboard/               Streamlit app: app.py, shared.py, views/ (five pages)
+├── dashboard/               Streamlit app: app.py, auth.py (sign-in), shared.py, views/ (six pages)
 ├── DECISIONS.md             decision log
 └── BUILD_PROMPT.md          the original brief</code></pre>
 </section>
@@ -454,7 +455,7 @@
   </div>
 </section>
 
-<p class="foot">Diagrams are drawn by hand from the code as it stands; dashed shapes are planned and will be redrawn solid as each phase lands.</p>
+<p class="foot">Diagrams are drawn by hand from the code as it stands; every component shown is built.</p>
 </main>
 </div>
 </body>

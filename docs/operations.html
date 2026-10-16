@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Run and Operate</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="How to run, configure, deploy, monitor and secure the recommender: manage.py, settings, Docker Compose, the nightly job, logs and metrics, performance and quality gates.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" defer></script>
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="product.html">Product</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="algorithms.html">Policies</a></li>
+<li><a href="models.html">Models</a></li>
+<li><a href="api.html">API</a></li>
+<li><a href="results.html">Results</a></li>
+<li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="operations.html" aria-current=page>Run &amp; operate</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip built">Built</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">Run &amp; operate · Phase 6</p>
+  <h1>Running the recommender</h1>
+  <p class="lede">How to start it, configure it, deploy it, keep an eye on it and keep it safe. Everything here was run and measured on the project's own machine; where a measurement surprised us, the surprise is written down.</p>
+  <ul class="toc">
+    <li><a href="#start">Start it</a></li>
+    <li><a href="#commands">Every command</a></li>
+    <li><a href="#settings">Settings</a></li>
+    <li><a href="#compose">Docker Compose</a></li>
+    <li><a href="#nightly">The nightly job</a></li>
+    <li><a href="#watching">Watching it run</a></li>
+    <li><a href="#performance">Performance, and what load found</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#quality">Quality gates</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="start">
+  <div class="section-head"><h2 id="start">Start it</h2><span class="chip built">Built</span></div>
+  <p>Three ways, the same system. Without a <code>.env</code> everything uses a local SQLite file, so a clean machine needs no database server.</p>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Django style, any OS</h3>
+<pre><code>python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install -e .
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py simulate
+python manage.py runserver</code></pre>
+      <p><code>runserver</code> starts the API, waits until it answers, then starts the dashboard; Ctrl+C stops both. Keep the virtual environment out of folders that OneDrive or Dropbox sync.</p>
+    </div>
+    <div class="card">
+      <h3>make, Linux or macOS</h3>
+<pre><code>make install
+make simulate
+make dashboard</code></pre>
+      <p>The brief's three commands. On Windows: <code>winget install ezwinports.make</code>, then Git Bash. <code>make help</code> lists every target. Verified in a clean <code>python:3.12</code> container (decision Q7).</p>
+    </div>
+    <div class="card">
+      <h3>Docker Compose, everything</h3>
+<pre><code>docker compose up --build
+docker compose down --volumes</code></pre>
+      <p>Postgres, the API, the dashboard and a first simulation, with nothing installed but Docker. See <a href="#compose">Docker Compose</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="commands">
+  <h2 id="commands">Every command</h2>
+  <p><code>python manage.py --help</code> prints the same list. Each command reads the database from <code>.env</code>, like everything else.</p>
+<!-- BEGIN generated:commands -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Command</th><th scope="col">What it does</th><th scope="col">Arguments</th></tr></thead>
+<tbody>
+<tr><td><code>python manage.py migrate</code></td><td>Create the tables and load the customers</td><td>–</td></tr>
+<tr><td><code>python manage.py createsuperuser</code></td><td>Create an admin account</td><td><code>--username</code>, <code>--noinput</code></td></tr>
+<tr><td><code>python manage.py createuser</code></td><td>Create an account</td><td><code>USERNAME</code>, <code>--role</code></td></tr>
+<tr><td><code>python manage.py changepassword</code></td><td>Set a new password</td><td><code>USERNAME</code></td></tr>
+<tr><td><code>python manage.py users</code></td><td>List the accounts</td><td>–</td></tr>
+<tr><td><code>python manage.py createapikey</code></td><td>Create an API key (shown once)</td><td><code>--label</code></td></tr>
+<tr><td><code>python manage.py runserver</code></td><td>Start the API and the dashboard; Ctrl+C stops both</td><td><code>--api-port</code>, <code>--dashboard-port</code>, <code>--host</code>, <code>--no-dashboard</code></td></tr>
+<tr><td><code>python manage.py simulate</code></td><td>Customers, a 3-seed comparison and 1,000 app opens</td><td>anything after it goes to the script</td></tr>
+<tr><td><code>python manage.py compare</code></td><td>The 10-seed comparison (about 7 minutes)</td><td>anything after it goes to the script</td></tr>
+<tr><td><code>python manage.py nightly</code></td><td>Roll the event log up into daily_offer_stats</td><td>anything after it goes to the script</td></tr>
+<tr><td><code>python manage.py test</code></td><td>Run the test suite</td><td>anything after it goes to the script</td></tr>
+</tbody></table></div>
+<!-- END generated:commands -->
+  <p class="source">From the command-line parser in src/recommender/cli.py · rebuilt by make docs</p>
+</section>
+
+<section aria-labelledby="settings">
+  <h2 id="settings">Settings</h2>
+  <p>Secrets and per-machine settings live in <code>.env</code>, which git ignores; <code>.env.example</code> lists every one. How the recommender behaves lives in <code>config/settings.yaml</code>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Setting</th><th scope="col">What it does</th><th scope="col">Default</th></tr></thead>
+      <tbody>
+        <tr><td><code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, <code>DB_HOST</code>, <code>DB_PORT</code></td><td>The Postgres database. Special characters in the password need no escaping.</td><td>SQLite in <code>data/</code></td></tr>
+        <tr><td><code>RECOMMENDER_DATABASE_URL</code></td><td>One full database URL instead; takes precedence.</td><td>–</td></tr>
+        <tr><td><code>API_PORT</code>, <code>DASHBOARD_PORT</code></td><td>Where <code>runserver</code> starts the API and the dashboard.</td><td>8000, 8501</td></tr>
+        <tr><td><code>RECOMMENDER_REQUIRE_API_KEY</code></td><td>Require an <code>X-API-Key</code> on every endpoint but <code>/health</code>.</td><td>off</td></tr>
+        <tr><td><code>RECOMMENDER_API_KEY</code></td><td>The key the dashboard's Try it, the simulator and the benchmark send.</td><td>–</td></tr>
+        <tr><td><code>RECOMMENDER_SUPERUSER_PASSWORD</code></td><td>For <code>createsuperuser --noinput</code> in scripts and containers.</td><td>–</td></tr>
+        <tr><td><code>RECOMMENDER_API_URL</code></td><td>Where the dashboard finds the API; with nothing there it runs the same API inside itself. <code>runserver</code> sets it.</td><td><code>http://localhost:8000</code></td></tr>
+        <tr><td><code>WEB_CONCURRENCY</code></td><td>API worker processes in the Docker image.</td><td>4</td></tr>
+        <tr><td><code>config/settings.yaml</code></td><td>The policy the API serves, offers per app open, the reward, and every policy's settings (see <a href="models.html">Models</a>).</td><td>in the repository</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="compose">
+  <div class="section-head"><h2 id="compose">Docker Compose</h2><span class="chip built">Built</span></div>
+  <p>One image serves five services. Two are one-off jobs that run and exit. The database is its own container, separate from any Postgres on the machine, and it is not published on a host port.</p>
+  <figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  DB[("db&lt;br/&gt;Postgres 17&lt;br/&gt;volume: pgdata")]
+  INIT["init · job&lt;br/&gt;loads the 5,000 customers"]
+  API["api&lt;br/&gt;4 uvicorn workers · port 8000"]
+  DASH["dashboard&lt;br/&gt;Streamlit · port 8501"]
+  SIM["simulate · job&lt;br/&gt;1,000 app opens through the API,&lt;br/&gt;then a 3-seed comparison"]
+  RES[("volume: results")]
+  DB -- "1 · healthy" --> INIT
+  INIT -- "2 · finished" --> API
+  API -- "3 · healthy" --> DASH
+  API -- "3 · healthy" --> SIM
+  SIM -. "HTTP" .-> API
+  API -. "SQL" .-> DB
+  DASH -. "SQL" .-> DB
+  SIM -. "writes" .-> RES
+  DASH -. "reads" .-> RES
+</pre>
+    <figcaption><span>Solid arrows: start-up order (each service waits for the one before it to be healthy or finished). Dotted: what talks to what. Open the dashboard while the simulate job runs and the live view fills as its app opens arrive.</span></figcaption>
+  </figure>
+<pre><code>docker compose up --build              # start; the API at :8000/docs, the dashboard at :8501
+docker compose logs -f simulate        # follow the first simulation
+docker compose stop                    # pause, keeping the data
+docker compose down --volumes          # remove everything, data included
+API_PORT=8010 DASHBOARD_PORT=8510 docker compose up --build   # if the ports are taken</code></pre>
+  <p>The database password defaults to a development value; set <code>COMPOSE_DB_PASSWORD</code> to change it. The first visit to the dashboard creates the admin account (decision AC3: create it from a terminal before exposing a deployment).</p>
+</section>
+
+<section aria-labelledby="nightly">
+  <div class="section-head"><h2 id="nightly">The nightly job</h2><span class="chip built">Built</span></div>
+  <p>Rolls the event log up into one row per day, policy, segment and offer, so reports and drift alerts never scan the raw log. A day is a calendar day in Johannesburg time, and each outcome counts on the day of the app open it answers.</p>
+<pre><code>python manage.py nightly             # yesterday
+python manage.py nightly --all       # every day in the log
+5 0 * * *  cd /path/to/repo &amp;&amp; python manage.py nightly    # cron, five past midnight</code></pre>
+  <p>Rebuilding a day replaces it in one transaction, so a failed run is fixed by running it again, and late responses are picked up by rerunning yesterday. It is a plain script, so cron or a single Airflow task can run it (decision Q6).</p>
+<!-- BEGIN generated:daily-schema -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Key</th></tr></thead>
+<tbody>
+<tr><td><code>day</code></td><td>DATE</td><td>PK</td></tr>
+<tr><td><code>policy</code></td><td>VARCHAR(64)</td><td>PK</td></tr>
+<tr><td><code>segment</code></td><td>VARCHAR(32)</td><td>PK</td></tr>
+<tr><td><code>offer_id</code></td><td>VARCHAR(64)</td><td>PK</td></tr>
+<tr><td><code>impressions</code></td><td>INTEGER</td><td></td></tr>
+<tr><td><code>shown_first</code></td><td>INTEGER</td><td></td></tr>
+<tr><td><code>taken_up</code></td><td>INTEGER</td><td></td></tr>
+<tr><td><code>viewed</code></td><td>INTEGER</td><td></td></tr>
+<tr><td><code>ignored</code></td><td>INTEGER</td><td></td></tr>
+<tr><td><code>no_response</code></td><td>INTEGER</td><td></td></tr>
+<tr><td><code>revenue_zar</code></td><td>FLOAT</td><td></td></tr>
+<tr><td><code>aggregated_at</code></td><td>DATETIME</td><td></td></tr>
+</tbody></table></div>
+<!-- END generated:daily-schema -->
+  <p class="source">The daily_offer_stats table, from src/recommender/events/daily.py</p>
+</section>
+
+<section aria-labelledby="watching">
+  <h2 id="watching">Watching it run</h2>
+  <ul>
+    <li><strong>Logs:</strong> one JSON line per request and at start-up, ready for any log shipper:
+<pre><code>{"ts": "2026-10-15T19:47:58.095+00:00", "level": "info", "logger": "recommender.api",
+ "event": "request", "endpoint": "POST /response", "status": 200, "ms": 50.18}</code></pre></li>
+    <li><strong><code>GET /health</code></strong>: whether the database answers, the version and the serving policy. Open to everyone, also when API keys are on.</li>
+    <li><strong><code>GET /metrics</code></strong>: app opens, outcomes, take-up and revenue per policy from the event log, and p50 and p95 latency per endpoint since start.</li>
+    <li><strong><code>X-Response-Time-ms</code></strong>: on every response.</li>
+    <li><strong>The dashboard's Live view</strong>: the latest app opens and what the serving policy believes, every 3 seconds.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="performance">
+  <div class="section-head"><h2 id="performance">Performance, and what load found</h2><span class="chip built">Measured</span></div>
+  <p>The target is a p95 under 50 ms. Measured with <code>scripts/benchmark_api.py</code>: concurrent clients each open the app and respond to every offer shown.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Set-up</th><th class="num">1 client</th><th class="num">4 clients</th><th class="num">8 clients</th></tr></thead>
+      <tbody>
+        <tr><td>One worker, Postgres on the laptop (<code>make benchmark</code>)</td><td class="num">11 ms · 113/s</td><td class="num">32 ms · 189/s</td><td class="num">120 ms · 158/s</td></tr>
+        <tr><td>4 workers in Docker Compose, measured inside the network</td><td class="num">15 ms · 80/s</td><td class="num">22 ms · 224/s</td><td class="num">93 ms · 116/s</td></tr>
+        <tr><td>The same, with <code>synchronous_commit=off</code></td><td class="num">12 ms · 104/s</td><td class="num">19 ms · 291/s</td><td class="num">38 ms · 290/s</td></tr>
+        <tr><td>4 workers, measured from the Windows host</td><td class="num">about 55 ms</td><td class="num">–</td><td class="num">–</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="source">p95 of POST /invocations and requests per second · decisions A16 and Q3 · details on the <a href="api.html#latency">API page</a></p>
+  <p>Load testing found four things that reading the code had not:</p>
+  <ol>
+    <li><strong>A deadlock.</strong> With 4 workers and 16 clients, two forgetting updates to the same segment locked its rows in different orders and Postgres aborted one. Updates to one segment now take a lock of their own first; the rerun had none from 1 to 16 clients (decision Q2).</li>
+    <li><strong>A misleading 45 ms.</strong> From the host, the containers looked slow. In-process the endpoint takes 10 ms and a database round trip 0.34 ms; the extra time was Docker Desktop's port forwarding on every POST. The earlier explanation, database calls crossing the VM, was wrong and is corrected (decisions A16 and Q3).</li>
+    <li><strong>Commits to a virtual disk.</strong> Past four clients, durable commits to Docker Desktop's disk dominate. They stay on: the event log is the source of truth.</li>
+    <li><strong>One worker restart.</strong> Once, at 16 clients, uvicorn restarted a worker that missed its 5-second health ping, dropping its open connections. Not seen again; a production load test should size workers to CPUs (decision Q4).</li>
+  </ol>
+  <p>Two more from running the dashboard on a small machine: it now shares one read-only copy of each results file instead of one per page load (the per-app-open log is 450,000 rows), and SQLite writers wait up to 30 seconds for the write lock instead of 5.</p>
+</section>
+
+<section aria-labelledby="security">
+  <h2 id="security">Security</h2>
+  <ul>
+    <li><strong>People</strong> sign in to the dashboard; passwords are salted scrypt hashes, checked in constant time. Viewers see results; admins also use Try it and manage users (decisions AC1–AC4).</li>
+    <li><strong>Programs</strong> can be required to send an API key; keys are stored as hashes, shown once and revocable (AC5, <a href="api.html#keys">API keys</a>).</li>
+    <li><strong>Secrets</strong> stay in the git-ignored <code>.env</code>; the Docker image holds none and runs as a non-root user.</li>
+    <li><strong>Tests never touch real data</strong>: they use throwaway Postgres schemas and temporary SQLite files.</li>
+  </ul>
+  <p>Production would add single sign-on, a secrets manager, HTTPS and an authenticating proxy; the <a href="decisions.html">decision log</a> records each limit of what is built.</p>
+</section>
+
+<section aria-labelledby="quality">
+  <h2 id="quality">Quality gates</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Gate</th><th scope="col">Run with</th><th scope="col">Fails when</th></tr></thead>
+      <tbody>
+        <tr><td>Tests</td><td><code>python manage.py test</code> or <code>make test</code></td><td>Any of the tests fails; on Postgres too when one is configured. The <a href="stack.html#tests">full inventory</a> is generated.</td></tr>
+        <tr><td>Lint and format</td><td><code>make lint</code></td><td>Ruff finds a style or bug pattern, or a file is unformatted</td></tr>
+        <tr><td>Docs are current</td><td><code>make docs</code>; checked by the tests</td><td>A generated table, figure or number in the docs, README or write-up differs from the code or the latest results, a link is broken, or a test file is undescribed</td></tr>
+        <tr><td>Docstrings</td><td>A Claude Code hook, on every edit</td><td>A function Claude writes has no docstring (decision DOC5)</td></tr>
+        <tr><td>Clean machine</td><td>A fresh clone in a <code>python:3.12</code> container</td><td><code>make install</code>, <code>make simulate</code>, the dashboard or the tests fail (decision Q7)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<p class="foot">The command list and the nightly table's columns are generated from the code by <code>make docs</code>; the measurements come from <code>scripts/benchmark_api.py</code>.</p>
+</main>
+</div>
+</body>
+</html>

@@ -57,6 +57,7 @@ PAGES = [
     ("api.html", "API"),
     ("results.html", "Results"),
     ("dashboard.html", "Dashboard"),
+    ("operations.html", "Run & operate"),
     ("workflows.html", "Workflows"),
     ("decisions.html", "Decisions"),
     ("stack.html", "Tools & quality"),
@@ -114,13 +115,13 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
     ("Uvicorn", "uvicorn", "API server", "built",
      "The standard ASGI server for FastAPI (`make run`)."),
     ("Pydantic", "pydantic", "Validation", "built",
-     "Rejects bad config and offers at load; request schemas in Phase 3."),
+     "Rejects bad config and offers at load, and validates every API request."),
     ("PyYAML", "pyyaml", "Configuration", "built",
      "Offers, settings and the hidden truth stay human-readable."),
     ("NumPy", "numpy", "Random draws, maths", "built",
      "Seeded generators make every run reproducible; Beta draws for Thompson sampling."),
     ("pandas", "pandas", "Tables", "built",
-     "Customer table, take-up tables and, later, metrics."),
+     "Customer table, take-up tables, metrics and the results files."),
     ("pytest", "pytest", "Tests", "built",
      "Plain asserts and fixtures; every phase ships with tests."),
     ("HTTPX 2", "httpx2", "Test client", "built",
@@ -142,17 +143,20 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
     ("python-dotenv", "python-dotenv", "Local secrets", "built",
      "Loads the database URL from a git-ignored `.env` file."),
     ("Requests", "requests", "HTTP client", "built",
-     "The latency benchmark (and later the simulator) call the API as an app would."),
+     "The benchmark, the simulator and the dashboard call the API as an app would."),
     ("Streamlit", "streamlit", "Dashboard", "built",
-     "Python-only dashboards: five pages, a live view refreshing every 3 seconds."),
+     "Python-only dashboards: six pages behind a sign-in, a live view refreshing every 3 s."),
     ("Plotly", "plotly", "Charts", "built",
      "Interactive regret, reward and Beta-distribution charts with hover."),
     ("Playwright", "playwright", "Screenshots", "built",
      "Drives the installed Chrome or Edge to screenshot the dashboard (dev only)."),
     ("Docker", None, "Packaging", "built",
      "The API image: slim, non-root, health-checked, 4 workers; secrets via --env-file."),
-    ("Docker Compose", None, "Packaging", "planned",
-     "Starts the API, dashboard and a Postgres container with one command (Phase 6)."),
+    ("Docker Compose", None, "Packaging", "built",
+     "The whole system with one command: Postgres, the API (4 workers), the dashboard, and "
+     "one-off jobs that load the customers and run a first simulation."),
+    ("Mermaid", None, "Docs diagrams", "built",
+     "The product map, model logic and app map in these docs; pinned, drawn in the browser."),
 ]
 # fmt: on
 
@@ -174,6 +178,21 @@ TEST_FILES = {
     "content checks and a Try it click-through",
     "test_events.py": "Event log: round trips, simultaneous duplicates, averages and safe "
     "concurrent start-up, on SQLite and Postgres",
+    "test_daily.py": "Nightly roll-up: counts per offer, local-day boundaries, safe reruns, on "
+    "SQLite and Postgres",
+    "test_accounts.py": "Accounts: password hashing, sign-in, validation, unique names and API "
+    "keys, on SQLite and Postgres",
+    "test_api_keys.py": "The API with keys required: refused without a valid key, /health open, "
+    "off by default",
+    "test_cli.py": "python manage.py: migrate, createsuperuser, createuser, createapikey, and a "
+    "busy port refused",
+    "test_story.py": "The comparison story's numbers on a hand-made run",
+    "test_exploration.py": "Explore-vs-exploit measures: exploration share, chance of being "
+    "best, evidence",
+    "test_adaptation.py": "Behaviour-shift measures: switching, take-ups before and after, what "
+    "forgetting costs and saves",
+    "test_docstring_hook.py": "The Claude Code hook that requires a docstring on every new "
+    "function",
 }
 
 CHIP_LABELS = {"built": "Built", "planned": "Planned", "proposed": "Proposed"}
@@ -582,7 +601,9 @@ def block_tests(src: Sources, page: str) -> str:
     for file, name, cases in src.test_inventory:
         if file != current:
             current = file
-            note = escape(TEST_FILES.get(file, ""))
+            if file not in TEST_FILES:
+                raise KeyError(f"describe tests/{file} in TEST_FILES in scripts/build_docs.py")
+            note = escape(TEST_FILES[file])
             rows.append(
                 f'<tr><th colspan="2" scope="rowgroup"><code>tests/{file}</code> · {note}</th></tr>'
             )
@@ -695,7 +716,10 @@ def block_rewards(src: Sources, page: str) -> str:
 
 
 def block_endpoints(src: Sources, page: str) -> str:
-    from recommender.api.main import create_app  # routes only; no database connection
+    from recommender.api.main import (  # routes only; no database connection
+        check_api_key,
+        create_app,
+    )
 
     rows = []
     for route in create_app().routes:
@@ -704,10 +728,16 @@ def block_endpoints(src: Sources, page: str) -> str:
             continue
         method = sorted(methods - {"HEAD"})[0]
         summary = (inspect.getdoc(route.endpoint) or "").split("\n\n")[0].replace("\n", " ")
+        keyed = any(d.dependency is check_api_key for d in getattr(route, "dependencies", []))
         rows.append(
-            [f"<code>{method}</code>", f"<code>{escape(route.path)}</code>", escape(summary)]
+            [
+                f"<code>{method}</code>",
+                f"<code>{escape(route.path)}</code>",
+                escape(summary),
+                "when keys are on" if keyed else "never",
+            ]
         )
-    return table(["Method", "Path", "What it does"], rows)
+    return table(["Method", "Path", "What it does", "Needs an API key"], rows)
 
 
 def block_event_schema(src: Sources, page: str) -> str:
@@ -728,6 +758,52 @@ def block_event_schema(src: Sources, page: str) -> str:
                 ]
             )
     return table(["Table", "Column", "Type", "Key", "Nullable"], rows)
+
+
+def block_commands(src: Sources, page: str) -> str:
+    """Every ``python manage.py`` command, from the command-line parser itself."""
+    import argparse
+
+    from recommender.cli import parser
+
+    commands = next(
+        action for action in parser()._actions if isinstance(action, argparse._SubParsersAction)
+    )
+    rows = []
+    for name, command in commands.choices.items():
+        options = []
+        for action in command._actions:
+            if action.dest == "help":
+                continue
+            if action.option_strings:
+                options.append(f"<code>{action.option_strings[0]}</code>")
+            elif action.nargs == argparse.REMAINDER:
+                options.append("anything after it goes to the script")
+            else:
+                options.append(f"<code>{action.dest.upper()}</code>")
+        rows.append(
+            [
+                f"<code>python manage.py {name}</code>",
+                escape((command.description or "")[:1].upper() + (command.description or "")[1:]),
+                ", ".join(options) or "–",
+            ]
+        )
+    return table(["Command", "What it does", "Arguments"], rows)
+
+
+def block_daily_schema(src: Sources, page: str) -> str:
+    """The columns of the nightly roll-up table, from its SQLAlchemy definition."""
+    from recommender.events.daily import daily_offer_stats
+
+    rows = [
+        [
+            f"<code>{column.name}</code>",
+            escape(str(column.type)),
+            "PK" if column.primary_key else "",
+        ]
+        for column in daily_offer_stats.columns
+    ]
+    return table(["Column", "Type", "Key"], rows)
 
 
 # --- results (from docs/data/comparison.json, written by make compare) ----------------
@@ -1356,6 +1432,8 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "adaptation": block_adaptation,
     "model-tree": block_model_tree,
     "model-cards": block_model_cards,
+    "commands": block_commands,
+    "daily-schema": block_daily_schema,
     "md-results": block_md_results,
     "md-findings": block_md_findings,
     "md-headline": block_md_headline,

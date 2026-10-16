@@ -28,6 +28,7 @@
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="operations.html">Run &amp; operate</a></li>
 <li><a href="workflows.html">Workflows</a></li>
 <li><a href="decisions.html">Decisions</a></li>
 <li><a href="stack.html">Tools &amp; quality</a></li>
@@ -106,6 +107,7 @@
     <li><a href="api.html">API</a><p>Endpoints, curl examples, error codes, the event log and the measured latency.</p></li>
     <li><a href="results.html">Results</a><p>Every policy on the same 50,000 app opens: take-up, regret against an oracle, and adaptation after the behaviour shift.</p></li>
     <li><a href="dashboard.html">Dashboard</a><p>A map of the app and what each page has: sign-in, the live view, three story pages, Try it and user management, with screenshots.</p></li>
+    <li><a href="operations.html">Run &amp; operate</a><p>Start it three ways, every command, settings, Docker Compose, the nightly job, logs and metrics, measured performance, security and quality gates.</p></li>
     <li><a href="workflows.html">Workflows</a><p>The command pipeline, the simulation loop and how each phase is built, tested and committed.</p></li>
     <li><a href="decisions.html">Decisions</a><p>Decision trees for the learning approach and the update rule, plus the full decision log.</p></li>
     <li><a href="stack.html">Tools &amp; quality</a><p>Every tool, its version and why it was chosen; quality gates and the full test inventory.</p></li>
@@ -114,18 +116,13 @@
 
 <section aria-labelledby="run">
   <h2 id="run">Run it</h2>
-<pre><code>make install   # dependencies and the package (editable)
-make db        # tables in Postgres (from .env) or a local SQLite file
-make data      # 5,000 synthetic customers -> data/customers.csv and the database
-make run       # the API on http://localhost:8000 (interactive docs at /docs)
-make simulate  # 50,000 simulated app opens through the active policy
-make compare   # every policy on the same world: the results table
-make dashboard # five Streamlit pages on http://localhost:8501
-make truth     # print the hidden take-up rates (simulator only)
-make test      # full test suite
-make docs      # rebuild the data tables in these pages
-make docker-build &amp;&amp; make docker-api   # or run the API in Docker</code></pre>
-  <p>Without <code>make</code> (for example on Windows), run the command under each target in the <code>Makefile</code> directly, such as <code>python scripts/generate_customers.py</code>.</p>
+<pre><code>python manage.py migrate          # tables and the 5,000 customers (Postgres from .env, else SQLite)
+python manage.py createsuperuser  # your admin account for the dashboard
+python manage.py simulate         # a 3-seed comparison and 1,000 app opens through the API
+python manage.py runserver        # the API (docs at /docs) and the dashboard, together
+python manage.py compare          # the published 10-seed comparison (about 7 minutes)
+python manage.py test             # the full test suite</code></pre>
+  <p>With <code>make</code>: <code>make install</code>, <code>make simulate</code>, <code>make dashboard</code> (<code>make help</code> lists every target). Or the whole system with <code>docker compose up --build</code>. <a href="operations.html">Run &amp; operate</a> has every command, setting and option.</p>
 </section>
 
 <section aria-labelledby="terms">
