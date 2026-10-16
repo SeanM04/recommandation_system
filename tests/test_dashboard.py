@@ -98,6 +98,18 @@ def test_comparison_lists_every_policy_and_says_which_run(dashboard) -> None:
     assert any("2 seeds × 600 app opens" in caption.value for caption in app.caption)
 
 
+def test_comparison_tells_the_story_in_order(dashboard) -> None:
+    """Hook, findings, answer, next steps; the headline is the finding, counted on this run."""
+    app = page("comparison").run()
+    assert "more take-ups than a fixed ranking" in app.title[0].value
+    sections = [header.value for header in app.header]
+    assert [s.split(" · ")[0] for s in sections] == ["1", "2", "3", "4"]
+    assert "The answer" in sections[2]
+    answer = " ".join(block.value for block in app.markdown)
+    assert "of 2 runs" in answer  # claims are counted on the 2 seeds of this run
+    assert "Serve" in answer
+
+
 def test_try_it_updates_the_model(dashboard) -> None:
     """Open the app as a customer, take up the first offer, see the belief move."""
     app = page("try_it").run()
