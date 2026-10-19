@@ -14,7 +14,7 @@ from recommender.algorithms.random_policy import RandomPolicy
 from recommender.algorithms.static import StaticPolicy
 from recommender.algorithms.thompson import ThompsonSamplingPolicy
 from recommender.config import PolicySpec, Settings
-from recommender.store.options_store import OptionsStore
+from recommender.store.options_store import InMemoryOptionsStore, OptionsStore
 
 
 def policy_rng(seed: int, name: str) -> np.random.Generator:
@@ -73,3 +73,9 @@ def build_policies(
         name: build_policy(name, spec, store, seed=seed, popularity=popularity)
         for name, spec in settings.policies.items()
     }
+
+
+def servable_policies(settings: Settings) -> list[str]:
+    """The configured policies the API can serve: those whose state the options store holds."""
+    built = build_policies(settings, InMemoryOptionsStore())
+    return [name for name, policy in built.items() if policy.servable]

@@ -46,6 +46,7 @@ class Policy(ABC):
 
     name: str
     learns = False  # True for policies whose update() changes what they recommend
+    servable = True  # False for policies whose state the options store can't hold
 
     @abstractmethod
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:

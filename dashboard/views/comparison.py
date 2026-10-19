@@ -10,6 +10,7 @@ Every number comes from the saved run (recommender.evaluation.story).
 import plotly.graph_objects as go
 import streamlit as st
 
+from recommender.algorithms.factory import servable_policies
 from recommender.evaluation.metrics import cumulative
 from recommender.evaluation.story import BASELINE, LADDER, build_story, gap_curve, label
 from shared import (
@@ -38,7 +39,7 @@ if not need_results(table, by_seed, rounds, convergence):
 @st.cache_data(max_entries=4)
 def comparison_story(saved_at: float):
     """The story's numbers, computed once per saved run (keyed by when it was saved)."""
-    return build_story(table, by_seed, rounds, convergence)
+    return build_story(table, by_seed, rounds, convergence, servable_policies(settings()))
 
 
 story = comparison_story((results_dir() / "comparison_rounds.parquet").stat().st_mtime)

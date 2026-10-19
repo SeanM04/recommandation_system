@@ -79,6 +79,23 @@ def test_the_story_of_a_run() -> None:
     assert story.revenue_trade is None  # no revenue policy in this run
 
 
+def test_the_story_recommends_only_what_the_api_can_serve() -> None:
+    table, by_seed, log, convergence = make_run()
+    # A simulation-only policy with the lowest regret of all, in the table and every seed.
+    table = pd.concat(
+        [table, pd.DataFrame([{"policy": "thompson_features", "regret": 900.0}])],
+        ignore_index=True,
+    )
+    extra = by_seed[by_seed["policy"] == "thompson_segment_decay"].assign(
+        policy="thompson_features", regret=900.0
+    )
+    by_seed = pd.concat([by_seed, extra], ignore_index=True)
+
+    story = build_story(table, by_seed, log, convergence, servable=POLICIES)
+    assert story.best == "thompson_segment_decay"
+    assert story.tied_with_best == ["thompson_segment"]  # never the simulation-only one
+
+
 def test_when_the_learner_overtakes_the_baseline() -> None:
     # Behind by 0.1 for 3 app opens (-0.3), then 0.2 ahead each: -0.1 after the 4th app
     # open, +0.1 after the 5th, and ahead from then on.

@@ -66,7 +66,7 @@ class Services:
             seed=settings.seed + os.getpid(),
         )
         # Policies whose state the options store can't hold run in the simulator only.
-        policies = {name: p for name, p in built.items() if getattr(p, "servable", True)}
+        policies = {name: p for name, p in built.items() if p.servable}
         rewards = {name: settings.reward_function(name, list(offers.values())) for name in policies}
         logger.info(
             "api ready",

@@ -9,6 +9,7 @@ from here, computed from whichever run is on disk, so a 3-seed run never borrows
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 
 import pandas as pd
@@ -24,6 +25,7 @@ LABELS = {
     "thompson_segment_payday": "Learning per segment and payday week",
     "thompson_segment_decay": "Learning per segment, with forgetting",
     "thompson_segment_revenue": "Learning per segment, from revenue",
+    "thompson_features": "Learning on customer features",
 }
 # Each step adds one idea, from no intelligence to the recommended policy.
 LADDER = ["random", "static", "thompson", "thompson_segment", "thompson_segment_decay"]
@@ -39,7 +41,7 @@ def label(policy: str) -> str:
 class Story:
     """Everything the comparison story states, for one saved run."""
 
-    best: str  # lowest mean regret
+    best: str  # lowest mean regret among the policies the API can serve
     seeds: int
     app_opens: int
     shift_round: int | None
@@ -78,11 +80,20 @@ def _gap(rounds: pd.DataFrame, a: str, b: str) -> pd.Series:
 
 
 def build_story(
-    table: pd.DataFrame, by_seed: pd.DataFrame, rounds: pd.DataFrame, convergence: pd.DataFrame
+    table: pd.DataFrame,
+    by_seed: pd.DataFrame,
+    rounds: pd.DataFrame,
+    convergence: pd.DataFrame,
+    servable: Collection[str] | None = None,
 ) -> Story:
-    """Compute the story of one run from the files ``make compare`` saves."""
+    """Compute the story of one run from the files ``make compare`` saves.
+
+    The story recommends what to serve, so its best policy and the ties with it are among
+    ``servable`` (default: every policy in the run); simulation-only policies stay in the
+    table and the charts."""
     table = table.set_index("policy")
-    best = str(table["regret"].idxmin())
+    candidates = [p for p in table.index if servable is None or p in servable]
+    best = str(table.loc[candidates, "regret"].idxmin())
     seeds = by_seed["seed"].nunique()
     shifted = rounds.loc[rounds["shifted"], "round"]
     shift_round = int(shifted.min()) if len(shifted) else None
@@ -99,7 +110,7 @@ def build_story(
 
     tied = [
         policy
-        for policy in table.index
+        for policy in candidates
         if policy not in (best, "random", BASELINE)
         and (_paired(by_seed, best, policy, "regret") < 0).sum() < 0.8 * seeds
     ]
