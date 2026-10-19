@@ -37,23 +37,26 @@ class PathSettings(BaseModel):
     @field_validator("*")
     @classmethod
     def _absolute(cls, path: Path) -> Path:
+        """Resolve a configured path against the project root."""
         return resolve_path(path)
 
 
 class PolicySpec(BaseModel):
     """One configured policy. Settings that don't apply to its type are ignored."""
 
-    type: Literal["random", "static", "epsilon_greedy", "thompson"]
+    type: Literal["random", "static", "epsilon_greedy", "thompson", "thompson_features"]
     context: str = "global"  # one of CONTEXT_MODES
     decay: float = Field(1.0, gt=0, le=1)  # 1 = never forget
     epsilon: float = Field(0.1, ge=0, le=1)
     epsilon_decay: float = Field(1.0, gt=0, le=1)
     min_epsilon: float = Field(0.0, ge=0, le=1)
+    scale: float = Field(0.05, gt=0)  # thompson_features: posterior width, i.e. exploration
     reward: Literal["binary", "margin"] | None = None  # None: recommendation.reward
 
     @field_validator("context")
     @classmethod
     def _known_context_mode(cls, mode: str) -> str:
+        """Reject a context mode that isn't one of CONTEXT_MODES."""
         if mode not in CONTEXT_MODES:
             raise ValueError(f"unknown context mode {mode!r}; expected one of {CONTEXT_MODES}")
         return mode
@@ -77,11 +80,13 @@ class Settings(BaseModel):
     @field_validator("timezone")
     @classmethod
     def _known_timezone(cls, name: str) -> str:
+        """Reject a timezone name the system doesn't know."""
         ZoneInfo(name)  # raises for an unknown zone
         return name
 
     @model_validator(mode="after")
     def _active_policy_is_configured(self) -> Settings:
+        """Make sure the active policy is one of the configured policies."""
         if self.recommendation.active_policy not in self.policies:
             raise ValueError(
                 f"active_policy {self.recommendation.active_policy!r} is not in policies"
@@ -155,7 +160,7 @@ def read_yaml(path: Path) -> Any:
 
 def load_settings(path: Path | str | None = None) -> Settings:
     """Load ``config/settings.yaml`` (or ``$RECOMMENDER_SETTINGS``, or ``path``)."""
-    path = Path(path or os.environ.get("RECOMMENDER_SETTINGS", DEFAULT_SETTINGS_PATH))
+    path = Path(path or os.environ.get("RECOMMENDER_SETTINGS") or DEFAULT_SETTINGS_PATH)
     return Settings.model_validate(read_yaml(path))
 
 

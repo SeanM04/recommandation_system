@@ -12,6 +12,7 @@ from recommender.simulator.engine import World
 
 @pytest.fixture(scope="module")
 def secured(tmp_path_factory):
+    """The API with keys required, on a throwaway database, and one valid key."""
     url = f"sqlite:///{(tmp_path_factory.mktemp('keys') / 'keys.db').as_posix()}"
     engine = make_engine(url)
     CustomerRepository(engine).load(World.load().customers)

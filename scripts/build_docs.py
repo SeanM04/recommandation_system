@@ -29,6 +29,7 @@ import pandas as pd
 
 from recommender.algorithms.base import BanditPolicy
 from recommender.algorithms.epsilon_greedy import EpsilonGreedyPolicy
+from recommender.algorithms.linear_thompson import FEATURES
 from recommender.algorithms.rewards import make_reward
 from recommender.algorithms.static import StaticPolicy
 from recommender.algorithms.thompson import ThompsonSamplingPolicy
@@ -52,8 +53,7 @@ PAGES = [
     ("product.html", "Product"),
     ("architecture.html", "Architecture"),
     ("simulation.html", "Simulated world"),
-    ("algorithms.html", "Policies"),
-    ("models.html", "Models"),
+    ("models.html", "Policies & models"),
     ("api.html", "API"),
     ("results.html", "Results"),
     ("dashboard.html", "Dashboard"),
@@ -193,16 +193,23 @@ TEST_FILES = {
     "forgetting costs and saves",
     "test_docstring_hook.py": "The Claude Code hook that requires a docstring on every new "
     "function",
+    "test_linear_thompson.py": "Thompson sampling on customer features: features, learning per "
+    "segment, forgetting, simulation only",
+    "test_stats.py": "Bootstrap intervals for paired, seed-by-seed comparisons",
+    "test_sensitivity.py": "The sensitivity sweep: scaled effects, flatter preferences, a tiny "
+    "sweep end to end",
 }
 
 CHIP_LABELS = {"built": "Built", "planned": "Planned", "proposed": "Proposed"}
 
 
 def chip(status: str) -> str:
+    """A status badge (built, planned, proposed) as HTML."""
     return f'<span class="chip {status}">{CHIP_LABELS[status]}</span>'
 
 
 def pct(value: float) -> str:
+    """A share as a whole percentage, e.g. '42%'."""
     return f"{value * 100:.1f}%"
 
 
@@ -239,6 +246,7 @@ class Sources:
     """Everything the docs are generated from, loaded once."""
 
     def __init__(self) -> None:
+        """Load the settings, simulation, offers, ground truth and customers once."""
         self.settings = load_settings()
         self.simulation = load_simulation_settings()
         self.offers: list[Offer] = load_offers()
@@ -253,6 +261,7 @@ class Sources:
         self.margins = pd.Series({offer.offer_id: offer.margin_zar for offer in self.offers})
 
     def _table(self, truth: GroundTruth, by: tuple[str, ...] = ("segment",)) -> pd.DataFrame:
+        """True take-up rates averaged by ``by`` (segment by default), in segment order."""
         table = take_up_table(
             truth, self.customers, self.offers, self.days, by=by, seed=self.settings.seed
         )
@@ -260,14 +269,17 @@ class Sources:
 
     @cached_property
     def before(self) -> pd.DataFrame:
+        """Take-up rates per segment and offer before the behaviour shift."""
         return self._table(self.truth)
 
     @cached_property
     def after(self) -> pd.DataFrame:
+        """Take-up rates per segment and offer after the behaviour shift."""
         return self._table(self.truth.after_shift())
 
     @cached_property
     def by_payday(self) -> pd.DataFrame:
+        """Take-up rates per segment, offer and part of the month."""
         return self._table(self.truth, ("segment", "is_payday_week"))
 
     @cached_property
@@ -283,6 +295,7 @@ class Sources:
 
 
 def _parametrized_cases(node: ast.FunctionDef) -> int:
+    """How many cases a test function runs (its parametrize list, or 1)."""
     for decorator in node.decorator_list:
         if (
             isinstance(decorator, ast.Call)
@@ -298,6 +311,7 @@ def _parametrized_cases(node: ast.FunctionDef) -> int:
 
 
 def block_sidenav(src: Sources, page: str) -> str:
+    """The side navigation: every page, with the current one marked, and build status."""
     links = "\n".join(
         f'<li><a href="{href}"{" aria-current=page" if href == page else ""}>'
         f"{escape(label)}</a></li>"
@@ -317,6 +331,7 @@ def block_sidenav(src: Sources, page: str) -> str:
 
 
 def block_phases(src: Sources, page: str) -> str:
+    """The six build phases with their status."""
     items = "\n".join(
         f'<li><span class="n">Phase {n}</span><b>{escape(name)}</b>{chip(status)}'
         f"<p>{escape(summary)}</p></li>"
@@ -326,6 +341,7 @@ def block_phases(src: Sources, page: str) -> str:
 
 
 def block_facts(src: Sources, page: str) -> str:
+    """Key numbers: offers, segments, customers, days, effects and tests."""
     cases = sum(n for _, _, n in src.test_inventory)
     facts = [
         (len(src.offers), "offers in the catalogue"),
@@ -340,6 +356,7 @@ def block_facts(src: Sources, page: str) -> str:
 
 
 def block_offers(src: Sources, page: str) -> str:
+    """The offer catalogue as a table."""
     rows = [
         [
             f"<code>{o.offer_id}</code>",
@@ -358,6 +375,7 @@ def block_offers(src: Sources, page: str) -> str:
 
 
 def block_segments(src: Sources, page: str) -> str:
+    """Each segment's share and profile, from the generated population."""
     frame = src.population
     mix = src.simulation.population.segment_mix
     rows = []
@@ -385,6 +403,7 @@ def block_segments(src: Sources, page: str) -> str:
 
 
 def _condition(attribute: str, expected: object) -> str:
+    """One effect condition in words, e.g. 'payday week'."""
     if isinstance(expected, list):
         return f"<code>{attribute}</code> in {', '.join(map(str, expected))}"
     value = str(expected).lower() if isinstance(expected, bool) else expected
@@ -392,6 +411,7 @@ def _condition(attribute: str, expected: object) -> str:
 
 
 def block_effects(src: Sources, page: str) -> str:
+    """Every context effect: when it applies and what it multiplies."""
     rows = [
         [
             escape(effect.name[0].upper() + effect.name[1:]),
@@ -404,6 +424,7 @@ def block_effects(src: Sources, page: str) -> str:
 
 
 def block_heatmap(src: Sources, page: str) -> str:
+    """True take-up rate per segment and offer as a coloured table."""
     table_ = src.before
     vmax = float(table_.max().max())
     favourites = table_.idxmax(axis=1)
@@ -448,12 +469,14 @@ def block_heatmap(src: Sources, page: str) -> str:
 
 
 def _favourite_cell(row: pd.Series, money: bool = False, changed: bool = False) -> str:
+    """One table cell naming a favourite offer and its rate."""
     value = f"R{row.value:.2f}" if money else pct(row.value)
     cls = ' class="changed"' if changed else ""
     return f"<span{cls}><code>{row.best}</code></span><br>{value} <small>×{row.lead:.2f}</small>"
 
 
 def block_favourites(src: Sources, page: str) -> str:
+    """Each segment's best offer by take-up and by revenue, before and after the shift."""
     take_up = winners(src.before)
     revenue = winners(src.before.mul(src.margins, axis=1))
     payday = winners(src.by_payday)
@@ -479,6 +502,7 @@ def block_favourites(src: Sources, page: str) -> str:
 
 
 def block_shift(src: Sources, page: str) -> str:
+    """What the behaviour shift changes, per segment."""
     rows = []
     for segment, overrides in src.truth.shift_base_take_up.items():
         for offer_id, new_base in overrides.items():
@@ -514,6 +538,7 @@ EXAMPLE_OFFER = "funeral_cover"
 
 
 def block_example(src: Sources, page: str) -> str:
+    """A worked example: one customer's true probability for one offer, step by step."""
     offer = next(o for o in src.offers if o.offer_id == EXAMPLE_OFFER)
     context = EXAMPLE_CONTEXT
     p = src.truth.base_take_up[context.segment][offer.offer_id]
@@ -546,6 +571,7 @@ def block_example(src: Sources, page: str) -> str:
 
 
 def block_attention(src: Sources, page: str) -> str:
+    """The response model's attention per position."""
     headers = ["Position in the list"] + [
         f"#{k}" for k in range(1, src.truth.response.max_offers + 1)
     ]
@@ -554,6 +580,7 @@ def block_attention(src: Sources, page: str) -> str:
 
 
 def block_decision_log(src: Sources, page: str) -> str:
+    """DECISIONS.md rendered as tables, one per section."""
     sections: list[tuple[str, list[list[str]]]] = []
     for line in (PROJECT_ROOT / "DECISIONS.md").read_text(encoding="utf-8").splitlines():
         if line.startswith("## "):
@@ -572,6 +599,7 @@ def block_decision_log(src: Sources, page: str) -> str:
 
 
 def _requirement_versions() -> dict[str, str]:
+    """Pinned versions from requirements.txt, by package name."""
     versions = {}
     for line in (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines():
         if "==" in line and not line.startswith("#"):
@@ -581,6 +609,7 @@ def _requirement_versions() -> dict[str, str]:
 
 
 def block_tools(src: Sources, page: str) -> str:
+    """Every tool with its version, role, status and why it was chosen."""
     versions = _requirement_versions()
     rows = [
         [
@@ -596,6 +625,7 @@ def block_tools(src: Sources, page: str) -> str:
 
 
 def block_tests(src: Sources, page: str) -> str:
+    """Every test function with its number of cases, grouped by file."""
     rows = []
     current = None
     for file, name, cases in src.test_inventory:
@@ -631,14 +661,24 @@ def _code(*objects: object) -> str:
 
 
 def block_code_armstats(src: Sources, page: str) -> str:
+    """The ArmStats source, as it runs."""
     return _code(ArmStats)
 
 
 def block_code_thompson(src: Sources, page: str) -> str:
+    """The Thompson sampling policy's source, as it runs."""
     return _code(ThompsonSamplingPolicy)
 
 
+def block_code_features(src: Sources, page: str) -> str:
+    """How the feature model ranks and learns, from its source."""
+    from recommender.algorithms.linear_thompson import LinearThompsonPolicy
+
+    return _code(LinearThompsonPolicy.rank, LinearThompsonPolicy.update)
+
+
 def block_code_egreedy(src: Sources, page: str) -> str:
+    """The epsilon-greedy ranking source, as it runs."""
     return _code(
         EpsilonGreedyPolicy.current_epsilon,
         EpsilonGreedyPolicy.estimate,
@@ -647,6 +687,7 @@ def block_code_egreedy(src: Sources, page: str) -> str:
 
 
 def block_code_update(src: Sources, page: str) -> str:
+    """The learning step's source: the policy update and both stores' learn."""
     return "\n".join(
         _code(method)
         for method in (BanditPolicy.update, InMemoryOptionsStore.learn, SqlOptionsStore.learn)
@@ -654,31 +695,43 @@ def block_code_update(src: Sources, page: str) -> str:
 
 
 def block_code_static(src: Sources, page: str) -> str:
+    """The static baseline's fit and rank source, as it runs."""
     return _code(StaticPolicy.fit, StaticPolicy.rank)
 
 
 def block_policies(src: Sources, page: str) -> str:
+    """Every configured policy with its algorithm, reward, context, forgetting and exploration."""
     active = src.settings.recommendation.active_policy
     algorithm = {"random": "Random", "static": "Static (batch)",
-                 "epsilon_greedy": "Epsilon-greedy", "thompson": "Thompson sampling"}  # fmt: skip
+                 "epsilon_greedy": "Epsilon-greedy", "thompson": "Thompson sampling",
+                 "thompson_features": "Thompson sampling on features"}  # fmt: skip
     rows = []
     for name, spec in src.settings.policies.items():
-        learns = spec.type in ("epsilon_greedy", "thompson")
+        learns = spec.type in ("epsilon_greedy", "thompson", "thompson_features")
         exploration = {
             "random": "always random",
             "static": "none",
             "epsilon_greedy": f"ε = {spec.epsilon:g}",
             "thompson": "by uncertainty",
+            "thompson_features": f"by uncertainty (width {spec.scale:g})",
         }[spec.type]
         label = f"<code>{name}</code>"
         if name == active:
             label += ' <span class="chip built">Active</span>'
+        if spec.type == "thompson_features":
+            label += ' <span class="chip planned">Simulation only</span>'
         rows.append(
             [
                 label,
                 algorithm[spec.type],
                 src.settings.reward_for(name) if learns else "–",
-                spec.context.replace("_", " × ") if learns else "–",
+                (
+                    "customer features"
+                    if spec.type == "thompson_features"
+                    else spec.context.replace("_", " × ")
+                )
+                if learns
+                else "–",
                 f"γ = {spec.decay:g}" if learns and spec.decay < 1 else ("off" if learns else "–"),
                 exploration,
             ]
@@ -689,6 +742,7 @@ def block_policies(src: Sources, page: str) -> str:
 
 
 def block_rewards(src: Sources, page: str) -> str:
+    """What each outcome teaches under each reward function, for example offers."""
     by_id = {offer.offer_id: offer for offer in src.offers}
     examples = ["data_20gb", "funeral_cover", "airtime_r50_bonus"]
     binary = make_reward("binary", src.offers)
@@ -696,6 +750,7 @@ def block_rewards(src: Sources, page: str) -> str:
     lenient = make_reward("binary", src.offers, learn_from_ignored=True)
 
     def show(value: float | None) -> str:
+        """A reward for the table: a number, or 'no update' for None."""
         return "no update" if value is None else f"{value:.3g}"
 
     rows = [
@@ -716,6 +771,7 @@ def block_rewards(src: Sources, page: str) -> str:
 
 
 def block_endpoints(src: Sources, page: str) -> str:
+    """Every API endpoint, what it does and whether it needs a key, from the routes."""
     from recommender.api.main import (  # routes only; no database connection
         check_api_key,
         create_app,
@@ -741,6 +797,7 @@ def block_endpoints(src: Sources, page: str) -> str:
 
 
 def block_event_schema(src: Sources, page: str) -> str:
+    """The event log's tables and columns, from their SQLAlchemy definitions."""
     from recommender.events.log import EVENT_TABLES
 
     rows = []
@@ -821,10 +878,12 @@ NO_RESULTS = '<p class="note">No results yet: run <code>make compare</code>, the
 
 
 def _results() -> dict | None:
+    """The published results (docs/data/comparison.json), or None before the first run."""
     return json.loads(RESULTS_PATH.read_text(encoding="utf-8")) if RESULTS_PATH.exists() else None
 
 
 def block_results_table(src: Sources, page: str) -> str:
+    """The published results table, best policy first."""
     data = _results()
     if data is None:
         return NO_RESULTS
@@ -886,6 +945,7 @@ def _findings(data: dict) -> list[tuple[str, str]]:
     items = []
 
     def lower_in(diffs: list[float]) -> int:
+        """In how many seeds the paired difference is below zero."""
         return sum(d < 0 for d in diffs)
 
     learning = [r["policy"] for r in data["table"] if r["policy"] not in ("random", "static")]
@@ -996,6 +1056,7 @@ def _findings(data: dict) -> list[tuple[str, str]]:
     }
 
     def opens(policy: str, segment: str) -> str:
+        """'1,460 app opens', or 'not within the run'."""
         value = after.get((policy, segment))
         return (
             "not within the run" if value is None or value != value else f"{value:,.0f} app opens"
@@ -1017,6 +1078,7 @@ def _findings(data: dict) -> list[tuple[str, str]]:
 
 
 def block_findings(src: Sources, page: str) -> str:
+    """The headline findings as a numbered HTML list."""
     data = _results()
     if data is None:
         return NO_RESULTS
@@ -1032,6 +1094,7 @@ MD_NO_RESULTS = "_No results yet: run `make compare`, then `make docs`._"
 
 
 def block_md_results(src: Sources, page: str) -> str:
+    """The results table in Markdown, for README.md and WRITEUP.md."""
     data = _results()
     if data is None:
         return MD_NO_RESULTS
@@ -1067,6 +1130,7 @@ def block_md_findings(src: Sources, page: str) -> str:
 
 
 def block_md_headline(src: Sources, page: str) -> str:
+    """The first two findings in Markdown, for the README."""
     data = _results()
     if data is None:
         return MD_NO_RESULTS
@@ -1074,6 +1138,7 @@ def block_md_headline(src: Sources, page: str) -> str:
 
 
 def block_regret_chart(src: Sources, page: str) -> str:
+    """Cumulative regret per key policy as an inline SVG chart."""
     data = _results()
     if data is None:
         return NO_RESULTS
@@ -1086,9 +1151,11 @@ def block_regret_chart(src: Sources, page: str) -> str:
     top = math.ceil(peak / step) * step
 
     def sx(r: float) -> float:
+        """The chart's x position for app open ``r``."""
         return x0 + (x1 - x0) * r / rounds
 
     def sy(v: float) -> float:
+        """The chart's y position for regret ``v``."""
         return y1 - (y1 - y0) * v / top
 
     parts = []
@@ -1164,6 +1231,7 @@ ADAPTATION_POLICIES = ["thompson_segment_decay", "thompson_segment", "thompson_s
 
 
 def block_adaptation(src: Sources, page: str) -> str:
+    """App opens each policy needed to adapt, per segment, from the start and after the shift."""
     data = _results()
     if data is None or "convergence" not in data:
         return NO_RESULTS
@@ -1174,6 +1242,7 @@ def block_adaptation(src: Sources, page: str) -> str:
     policies = [p for p in ADAPTATION_POLICIES if any(p in r for r in rows.values())]
 
     def cell(value) -> str:
+        """A count of app opens, or 'not within the run'."""
         return "not within the run" if value is None or value != value else f"{value:,.0f}"
 
     body = []
@@ -1265,6 +1334,19 @@ MODEL_NOTES = {
         "recovers much faster when customers change.",
         "used": "Serving every app open; the learner in every dashboard story; Try it's default.",
     },
+    "thompson_features": {
+        "idea": "Thompson sampling on customer features instead of segments: a Bayesian "
+        "linear model of each offer's take-up over about 20 features.",
+        "ranks": "Draws one set of weights per offer from its posterior and scores the "
+        "customer's features with them; shows the three highest scores.",
+        "learns": "Each response updates the offer's model: the features' outer product joins "
+        "its precision and reward times features joins its targets, after forgetting a little.",
+        "role": "The step beyond segments: it can learn that flagship handsets favour device "
+        "insurance in every segment, or that evenings favour entertainment, once instead of "
+        "five times.",
+        "used": "The comparison and the sensitivity sweep. It can't serve yet: its state is a "
+        "matrix per offer, which the options store can't hold.",
+    },
     "thompson_segment_revenue": {
         "idea": "The served policy, learning from margin instead of take-ups.",
         "ranks": "As Thompson sampling per segment with forgetting.",
@@ -1285,6 +1367,7 @@ MODEL_NAMES = {
     "thompson_segment_payday": "Thompson per segment and payday week",
     "thompson_segment_decay": "Thompson per segment, with forgetting",
     "thompson_segment_revenue": "Thompson with forgetting, from revenue",
+    "thompson_features": "Thompson on customer features",
 }
 CONTEXT_NAMES = {
     "global": "everyone together",
@@ -1299,6 +1382,14 @@ def _settings_text(spec, src: Sources) -> str:
         return "none"
     if spec.type == "static":
         return "fitted from history; no settings"
+    if spec.type == "thompson_features":
+        reward = spec.reward or src.settings.recommendation.reward
+        return (
+            f"a linear model over {len(FEATURES)} features per offer; forgetting γ = "
+            f"{spec.decay:g} (memory ≈ {1 / (1 - spec.decay):,.0f} responses); posterior width "
+            f"{spec.scale:g}; reward: "
+            + ("margin ÷ top margin" if reward == "margin" else "1 per take-up")
+        )
     parts = [f"beliefs {CONTEXT_NAMES.get(spec.context, spec.context)}"]
     if spec.type == "epsilon_greedy":
         parts.append(f"ε = {spec.epsilon:g}")
@@ -1329,6 +1420,8 @@ def block_model_tree(src: Sources, page: str) -> str:
             text += f"&lt;br/&gt;{share[policy]:.0%} of possible"
         if policy == active:
             text += "&lt;br/&gt;serving"
+        if policy == "thompson_features":
+            text += "&lt;br/&gt;simulation only"
         return f'{key}["{text}"]'
 
     edges = [
@@ -1340,6 +1433,7 @@ def block_model_tree(src: Sources, page: str) -> str:
         ("TS", "thompson_segment", "TSP", "thompson_segment_payday", "+ payday week"),
         ("TS", "thompson_segment", "TSD", "thompson_segment_decay", "+ forgetting"),
         ("TSD", "thompson_segment_decay", "TSR", "thompson_segment_revenue", "learns from margin"),
+        ("T", "thompson", "TF", "thompson_features", "+ customer features"),
     ]
     configured = set(src.settings.policies)
     lines = ["flowchart TD"]
@@ -1421,6 +1515,7 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "rewards": block_rewards,
     "code-armstats": block_code_armstats,
     "code-thompson": block_code_thompson,
+    "code-features": block_code_features,
     "code-egreedy": block_code_egreedy,
     "code-update": block_code_update,
     "code-static": block_code_static,
@@ -1446,6 +1541,7 @@ def render(text: str, page: str, src: Sources) -> str:
     """Replace every generated block in one page."""
 
     def fill(match: re.Match) -> str:
+        """The regenerated contents of one marked block."""
         name = match["name"]
         if name not in BLOCKS:
             raise KeyError(f"{page}: unknown generated block '{name}'")
@@ -1455,6 +1551,7 @@ def render(text: str, page: str, src: Sources) -> str:
 
 
 def main() -> int:
+    """Rebuild every page's generated blocks, or with --check report stale pages."""
     parser = argparse.ArgumentParser(description="Regenerate the data-driven parts of docs/.")
     parser.add_argument("--check", action="store_true", help="fail if any page is stale")
     args = parser.parse_args()

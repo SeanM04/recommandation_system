@@ -27,3 +27,13 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/build_docs.py" = ["E501"]  # HTML and SVG literals read better unbroken
+
+[tool.mypy]
+# Type-check the package. Third-party libraries without type hints count as Any.
+files = ["src/recommender"]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+plugins = ["pydantic.mypy"]  # Pydantic models: optional fields stay optional

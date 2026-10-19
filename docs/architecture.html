@@ -23,8 +23,7 @@
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html" aria-current=page>Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
-<li><a href="algorithms.html">Policies</a></li>
-<li><a href="models.html">Models</a></li>
+<li><a href="models.html">Policies &amp; models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
@@ -162,7 +161,7 @@
         <tr><td>Configuration</td><td>Loads and validates settings and the offer catalogue</td><td><code>src/recommender/config.py</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>Customer table</td><td>Reads and validates customer profiles</td><td><code>src/recommender/customers.py</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>Simulator</td><td>Synthetic population, hidden ground truth, response model, behaviour shift</td><td><code>src/recommender/simulator/</code></td><td><span class="chip built">Built</span></td></tr>
-        <tr><td>Bandit policies</td><td>Rank offers and learn from rewards; contextual keys; forgetting; pluggable rewards (<a href="algorithms.html">details</a>)</td><td><code>src/recommender/algorithms/</code></td><td><span class="chip built">Built</span></td></tr>
+        <tr><td>Bandit policies</td><td>Rank offers and learn from rewards; contextual keys; forgetting; pluggable rewards (<a href="models.html">details</a>)</td><td><code>src/recommender/algorithms/</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>Options store</td><td>Persist arm statistics per policy, context key and offer</td><td><code>src/recommender/store/</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>API and event log</td><td>/invocations, /response, idempotency, logging every event (<a href="api.html">details</a>)</td><td><code>src/recommender/api/</code>, <code>events/</code></td><td><span class="chip built">Built</span></td></tr>
         <tr><td>Simulation loop</td><td>Drive 50,000 app opens, apply the behaviour shift, score against the oracle (<a href="results.html">results</a>)</td><td><code>simulator/engine.py</code>, <code>scripts/run_simulation.py</code></td><td><span class="chip built">Built</span></td></tr>

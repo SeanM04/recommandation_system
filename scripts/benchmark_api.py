@@ -49,6 +49,7 @@ ENDPOINTS = ("POST /invocations", "POST /response")
 
 
 def spare_port() -> int:
+    """A free TCP port on this machine for the benchmark server."""
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
@@ -65,6 +66,7 @@ def benchmark_database() -> tuple[str, callable]:
             connection.execute(text(f"CREATE SCHEMA {SCHEMA}"))
 
         def cleanup() -> None:
+            """Drop the throwaway benchmark schema."""
             with admin.begin() as connection:
                 connection.execute(text(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE"))
             admin.dispose()
@@ -78,6 +80,7 @@ def benchmark_database() -> tuple[str, callable]:
         url = f"sqlite:///{(Path(tempfile.mkdtemp()) / 'benchmark.db').as_posix()}"
 
         def cleanup() -> None:
+            """Nothing to clean up: the SQLite file lives in a temporary folder."""
             return None
 
     engine = make_engine(url)
@@ -90,6 +93,7 @@ class LocalServer:
     """uvicorn in a child process: one worker (multi-worker uvicorn is unreliable on Windows)."""
 
     def __init__(self, database_url: str, port: int) -> None:
+        """Start uvicorn in a child process on ``port``, logging to results/."""
         self.log = (PROJECT_ROOT / "results" / "benchmark_server.log").open("w", encoding="utf-8")
         command = [sys.executable, "-m", "uvicorn", "recommender.api.main:app",
                    "--port", str(port), "--no-access-log", "--log-level", "warning"]  # fmt: skip
@@ -104,6 +108,7 @@ class LocalServer:
         )
 
     def stop(self) -> None:
+        """Stop the server process and close its log."""
         self.process.terminate()
         self.process.wait(timeout=15)
         self.log.close()
@@ -113,6 +118,7 @@ class RunningServer:
     """An API someone else started and will stop."""
 
     def stop(self) -> None:
+        """Nothing to stop: someone else runs this server."""
         return None
 
 
@@ -120,6 +126,7 @@ class DockerServer:
     """The API image with several uvicorn workers, reaching the database on the host."""
 
     def __init__(self, database_url: str, port: int, workers: int) -> None:
+        """Start the API image with ``workers`` processes, the database URL in an env file."""
         url = make_url(database_url)
         if url.host in ("localhost", "127.0.0.1"):
             url = url.set(host="host.docker.internal")
@@ -136,6 +143,7 @@ class DockerServer:
         )  # fmt: skip
 
     def stop(self) -> None:
+        """Save the container's log to results/ and remove the container."""
         log = subprocess.run(["docker", "logs", CONTAINER], capture_output=True, text=True)
         (PROJECT_ROOT / "results" / "benchmark_server.log").write_text(log.stdout + log.stderr)
         subprocess.run(["docker", "rm", "-f", CONTAINER], capture_output=True, check=False)
@@ -143,6 +151,7 @@ class DockerServer:
 
 
 def wait_until_healthy(base: str, timeout_s: float = 90) -> dict:
+    """Poll /health until it answers, or give up after ``timeout_s``."""
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
@@ -163,6 +172,7 @@ def one_client(base: str, customers: list[str], opens: int, seed: int) -> dict[s
     timings: dict[str, list[float]] = {endpoint: [] for endpoint in ENDPOINTS}
 
     def timed(endpoint: str, payload: dict) -> dict:
+        """Send one request, recording how long it took."""
         start = time.perf_counter()
         response = session.post(f"{base}{endpoint.split()[1]}", json=payload, timeout=30)
         timings[endpoint].append((time.perf_counter() - start) * 1000)
@@ -208,6 +218,7 @@ def run_level(base: str, customers: list[str], clients: int, opens: int) -> dict
 
 
 def main() -> None:
+    """Start a server (or use a running one), measure each concurrency level, report."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--clients", default="1", help="comma-separated, e.g. 1,4,8")
     parser.add_argument("--opens", type=int, default=300, help="app opens per client")

@@ -26,6 +26,7 @@ APP_OPENS = 40
 
 @pytest.fixture(scope="module")
 def sandbox(tmp_path_factory) -> dict:
+    """A throwaway database with customers and app opens, and a small saved comparison."""
     root = tmp_path_factory.mktemp("dashboard")
     world = World.load()
     url = f"sqlite:///{(root / 'dashboard.db').as_posix()}"
@@ -156,10 +157,12 @@ def fresh(dashboard, monkeypatch, tmp_path) -> str:
 
 
 def whole_app() -> AppTest:
+    """The dashboard's entry point, sign-in and navigation included."""
     return AppTest.from_file(str(DASHBOARD / "app.py"), default_timeout=120)
 
 
 def sign_in(app: AppTest, username: str, password: str) -> AppTest:
+    """Fill in the sign-in form and submit it."""
     app.text_input[0].input(username)
     app.text_input[1].input(password)
     return app.button[0].click().run()

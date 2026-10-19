@@ -20,6 +20,7 @@ from recommender.store.options_store import InMemoryOptionsStore
 
 @pytest.fixture(scope="module")
 def world() -> World:
+    """The configured simulated world, once for the module."""
     return World.load()
 
 
@@ -29,9 +30,11 @@ class OraclePolicy(Policy):
     name = "oracle"
 
     def __init__(self, world: World) -> None:
+        """A policy that cheats: it reads the hidden truth."""
         self.world = world
 
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:
+        """The offers with the highest true take-up probability."""
         p = self.world.truth.probabilities(context, candidates)
         return [ScoredOffer(o, p[o]) for o in sorted(p, key=p.get, reverse=True)[:n]]
 

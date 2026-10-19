@@ -43,6 +43,7 @@ class Services:
 
     @classmethod
     def build(cls, settings: Settings, database_url: str) -> Services:
+        """Connect, create tables, load customers if needed, and build the servable policies."""
         engine = make_engine(database_url)
         create_tables(engine)
         offers = {offer.offer_id: offer for offer in load_offers(settings.paths.offers)}
@@ -58,12 +59,14 @@ class Services:
         # The static baseline is "batch-trained" on everything logged so far, then frozen.
         # Each server process gets its own random stream, so several workers never draw
         # identical Thompson samples.
-        policies = build_policies(
+        built = build_policies(
             settings,
             store,
             popularity=events.average_rewards(),
             seed=settings.seed + os.getpid(),
         )
+        # Policies whose state the options store can't hold run in the simulator only.
+        policies = {name: p for name, p in built.items() if getattr(p, "servable", True)}
         rewards = {name: settings.reward_function(name, list(offers.values())) for name in policies}
         logger.info(
             "api ready",
@@ -108,6 +111,7 @@ class Services:
         return context
 
     def database_ok(self) -> bool:
+        """Whether the database answers a trivial query."""
         try:
             with self.engine.connect() as connection:
                 connection.execute(text("SELECT 1"))

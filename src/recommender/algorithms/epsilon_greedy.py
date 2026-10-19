@@ -29,6 +29,7 @@ class EpsilonGreedyPolicy(BanditPolicy):
         min_epsilon: float = 0.0,
         **kwargs,
     ) -> None:
+        """An epsilon-greedy policy; ``epsilon`` is the share of slots it explores."""
         super().__init__(name, store, **kwargs)
         if not 0 <= min_epsilon <= epsilon <= 1:
             raise ValueError("need 0 <= min_epsilon <= epsilon <= 1")
@@ -39,14 +40,17 @@ class EpsilonGreedyPolicy(BanditPolicy):
         self.min_epsilon = min_epsilon
 
     def current_epsilon(self, stats: dict[str, ArmStats]) -> float:
+        """The exploration rate now: epsilon, shrunk by the evidence so far if decay is set."""
         evidence = sum(arm.pulls for arm in stats.values())
         return max(self.min_epsilon, self.epsilon * self.epsilon_decay**evidence)
 
     @staticmethod
     def estimate(arm: ArmStats) -> float:
+        """An offer's average reward so far; one never shown scores 1.0 so it gets tried."""
         return arm.total_reward / arm.pulls if arm.pulls > 0 else UNTRIED_SCORE
 
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:
+        """Fill each slot with the best remaining average, or a random offer epsilon of the time."""
         check_slate_size(n)
         stats = self.stats(context, candidates)
         epsilon = self.current_epsilon(stats)
@@ -55,9 +59,9 @@ class EpsilonGreedyPolicy(BanditPolicy):
         # Shuffle, then sort best first: offers with equal estimates end up in random order.
         offer_ids = list(estimates)
         shuffled = [offer_ids[i] for i in self.rng.permutation(len(offer_ids))]
-        remaining = sorted(shuffled, key=estimates.get, reverse=True)
+        remaining = sorted(shuffled, key=estimates.__getitem__, reverse=True)
 
-        ranked = []
+        ranked: list[ScoredOffer] = []
         while remaining and len(ranked) < n:
             if self.rng.random() < epsilon:
                 pick = remaining[self.rng.integers(len(remaining))]  # explore

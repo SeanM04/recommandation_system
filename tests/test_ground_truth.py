@@ -28,23 +28,27 @@ OFFERS_BY_ID = {offer.offer_id: offer for offer in OFFERS}
 
 @pytest.fixture(scope="module")
 def truth() -> GroundTruth:
+    """The configured hidden ground truth."""
     return GroundTruth.from_yaml(SIMULATION.ground_truth, OFFERS)
 
 
 @pytest.fixture(scope="module")
 def customers() -> list[Customer]:
+    """The generated customer population."""
     frame = generate_customers(5000, SIMULATION.population.segment_mix, seed=SETTINGS.seed)
     return [Customer(**record) for record in frame.to_dict("records")]
 
 
 @pytest.fixture(scope="module")
 def tables(truth, customers) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Take-up rates per segment before and after the shift, and by payday week."""
     before = take_up_table(truth, customers, OFFERS, DAYS, samples_per_segment=2000)
     after = take_up_table(truth.after_shift(), customers, OFFERS, DAYS, samples_per_segment=2000)
     return before, after
 
 
 def make_context(segment: str = "family", **overrides) -> Context:
+    """A context for a typical customer of ``segment``, with any field overridden."""
     fields = {
         "customer_id": "C00001",
         "segment": segment,
@@ -61,6 +65,7 @@ def make_context(segment: str = "family", **overrides) -> Context:
 
 
 def best_offer(table: pd.DataFrame, key: str | tuple) -> str:
+    """The offer with the highest take-up rate in one row of a table."""
     return table.loc[key].idxmax()
 
 
@@ -111,6 +116,7 @@ def test_each_segment_has_the_intended_favourite(tables) -> None:
 
 
 def assert_clear_winners(table: pd.DataFrame, min_lead: float = 1.2) -> None:
+    """Fail unless every row's favourite leads the runner-up by at least ``min_lead``."""
     lead = winners(table)["lead"]
     assert (lead > min_lead).all(), f"no clear winner: {lead[lead <= min_lead].to_dict()}"
 
@@ -174,6 +180,7 @@ def test_validation_rejects_unknown_effect_key(truth: GroundTruth) -> None:
 
 
 def _imported_modules(path: Path) -> set[str]:
+    """Every module a source file imports."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     names: set[str] = set()
     for node in ast.walk(tree):

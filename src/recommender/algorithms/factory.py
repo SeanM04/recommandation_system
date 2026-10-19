@@ -9,6 +9,7 @@ import numpy as np
 
 from recommender.algorithms.base import Policy
 from recommender.algorithms.epsilon_greedy import EpsilonGreedyPolicy
+from recommender.algorithms.linear_thompson import LinearThompsonPolicy
 from recommender.algorithms.random_policy import RandomPolicy
 from recommender.algorithms.static import StaticPolicy
 from recommender.algorithms.thompson import ThompsonSamplingPolicy
@@ -51,6 +52,8 @@ def build_policy(
         return ThompsonSamplingPolicy(
             name, store, rng=rng, context_mode=spec.context, decay=spec.decay
         )
+    if spec.type == "thompson_features":
+        return LinearThompsonPolicy(name, rng=rng, decay=spec.decay, scale=spec.scale)
     raise ValueError(f"unknown policy type {spec.type!r}")
 
 

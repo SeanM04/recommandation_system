@@ -18,6 +18,7 @@ SEGMENT_MIX = load_simulation_settings().population.segment_mix
 
 @pytest.fixture(scope="module")
 def customers() -> pd.DataFrame:
+    """The generated population, once for the module."""
     return generate_customers(5000, SEGMENT_MIX, seed=42)
 
 

@@ -58,18 +58,23 @@ class CustomerRepository:
     """Customer profiles in the ``customers`` table: one primary-key lookup per request."""
 
     def __init__(self, engine: Engine) -> None:
+        """Customers in ``engine``'s database, creating the table if missing."""
         self.engine = engine
         customers_table.create(engine, checkfirst=True)
 
     def get(self, customer_id: str) -> Customer | None:
+        """One customer by id, or None."""
         query = select(customers_table).where(customers_table.c.customer_id == customer_id)
         with self.engine.connect() as connection:
             row = connection.execute(query).mappings().first()
         return Customer(**row) if row else None
 
     def count(self) -> int:
+        """How many customers are loaded."""
         with self.engine.connect() as connection:
-            return connection.execute(select(func.count()).select_from(customers_table)).scalar()
+            return connection.execute(
+                select(func.count()).select_from(customers_table)
+            ).scalar_one()
 
     def list_customers(self, segment: str | None = None, limit: int = 20) -> list[tuple[str, str]]:
         """A few (customer_id, segment) pairs, optionally from one segment, in one query."""

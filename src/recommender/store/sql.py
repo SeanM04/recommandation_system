@@ -15,7 +15,6 @@ from sqlalchemy import (
     DateTime,
     Engine,
     Float,
-    Insert,
     String,
     Table,
     delete,
@@ -23,6 +22,7 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.dialects import postgresql, sqlite
 
 from recommender.db import make_engine, metadata, upsert_insert
 from recommender.store.options_store import (
@@ -54,13 +54,16 @@ class SqlOptionsStore(OptionsStore):
     """Options store backed by the ``options`` table."""
 
     def __init__(self, engine: Engine | str) -> None:
+        """A store in ``engine``'s database (or a URL), creating the table if missing."""
         self.engine = make_engine(engine) if isinstance(engine, str) else engine
         options.create(self.engine, checkfirst=True)
 
-    def _insert(self) -> Insert:
+    def _insert(self) -> postgresql.Insert | sqlite.Insert:
+        """An upsert-capable INSERT for this database's dialect."""
         return upsert_insert(self.engine, options)
 
     def get_context(self, policy: str, context_key: str) -> dict[str, ArmStats]:
+        """Every offer's statistics for one policy and context key."""
         query = select(options.c.offer_id, options.c.pulls, options.c.total_reward).where(
             options.c.policy == policy, options.c.context_key == context_key
         )
@@ -73,6 +76,7 @@ class SqlOptionsStore(OptionsStore):
     def learn(
         self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
     ) -> None:
+        """Forget a little across the context (if decay is on), then add one reward, atomically."""
         now = datetime.now(UTC)
         forget = (
             update(options)
@@ -121,6 +125,7 @@ class SqlOptionsStore(OptionsStore):
             connection.execute(add)
 
     def put(self, policy: str, context_key: str, arms: Mapping[str, ArmStats]) -> None:
+        """Set the statistics of these offers in one upsert, replacing what was there."""
         if not arms:
             return
         now = datetime.now(UTC)
@@ -148,6 +153,7 @@ class SqlOptionsStore(OptionsStore):
             connection.execute(statement, rows)
 
     def rows(self, policy: str | None = None) -> list[OptionRow]:
+        """Every stored row, optionally for one policy only."""
         query = select(options).order_by(
             options.c.policy, options.c.context_key, options.c.offer_id
         )
@@ -166,6 +172,7 @@ class SqlOptionsStore(OptionsStore):
             ]
 
     def reset(self, policy: str | None = None) -> None:
+        """Delete everything, or everything one policy has learned."""
         statement = delete(options)
         if policy is not None:
             statement = statement.where(options.c.policy == policy)

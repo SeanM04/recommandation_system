@@ -16,6 +16,7 @@ from recommender.simulator.settings import PopulationSettings, load_simulation_s
 
 
 def make_customer(**overrides) -> Customer:
+    """A valid customer, with any field overridden."""
     fields = {
         "customer_id": "C00001",
         "segment": "student",

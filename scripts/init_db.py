@@ -17,6 +17,7 @@ from recommender.store.sql import SqlOptionsStore, copy_options, create_store
 
 
 def main() -> None:
+    """Create the tables and copy a local SQLite model into Postgres if there is one."""
     settings = load_settings()
     url = settings.database_url
     parsed = make_url(url)

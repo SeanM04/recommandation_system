@@ -23,6 +23,7 @@ from recommender.events.daily import aggregate_day, logged_days
 
 
 def main() -> None:
+    """Roll up yesterday, a given day or every day, and print a summary per policy."""
     settings = load_settings()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--day", type=date.fromisoformat, help="YYYY-MM-DD (default: yesterday)")

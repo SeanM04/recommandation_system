@@ -55,6 +55,7 @@ class Offer(BaseModel):
     @field_validator("eligible_segments")
     @classmethod
     def _segments_are_known(cls, segments: tuple[str, ...]) -> tuple[str, ...]:
+        """Reject an eligible segment that doesn't exist."""
         unknown = set(segments) - set(SEGMENTS)
         if unknown:
             raise ValueError(f"unknown segments: {sorted(unknown)}")
@@ -62,6 +63,7 @@ class Offer(BaseModel):
 
     @model_validator(mode="after")
     def _margin_within_price(self) -> Offer:
+        """Make sure the margin is not more than the price."""
         if self.margin_zar > self.price_zar:
             raise ValueError(f"{self.offer_id}: margin_zar cannot exceed price_zar")
         return self
@@ -101,6 +103,7 @@ class Context:
 
     @property
     def is_weekend(self) -> bool:
+        """Whether the app open falls on a Saturday or Sunday."""
         return self.day_of_week in ("saturday", "sunday")
 
     @property

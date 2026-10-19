@@ -34,3 +34,8 @@ policies:
   thompson_segment_payday: {type: thompson, context: segment_payday}
   thompson_segment_decay:  {type: thompson, context: segment, decay: 0.9998}
   thompson_segment_revenue: {type: thompson, context: segment, decay: 0.9998, reward: margin}
+  # Thompson sampling on customer features instead of segments. Simulation only: its
+  # state is a matrix per offer, which the options store can't hold yet. Its memory
+  # (1 / (1 - decay) = 25,000 responses) matches 5 segments x 5,000 above. The posterior
+  # width was chosen on a seed outside the reported ones: make experiment-features.
+  thompson_features:        {type: thompson_features, decay: 0.99996, scale: 0.05}

@@ -19,6 +19,7 @@ CONTEXT = Context(
 
 @pytest.fixture(params=["sqlite", "postgres"])
 def log(request, tmp_path):
+    """An event log on a throwaway SQLite file, and on Postgres when configured."""
     if request.param == "sqlite":
         engine = make_engine(f"sqlite:///{(tmp_path / 'daily.db').as_posix()}")
         yield EventLog(engine)

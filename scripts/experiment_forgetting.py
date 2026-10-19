@@ -25,6 +25,7 @@ NEW_FAVOURITES = {"family": "electricity_cashback", "young_professional": "strea
 
 
 def measure(log: pd.DataFrame) -> dict[str, float]:
+    """Take-up before and after the shift, and how often the new favourites led."""
     before, after = log[~log["shifted"]], log[log["shifted"]]
     metrics = {
         "take_up_before": before["take_ups"].mean(),
@@ -37,6 +38,7 @@ def measure(log: pd.DataFrame) -> dict[str, float]:
 
 
 def main() -> None:
+    """Run each decay rate over several seeds and print the mean and spread."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--rounds", type=int, default=50_000)
     parser.add_argument("--seeds", type=int, default=5)

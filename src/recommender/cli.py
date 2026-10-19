@@ -34,12 +34,14 @@ SCRIPTS = PROJECT_ROOT / "scripts"
 
 
 def _engine():
+    """An engine for the database configured in .env."""
     from recommender.db import make_engine
 
     return make_engine(load_settings().database_url)
 
 
 def _where(engine) -> str:
+    """'postgresql database X on host' or the SQLite file, for messages."""
     url = engine.url
     return f"{url.get_backend_name()} database {url.database}" + (
         f" on {url.host}" if url.host else ""
@@ -47,6 +49,7 @@ def _where(engine) -> str:
 
 
 def _ask_password(noinput: bool) -> str:
+    """Ask for a password twice, or read it from the environment with --noinput."""
     if noinput:
         password = os.environ.get("RECOMMENDER_SUPERUSER_PASSWORD")
         if not password:
@@ -62,6 +65,7 @@ def _ask_password(noinput: bool) -> str:
 
 
 def migrate(args: argparse.Namespace) -> None:
+    """Create the tables and load the customers if the table is empty."""
     from recommender.customers import CustomerRepository, read_customers
     from recommender.db import create_tables
 
@@ -81,6 +85,7 @@ def migrate(args: argparse.Namespace) -> None:
 
 
 def _create(username: str, role: str, noinput: bool) -> None:
+    """Create an account with a password asked for (or from the environment)."""
     engine = _engine()
     try:
         user = Accounts(engine).create_user(username, _ask_password(noinput), role)
@@ -90,6 +95,7 @@ def _create(username: str, role: str, noinput: bool) -> None:
 
 
 def createsuperuser(args: argparse.Namespace) -> None:
+    """Create an admin account; the username defaults to 'admin'."""
     username = args.username or (
         "admin" if args.noinput else input("Username [admin]: ").strip() or "admin"
     )
@@ -97,10 +103,12 @@ def createsuperuser(args: argparse.Namespace) -> None:
 
 
 def createuser(args: argparse.Namespace) -> None:
+    """Create an account with the given role (viewer by default)."""
     _create(args.username, args.role, noinput=False)
 
 
 def changepassword(args: argparse.Namespace) -> None:
+    """Set a new password for an existing account."""
     try:
         Accounts(_engine()).set_password(args.username, _ask_password(noinput=False))
     except AccountError as error:
@@ -109,6 +117,7 @@ def changepassword(args: argparse.Namespace) -> None:
 
 
 def users(args: argparse.Namespace) -> None:
+    """Print every account with its role and last sign-in."""
     rows = Accounts(_engine()).list_users()
     if not rows:
         print("No accounts yet: python manage.py createsuperuser")
@@ -118,6 +127,7 @@ def users(args: argparse.Namespace) -> None:
 
 
 def createapikey(args: argparse.Namespace) -> None:
+    """Create an API key and print it once, with how to require keys."""
     key = Accounts(_engine()).create_api_key(args.label)
     print(f"API key ({args.label}). Copy it now; only its hash is stored:\n\n  {key}\n")
     print("Callers send it in the X-API-Key header. To require keys, add to .env:")
@@ -129,12 +139,14 @@ def createapikey(args: argparse.Namespace) -> None:
 
 
 def port_in_use(port: int) -> bool:
+    """Whether something already listens on ``port`` on this machine."""
     with socket.socket() as sock:
         sock.settimeout(0.5)
         return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
 def _wait_healthy(url: str, process: subprocess.Popen, timeout_s: float = 60) -> bool:
+    """Poll ``url`` until it answers, the process dies, or ``timeout_s`` passes."""
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline and process.poll() is None:
         try:
@@ -147,6 +159,7 @@ def _wait_healthy(url: str, process: subprocess.Popen, timeout_s: float = 60) ->
 
 
 def _stop(processes: list[subprocess.Popen]) -> None:
+    """Ask each process to stop, then kill any still running after 10 seconds."""
     for process in processes:
         if process.poll() is None:
             process.terminate()
@@ -158,6 +171,7 @@ def _stop(processes: list[subprocess.Popen]) -> None:
 
 
 def runserver(args: argparse.Namespace) -> None:
+    """Start the API, wait until it answers, then the dashboard; Ctrl+C stops both."""
     if hasattr(sys.stdout, "reconfigure"):  # the URLs appear at once, even in a log file
         sys.stdout.reconfigure(line_buffering=True)
     settings = load_settings()
@@ -241,7 +255,10 @@ def runserver(args: argparse.Namespace) -> None:
 
 
 def _script(*command: str):
+    """A command that runs these scripts in turn, passing extra arguments to the last."""
+
     def run(args: argparse.Namespace) -> None:
+        """Run each script; stop with its exit code if one fails."""
         for step in command:
             arguments = step.split()
             if step == command[-1]:
@@ -264,6 +281,7 @@ test = _script("-m pytest")
 
 
 def parser() -> argparse.ArgumentParser:
+    """The manage.py command-line parser with every command and its arguments."""
     root = argparse.ArgumentParser(
         prog="manage.py",
         description="Run and administer the Telco Dynamic Recommender.",
@@ -271,6 +289,7 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True, metavar="command")
 
     def add(name: str, handler, help: str) -> argparse.ArgumentParser:
+        """Register one command with its handler and help text."""
         command = commands.add_parser(name, help=help, description=help)
         command.set_defaults(handler=handler)
         return command
@@ -310,5 +329,6 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Parse the command line and run the chosen command."""
     args = parser().parse_args(argv)
     args.handler(args)

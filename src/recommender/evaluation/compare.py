@@ -67,7 +67,9 @@ def run_comparison(
 ) -> Comparison:
     """Every policy in ``settings.policies``, on every seed, through the same world."""
     n_offers = settings.recommendation.number_of_offers
-    summaries, round_logs, snapshots = [], [], []
+    summaries: list[dict] = []
+    round_logs: list[pd.DataFrame] = []
+    snapshots: list[dict] = []
     for seed in seeds:
         popularity = StaticPolicy.fit(warm_up_history(world, warm_up_rounds, seed)).popularity
         for name, spec in settings.policies.items():
@@ -76,6 +78,7 @@ def run_comparison(
             record_beliefs = seed == seeds[0] and policy.learns
 
             def snapshot(round_: int, name: str = name, store=store) -> None:
+                """Save this policy's beliefs at ``round_``, for the Explore vs exploit page."""
                 snapshots.extend(
                     {
                         "policy": name,
@@ -145,11 +148,13 @@ def convergence_table(rounds: pd.DataFrame, world: World, shift_round: int | Non
     and again after the behaviour shift (NaN: not within the run)."""
     before = moment_favourites(world.truth, world)
     after = moment_favourites(world.truth.after_shift(), world) if shift_round else None
-    rows = []
+    rows: list[dict] = []
     for policy, log in rounds.groupby("policy", sort=False):
         log = log.reset_index(drop=True)
-        phases = [("from the start", before, 0, shift_round)]
-        if after is not None:
+        phases: list[tuple[str, dict[tuple[str, bool], str], int, int | None]] = [
+            ("from the start", before, 0, shift_round)
+        ]
+        if after is not None and shift_round:
             phases.append(("after the shift", after, shift_round, None))
         for phase, favourites, start, end in phases:
             reached = convergence(log, favourites, start_round=start, end_round=end)

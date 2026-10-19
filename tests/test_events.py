@@ -15,6 +15,7 @@ CONTEXT = Context(
 
 @pytest.fixture(params=["sqlite", "postgres"])
 def log(request, tmp_path):
+    """An event log on a throwaway SQLite file, and on Postgres when configured."""
     if request.param == "sqlite":
         engine = make_engine(f"sqlite:///{(tmp_path / 'events.db').as_posix()}")
         yield EventLog(engine)
@@ -27,6 +28,7 @@ def log(request, tmp_path):
 
 
 def shown(*offer_ids: str) -> list[ScoredOffer]:
+    """Offers as a policy would rank them, scores falling with rank."""
     return [ScoredOffer(offer_id, 1.0 / rank) for rank, offer_id in enumerate(offer_ids, 1)]
 
 
@@ -62,6 +64,7 @@ def test_simultaneous_duplicates_are_recorded_exactly_once(log: EventLog) -> Non
     start = threading.Barrier(8)
 
     def send() -> None:
+        """Send the same response once all threads are ready, noting the result."""
         start.wait()
         try:
             log.record_response(
@@ -99,6 +102,7 @@ def test_table_creation_is_safe_when_workers_start_together() -> None:
         start = threading.Barrier(len(engines))
 
         def boot(engine) -> None:
+            """Create the tables as a starting worker would, keeping any error."""
             start.wait()
             try:
                 create_tables(engine)

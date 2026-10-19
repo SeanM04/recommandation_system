@@ -23,8 +23,7 @@
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
-<li><a href="algorithms.html">Policies</a></li>
-<li><a href="models.html">Models</a></li>
+<li><a href="models.html">Policies &amp; models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
@@ -61,7 +60,7 @@
 
 <section aria-labelledby="approach">
   <div class="section-head"><h2 id="approach">Choosing the learning approach</h2><span class="chip built">Built</span></div>
-  <p>The first two questions explain why a batch-trained model falls short in a telco app. The bottom row explains the variants built in Phase 2: each question is answered both ways in <a href="algorithms.html#configured">the configured policies</a>, and Phase 4 runs them on the same seed so the comparison is fair.</p>
+  <p>The first two questions explain why a batch-trained model falls short in a telco app. The bottom row explains the variants built in Phase 2: each question is answered both ways in <a href="models.html#configured">the configured policies</a>, and Phase 4 runs them on the same seed so the comparison is fair.</p>
   <figure class="fig">
     <div class="fig-scroll">
       <svg class="dg" viewBox="0 0 1000 510" style="min-width: 820px" role="img" aria-label="Decision tree. If the best offer never changes, a static batch model is enough. If it changes but we cannot learn from each response, we retrain in batches and lag behind. Otherwise use a multi-armed bandit, then decide three things: explore in proportion to uncertainty (Thompson sampling) or at a fixed rate (epsilon-greedy); keep statistics per segment (contextual) or shared; and forget old evidence or keep it all. The highlighted combination is Thompson sampling, contextual, with forgetting.">

@@ -30,11 +30,13 @@ KEY_POLICIES = ["thompson_segment_decay", "thompson_segment", "static", "random"
 
 
 def colour(policy: str) -> str:
+    """The policy's fixed chart colour (grey for any beyond the palette)."""
     return POLICY_COLOURS.get(policy, OTHER_COLOUR)
 
 
 @st.cache_resource
 def settings():
+    """The project settings, loaded once per dashboard process."""
     return load_settings()
 
 
@@ -107,6 +109,7 @@ def style(figure: go.Figure, height: int = 420) -> go.Figure:
 
 
 def mark_shift(figure: go.Figure, shift_round: int | None) -> go.Figure:
+    """Draw the behaviour shift as a dashed vertical line, if there is one."""
     if shift_round:
         figure.add_vline(
             x=shift_round,
@@ -123,6 +126,7 @@ class Api:
     inside the dashboard process (same code paths, no network)."""
 
     def __init__(self) -> None:
+        """Use the API server if one answers; otherwise run the same app in-process."""
         self.url = os.environ.get("RECOMMENDER_API_URL", "http://localhost:8000")
         try:
             requests.get(f"{self.url}/health", timeout=1).raise_for_status()
@@ -138,16 +142,19 @@ class Api:
             self.base, self.where = "", "in-process (no API server running)"
 
     def get(self, path: str, **params) -> dict | list:
+        """GET ``path`` with query parameters and return the JSON body."""
         response = self.client.get(f"{self.base}{path}", params=params or None)
         response.raise_for_status()
         return response.json()
 
     def post(self, path: str, body: dict, **params):
+        """POST ``body`` to ``path`` and return the response."""
         return self.client.post(f"{self.base}{path}", json=body, params=params or None)
 
 
 @st.cache_resource
 def api() -> Api:
+    """The API client, created once per dashboard process."""
     return Api()
 
 

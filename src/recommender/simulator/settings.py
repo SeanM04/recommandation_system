@@ -26,6 +26,7 @@ class PopulationSettings(BaseModel):
     @field_validator("segment_mix")
     @classmethod
     def _valid_mix(cls, mix: dict[str, float]) -> dict[str, float]:
+        """Make sure the segment mix covers every segment and adds up to 1."""
         if set(mix) != set(SEGMENTS):
             raise ValueError(f"segment_mix must define exactly these segments: {SEGMENTS}")
         if any(share < 0 for share in mix.values()):
@@ -52,10 +53,11 @@ class SimulationSettings(BaseModel):
     @field_validator("ground_truth")
     @classmethod
     def _absolute(cls, path: Path) -> Path:
+        """Resolve a configured path against the project root."""
         return resolve_path(path)
 
 
 def load_simulation_settings(path: Path | str | None = None) -> SimulationSettings:
     """Load ``config/simulation.yaml`` (or ``$RECOMMENDER_SIMULATION``, or ``path``)."""
-    path = Path(path or os.environ.get("RECOMMENDER_SIMULATION", DEFAULT_SIMULATION_PATH))
+    path = Path(path or os.environ.get("RECOMMENDER_SIMULATION") or DEFAULT_SIMULATION_PATH)
     return SimulationSettings.model_validate(read_yaml(path))

@@ -1,0 +1,73 @@
+# Every push and pull request: lint, docs check and the full test suite on SQLite and
+# Postgres; then the brief's definition of done on a clean runner with no .env.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    name: Lint, docs and tests (SQLite and Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: Telco_Dynamic_Recomender
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d Telco_Dynamic_Recomender"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # The Postgres tests run in throwaway schemas of this database.
+      DB_NAME: Telco_Dynamic_Recomender
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+      - name: Lint and format
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+      - name: Type check
+        run: python -m mypy
+      - name: Docs match the code and the results
+        run: python scripts/build_docs.py --check
+      - name: Tests
+        run: python -m pytest
+
+  definition-of-done:
+    name: make install && make simulate && make dashboard (clean runner, no .env)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: make install
+      - run: make simulate
+      - name: Dashboard starts and answers
+        env:
+          STREAMLIT_SERVER_HEADLESS: "true"
+        run: |
+          make dashboard > dashboard.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8501/_stcore/health && exit 0
+            sleep 2
+          done
+          cat dashboard.log
+          exit 1

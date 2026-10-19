@@ -18,6 +18,7 @@ class StaticPolicy(Policy):
     """
 
     def __init__(self, popularity: Mapping[str, float] | None = None, name: str = "static") -> None:
+        """A frozen ranking from ``popularity``: average reward per offer."""
         self.name = name
         self.popularity = dict(popularity or {})
 
@@ -32,7 +33,10 @@ class StaticPolicy(Policy):
         return cls({offer_id: totals[offer_id] / counts[offer_id] for offer_id in counts}, name)
 
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:
+        """The eligible offers by popularity, the same order for every customer."""
         check_slate_size(n)
         scores = {offer.offer_id: self.popularity.get(offer.offer_id, 0.0) for offer in candidates}
-        best = sorted(scores, key=scores.get, reverse=True)[:n]  # stable: ties keep catalogue order
+        best = sorted(scores, key=scores.__getitem__, reverse=True)[
+            :n
+        ]  # stable: ties keep catalogue order
         return [ScoredOffer(offer_id, scores[offer_id]) for offer_id in best]

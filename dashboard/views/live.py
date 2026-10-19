@@ -19,6 +19,7 @@ OUTCOME_MARK = {"taken_up": "taken up", "viewed": "viewed", "ignored": "ignored"
 
 @st.fragment(run_every="3s")
 def live() -> None:
+    """Counts, the latest app opens and the serving policy's beliefs, every 3 seconds."""
     with engine().connect() as connection:
         total = connection.execute(select(func.count()).select_from(invocations)).scalar()
         outcomes = dict(

@@ -43,6 +43,7 @@ def undocumented(tree: ast.AST, ranges: list[tuple[int, int]] | None) -> list[tu
     missing = []
 
     def visit(node: ast.AST, prefix: str) -> None:
+        """Walk the tree, collecting functions in range that lack a docstring."""
         for child in ast.iter_child_nodes(node):
             name = prefix + getattr(child, "name", "")
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):

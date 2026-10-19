@@ -1,9 +1,16 @@
 [client]
 toolbarMode = "minimal"   # no "Deploy" button
 
+# Light and dark both defined: the dashboard follows the viewer's system setting, and the
+# settings menu lets them switch.
 [theme]
-primaryColor = "#2a78d6"  # the docs' and charts' blue
 font = "sans serif"
+
+[theme.light]
+primaryColor = "#2a78d6"  # the docs' and charts' blue
+
+[theme.dark]
+primaryColor = "#5b9ff0"  # the same blue, lighter so it reads on a dark background
 
 [browser]
 gatherUsageStats = false

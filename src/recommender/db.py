@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import Engine, Insert, MetaData, Table, create_engine, text
+from sqlalchemy import Engine, MetaData, Table, create_engine, text
 from sqlalchemy.dialects import postgresql, sqlite
 
 metadata = MetaData()
@@ -29,13 +29,14 @@ def make_engine(url: str) -> Engine:
     return create_engine(url, pool_pre_ping=True)
 
 
-def upsert_insert(engine: Engine, table: Table) -> Insert:
+def upsert_insert(engine: Engine, table: Table) -> postgresql.Insert | sqlite.Insert:
     """An INSERT for ``table`` that supports ``on_conflict_do_update`` / ``do_nothing``."""
-    dialects = {"postgresql": postgresql.insert, "sqlite": sqlite.insert}
     name = engine.dialect.name
-    if name not in dialects:
-        raise NotImplementedError(f"no upsert for {name}; use Postgres or SQLite")
-    return dialects[name](table)
+    if name == "postgresql":
+        return postgresql.insert(table)
+    if name == "sqlite":
+        return sqlite.insert(table)
+    raise NotImplementedError(f"no upsert for {name}; use Postgres or SQLite")
 
 
 SCHEMA_LOCK_KEY = 820_551  # any constant; identifies "creating this project's tables"

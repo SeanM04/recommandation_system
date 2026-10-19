@@ -41,9 +41,11 @@ class Effect:
     multiply: Mapping[str, float]  # offer_id or category -> multiplier
 
     def applies_to(self, context: Context) -> bool:
+        """Whether every condition of this effect holds in ``context``."""
         return all(_matches(getattr(context, attr), want) for attr, want in self.when.items())
 
     def multiplier_for(self, offer: Offer) -> float:
+        """This effect's multiplier for ``offer``, by id or category (1 if neither)."""
         return self.multiply.get(offer.offer_id, self.multiply.get(offer.category, 1.0))
 
 
@@ -59,6 +61,7 @@ class ResponseModel:
     attention: tuple[float, ...] = (1.0,)
 
     def __post_init__(self) -> None:
+        """Reject attention values outside 0 to 1."""
         if not self.attention or any(not 0 <= a <= 1 for a in self.attention):
             raise ValueError("attention must be a non-empty list of values between 0 and 1")
 
@@ -99,6 +102,7 @@ class ResponseModel:
         return total
 
     def _check_length(self, probabilities: Sequence[float]) -> None:
+        """Refuse more offers than there are attention values for."""
         if len(probabilities) > self.max_offers:
             raise ValueError(f"at most {self.max_offers} offers can be shown")
 
@@ -225,7 +229,7 @@ def take_up_table(
         eligible = [offer for offer in offers if offer.is_eligible(segment)]
         for _ in range(samples_per_segment):
             customer = members[rng.integers(len(members))]
-            context = sample_context(customer, rng, days[rng.integers(len(days))])
+            context = sample_context(customer, rng, days[int(rng.integers(len(days)))])
             keys = {attribute: getattr(context, attribute) for attribute in by}
             records.append(keys | truth.probabilities(context, eligible))
     columns = [offer.offer_id for offer in offers]

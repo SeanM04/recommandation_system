@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Recommender Models</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Every model in the recommender, one by one: the idea, how it ranks and learns, its role, where it is used, its settings and its results.">
+<meta name="description" content="Every policy and model in the recommender, one by one: how they relate, how each ranks and learns with the code that runs, their settings, roles and results, and the supporting models.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
@@ -24,8 +24,7 @@
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
-<li><a href="algorithms.html">Policies</a></li>
-<li><a href="models.html" aria-current=page>Models</a></li>
+<li><a href="models.html" aria-current=page>Policies &amp; models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
@@ -49,13 +48,16 @@
 
 <main>
 <header class="page-head">
-  <p class="eyebrow">Models</p>
-  <h1>Every model, one by one</h1>
-  <p class="lede">Nine policies decide which three offers each customer sees. They are built from four ideas: learning online, personalising by segment, exploring by doubt, and forgetting. Each one adds a single idea to another, so comparing them shows what each idea is worth. Behind them sit a handful of supporting models: the belief each policy keeps, the reward it learns from, and the simulated customers it is tested on.</p>
+  <p class="eyebrow">Policies &amp; models</p>
+  <h1>Every policy, one by one</h1>
+  <p class="lede">Ten policies decide which three offers each customer sees. They are built from five ideas: learning online, personalising by segment, exploring by doubt, forgetting, and learning from customer features. Each adds a single idea to another, so comparing them shows what each idea is worth. This page shows how they relate, how each ranks and learns (with the code that runs, copied from the source when the docs are built), and how each did.</p>
   <ul class="toc">
     <li><a href="#family">How the policies relate</a></li>
+    <li><a href="#configured">Configured policies</a></li>
     <li><a href="#logic">How each kind decides and learns</a></li>
-    <li><a href="#cards">The nine policies</a></li>
+    <li><a href="#learning">Learning and forgetting</a></li>
+    <li><a href="#rewards">Rewards</a></li>
+    <li><a href="#cards">The policies, card by card</a></li>
     <li><a href="#supporting">The models behind the models</a></li>
     <li><a href="#use">How they are used here</a></li>
   </ul>
@@ -76,6 +78,7 @@ flowchart TD
   TS["Thompson sampling per segment&lt;br/&gt;92% of possible"] -- "+ payday week" --> TSP["Thompson per segment and payday week&lt;br/&gt;92% of possible"]
   TS["Thompson sampling per segment&lt;br/&gt;92% of possible"] -- "+ forgetting" --> TSD["Thompson per segment, with forgetting&lt;br/&gt;93% of possible&lt;br/&gt;serving"]
   TSD["Thompson per segment, with forgetting&lt;br/&gt;93% of possible&lt;br/&gt;serving"] -- "learns from margin" --> TSR["Thompson with forgetting, from revenue&lt;br/&gt;72% of possible"]
+  T["Thompson sampling, one model&lt;br/&gt;68% of possible"] -- "+ customer features" --> TF["Thompson on customer features&lt;br/&gt;simulation only"]
   classDef serving stroke-width:3px
   class TSD serving
 </pre>
@@ -84,11 +87,35 @@ flowchart TD
   </figure>
 </section>
 
+<section aria-labelledby="configured">
+  <div class="section-head"><h2 id="configured">Configured policies</h2><span class="chip built">Built</span></div>
+  <p>Each line in <code>settings.yaml</code> is a policy the simulator compares; all but the feature model can also serve the API. The variants differ only in configuration, so a comparison between them isolates one idea at a time.</p>
+<!-- BEGIN generated:policies -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Policy</th><th scope="col">Algorithm</th><th scope="col">Reward</th><th scope="col">Context key</th><th scope="col">Forgetting</th><th scope="col">Exploration</th></tr></thead>
+<tbody>
+<tr><td><code>random</code></td><td>Random</td><td>–</td><td>–</td><td>–</td><td>always random</td></tr>
+<tr><td><code>static</code></td><td>Static (batch)</td><td>–</td><td>–</td><td>–</td><td>none</td></tr>
+<tr><td><code>epsilon_greedy</code></td><td>Epsilon-greedy</td><td>binary</td><td>global</td><td>off</td><td>ε = 0.1</td></tr>
+<tr><td><code>epsilon_greedy_segment</code></td><td>Epsilon-greedy</td><td>binary</td><td>segment</td><td>off</td><td>ε = 0.1</td></tr>
+<tr><td><code>thompson</code></td><td>Thompson sampling</td><td>binary</td><td>global</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment</code></td><td>Thompson sampling</td><td>binary</td><td>segment</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_payday</code></td><td>Thompson sampling</td><td>binary</td><td>segment × payday</td><td>off</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_decay</code> <span class="chip built">Active</span></td><td>Thompson sampling</td><td>binary</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_segment_revenue</code></td><td>Thompson sampling</td><td>margin</td><td>segment</td><td>γ = 0.9998</td><td>by uncertainty</td></tr>
+<tr><td><code>thompson_features</code> <span class="chip planned">Simulation only</span></td><td>Thompson sampling on features</td><td>binary</td><td>customer features</td><td>γ = 0.99996</td><td>by uncertainty (width 0.05)</td></tr>
+</tbody></table></div>
+<!-- END generated:policies -->
+  <p class="source">From config/settings.yaml · rebuilt by make docs</p>
+  <h3 id="interface">The interface</h3>
+  <p>Two methods. <code>rank(context, candidates, n)</code> returns up to <code>n</code> of the offers this customer is eligible for, best first, each with the score it was ranked by. <code>update(context, offer_id, reward)</code> takes one reward between 0 and 1. The Beta policies hold no state of their own: what they know lives in the <a href="architecture.html#storage">options store</a>, so a restart or a second API worker sees the same model. The feature model keeps its matrices in memory, which is why it runs in the simulator only.</p>
+</section>
+
 <section aria-labelledby="logic">
   <h2 id="logic">How each kind decides and learns</h2>
-  <p>There are four kinds of model. The variants of each differ only in configuration, so the same flow applies to all of them.</p>
+  <p>There are five kinds of model. The variants of each differ only in configuration, so the same flow applies to all of them.</p>
 
-  <h3>The baselines: random offers and the fixed popularity ranking</h3>
+  <h3 id="baselines">The baselines: random offers and the fixed popularity ranking</h3>
   <figure class="fig">
 <pre class="mermaid">
 flowchart LR
@@ -102,10 +129,31 @@ flowchart LR
     S3 --> S4["Show the top three,&lt;br/&gt;the same for everyone"]
   end
 </pre>
-    <figcaption><span>Neither updates while serving. The fixed ranking is fitted on a warm-up month in the comparison, and on the event log when the API starts.</span></figcaption>
+    <figcaption><span>Neither updates while serving. The fixed ranking is the batch model a telco often runs today: fitted on a warm-up month in the comparison, and on the event log when the API starts.</span></figcaption>
   </figure>
+<!-- BEGIN generated:code-static -->
+<pre><code>@classmethod
+def fit(cls, history: Iterable[tuple[str, float]], name: str = &quot;static&quot;) -&gt; StaticPolicy:
+    &quot;&quot;&quot;The batch training job: average reward per offer over a log of (offer_id, reward).&quot;&quot;&quot;
+    totals: dict[str, float] = defaultdict(float)
+    counts: dict[str, int] = defaultdict(int)
+    for offer_id, reward in history:
+        totals[offer_id] += reward
+        counts[offer_id] += 1
+    return cls({offer_id: totals[offer_id] / counts[offer_id] for offer_id in counts}, name)
 
-  <h3>Epsilon-greedy: exploit the best average, explore a fixed share of the time</h3>
+def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+    &quot;&quot;&quot;The eligible offers by popularity, the same order for every customer.&quot;&quot;&quot;
+    check_slate_size(n)
+    scores = {offer.offer_id: self.popularity.get(offer.offer_id, 0.0) for offer in candidates}
+    best = sorted(scores, key=scores.__getitem__, reverse=True)[
+        :n
+    ]  # stable: ties keep catalogue order
+    return [ScoredOffer(offer_id, scores[offer_id]) for offer_id in best]</code></pre>
+<p class="source">src/recommender/algorithms/static.py</p>
+<!-- END generated:code-static -->
+
+  <h3 id="egreedy">Epsilon-greedy: exploit the best average, explore a fixed share of the time</h3>
   <figure class="fig">
 <pre class="mermaid">
 flowchart TD
@@ -120,10 +168,44 @@ flowchart TD
   G --> H["Count + 1, sum + reward&lt;br/&gt;ignored: no update"]
   H -- "next app open" --> B
 </pre>
-    <figcaption><span>Simple and predictable, but it explores blindly: one slot in ten goes to a random offer, even after it knows an offer is poor. Code: src/recommender/algorithms/epsilon_greedy.py.</span></figcaption>
+    <figcaption><span>Simple and predictable, but it explores blindly: one slot in ten goes to a random offer, even after it knows an offer is poor.</span></figcaption>
   </figure>
+<!-- BEGIN generated:code-egreedy -->
+<pre><code>def current_epsilon(self, stats: dict[str, ArmStats]) -&gt; float:
+    &quot;&quot;&quot;The exploration rate now: epsilon, shrunk by the evidence so far if decay is set.&quot;&quot;&quot;
+    evidence = sum(arm.pulls for arm in stats.values())
+    return max(self.min_epsilon, self.epsilon * self.epsilon_decay**evidence)
 
-  <h3>Thompson sampling: explore in proportion to doubt</h3>
+@staticmethod
+def estimate(arm: ArmStats) -&gt; float:
+    &quot;&quot;&quot;An offer&#x27;s average reward so far; one never shown scores 1.0 so it gets tried.&quot;&quot;&quot;
+    return arm.total_reward / arm.pulls if arm.pulls &gt; 0 else UNTRIED_SCORE
+
+def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+    &quot;&quot;&quot;Fill each slot with the best remaining average, or a random offer epsilon of the time.&quot;&quot;&quot;
+    check_slate_size(n)
+    stats = self.stats(context, candidates)
+    epsilon = self.current_epsilon(stats)
+    estimates = {offer_id: self.estimate(arm) for offer_id, arm in stats.items()}
+
+    # Shuffle, then sort best first: offers with equal estimates end up in random order.
+    offer_ids = list(estimates)
+    shuffled = [offer_ids[i] for i in self.rng.permutation(len(offer_ids))]
+    remaining = sorted(shuffled, key=estimates.__getitem__, reverse=True)
+
+    ranked: list[ScoredOffer] = []
+    while remaining and len(ranked) &lt; n:
+        if self.rng.random() &lt; epsilon:
+            pick = remaining[self.rng.integers(len(remaining))]  # explore
+        else:
+            pick = remaining[0]  # exploit
+        remaining.remove(pick)
+        ranked.append(ScoredOffer(pick, estimates[pick]))
+    return ranked</code></pre>
+<p class="source">src/recommender/algorithms/epsilon_greedy.py</p>
+<!-- END generated:code-egreedy -->
+
+  <h3 id="thompson">Thompson sampling: explore in proportion to doubt</h3>
   <figure class="fig">
 <pre class="mermaid">
 flowchart TD
@@ -142,14 +224,216 @@ flowchart TD
   K --> L
   L -- "next app open" --> C
 </pre>
-    <figcaption><span>A sure offer draws close to its rate every time; an offer it knows little about draws widely and now and then wins a slot. That is all the exploration there is. Code: src/recommender/algorithms/thompson.py and base.py.</span></figcaption>
+    <figcaption><span>A sure offer draws close to its rate every time; an offer it knows little about draws widely and now and then wins a slot. That is all the exploration there is.</span></figcaption>
   </figure>
-  <p>The <a href="algorithms.html">Policies</a> page shows the code of each, copied from the source when the docs are built.</p>
+<!-- BEGIN generated:code-thompson -->
+<pre><code>class ThompsonSamplingPolicy(BanditPolicy):
+    &quot;&quot;&quot;Keep a Beta(alpha, beta) belief about each offer&#x27;s take-up rate, draw one
+    plausible rate from every belief, and rank the offers by their draws.
+
+    An offer we know little about has a wide belief, so it sometimes draws high and
+    gets shown: exploration happens in proportion to uncertainty, with nothing to tune.
+    &quot;&quot;&quot;
+
+    def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+        &quot;&quot;&quot;Draw a take-up rate from each offer&#x27;s Beta belief and show the highest draws.&quot;&quot;&quot;
+        check_slate_size(n)
+        stats = self.stats(context, candidates)
+        draws = {
+            offer_id: float(self.rng.beta(arm.alpha, arm.beta)) for offer_id, arm in stats.items()
+        }
+        best = sorted(draws, key=draws.__getitem__, reverse=True)[:n]
+        return [ScoredOffer(offer_id, draws[offer_id]) for offer_id in best]</code></pre>
+<p class="source">src/recommender/algorithms/thompson.py</p>
+<!-- END generated:code-thompson -->
+  <p id="state">What a Beta policy knows: one <code>ArmStats</code> per offer and context key, how many rewards it has seen and their sum. The Beta belief is derived from those two numbers, so they can never disagree.</p>
+<!-- BEGIN generated:code-armstats -->
+<pre><code>@dataclass(frozen=True)
+class ArmStats:
+    &quot;&quot;&quot;What a policy knows about one offer in one context.
+
+    ``pulls`` counts the rewards seen and ``total_reward`` sums them. With forgetting
+    switched on both shrink over time, so ``pulls`` is an *effective* count, not an
+    integer. The Beta belief follows from them, so it can never disagree with them.
+    &quot;&quot;&quot;
+
+    pulls: float = 0.0
+    total_reward: float = 0.0
+
+    @property
+    def alpha(self) -&gt; float:
+        &quot;&quot;&quot;The Beta belief&#x27;s alpha: the prior plus the rewards seen.&quot;&quot;&quot;
+        return PRIOR_ALPHA + self.total_reward
+
+    @property
+    def beta(self) -&gt; float:
+        &quot;&quot;&quot;The Beta belief&#x27;s beta: the prior plus the responses that earned nothing.&quot;&quot;&quot;
+        return PRIOR_BETA + self.pulls - self.total_reward
+
+    @property
+    def mean(self) -&gt; float:
+        &quot;&quot;&quot;Posterior mean take-up rate: alpha / (alpha + beta).&quot;&quot;&quot;
+        return self.alpha / (self.alpha + self.beta)
+
+    def updated(self, reward: float) -&gt; ArmStats:
+        &quot;&quot;&quot;Add one reward in [0, 1]: alpha += reward, beta += 1 - reward.&quot;&quot;&quot;
+        return ArmStats(self.pulls + 1, self.total_reward + reward)
+
+    def decayed(self, gamma: float) -&gt; ArmStats:
+        &quot;&quot;&quot;Forget: shrink the evidence by ``gamma`` towards the Beta(1, 1) prior.&quot;&quot;&quot;
+        return ArmStats(self.pulls * gamma, self.total_reward * gamma)</code></pre>
+<p class="source">src/recommender/store/options_store.py</p>
+<!-- END generated:code-armstats -->
+
+  <h3 id="features">Thompson sampling on customer features: the step beyond segments</h3>
+  <figure class="fig">
+<pre class="mermaid">
+flowchart TD
+  A["App open"] --> B["Feature vector x&lt;br/&gt;segment, device, contract, spend band,&lt;br/&gt;time of day, weekend, payday week, border province"]
+  B --> C["For each eligible offer, draw weights&lt;br/&gt;w ~ N(mean, width² · A⁻¹)"]
+  C --> D["Score x · w;&lt;br/&gt;show the three highest"]
+  D --> E{"Customer's response"}
+  E -- "taken up: 1 · viewed: 0" --> F["Forget: every offer's A and b × γ"]
+  E -- "ignored" --> G["No update"]
+  F --> H["This offer: A + x xᵀ, b + reward · x"]
+  H -- "next app open" --> C
+</pre>
+    <figcaption><span>Instead of a belief per segment, each offer has a Bayesian linear model of take-up, so what it learns about a feature (a flagship handset, an evening, payday) is shared across segments. Its exploration width was chosen on seeds outside the published ten (<code>make experiment-features</code>, decision Q8).</span></figcaption>
+  </figure>
+<!-- BEGIN generated:code-features -->
+<pre><code>def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list[ScoredOffer]:
+    &quot;&quot;&quot;Draw a weight vector per offer from its posterior; rank by predicted take-up.&quot;&quot;&quot;
+    check_slate_size(n)
+    ids = [offer.offer_id for offer in candidates]
+    rows = self._rows(ids)
+    x = features(context)
+    precision = self._evidence[rows] + self.prior * np.eye(len(FEATURES))
+    mean = np.linalg.solve(precision, self._targets[rows][..., None])[..., 0]
+    lower = np.linalg.cholesky(precision)  # precision = L L^T, so cov = L^-T L^-1
+    noise = self.rng.standard_normal(mean.shape)
+    spread = np.linalg.solve(np.swapaxes(lower, 1, 2), noise[..., None])[..., 0]
+    scores = (mean + self.scale * spread) @ x
+    best = np.argsort(-scores)[:n]
+    return [ScoredOffer(ids[i], float(scores[i])) for i in best]
+
+def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
+    &quot;&quot;&quot;Forget a little across every offer (if decay is on), then add this response.&quot;&quot;&quot;
+    if not 0 &lt;= reward &lt;= 1:
+        raise ValueError(f&quot;reward must be in [0, 1], got {reward}&quot;)
+    (row,) = self._rows([offer_id])
+    if self.decay &lt; 1:
+        self._evidence *= self.decay
+        self._targets *= self.decay
+    x = features(context)
+    self._evidence[row] += np.outer(x, x)
+    self._targets[row] += reward * x</code></pre>
+<p class="source">src/recommender/algorithms/linear_thompson.py</p>
+<!-- END generated:code-features -->
+</section>
+
+<section aria-labelledby="learning">
+  <div class="section-head"><h2 id="learning">Learning and forgetting</h2><span class="chip built">Built</span></div>
+  <p>The Beta policies share one update, and the store performs it atomically. With forgetting switched on, every offer in the context first loses a sliver of its evidence, then the new reward is added. Old evidence fades, so a change in behaviour shows through within a few thousand responses instead of being outvoted by months of history. The <a href="decisions.html#learning">update-rule tree</a> shows the same flow as a diagram.</p>
+<!-- BEGIN generated:code-update -->
+<pre><code>def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
+    &quot;&quot;&quot;Forget a little (if decay is on), then add the new evidence.
+
+    The store does both in one atomic step, so concurrent requests never overwrite
+    each other&#x27;s learning.
+    &quot;&quot;&quot;
+    if not 0 &lt;= reward &lt;= 1:
+        raise ValueError(f&quot;reward must be in [0, 1], got {reward}&quot;)
+    self.store.learn(self.name, self.key(context), offer_id, reward, decay=self.decay)</code></pre>
+<p class="source">src/recommender/algorithms/base.py</p>
+<pre><code>def learn(
+    self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
+) -&gt; None:
+    &quot;&quot;&quot;Forget a little across the context (if decay is on), then add one reward.&quot;&quot;&quot;
+    now = datetime.now(UTC)
+    with self._lock:
+        rows = self._rows.setdefault((policy, context_key), {})
+        if decay &lt; 1:
+            for other, (stats, _) in list(rows.items()):
+                rows[other] = (stats.decayed(decay), now)
+        stats, _ = rows.get(offer_id, (ArmStats(), now))
+        rows[offer_id] = (stats.updated(reward), now)</code></pre>
+<p class="source">src/recommender/store/options_store.py</p>
+<pre><code>def learn(
+    self, policy: str, context_key: str, offer_id: str, reward: float, decay: float = 1.0
+) -&gt; None:
+    &quot;&quot;&quot;Forget a little across the context (if decay is on), then add one reward, atomically.&quot;&quot;&quot;
+    now = datetime.now(UTC)
+    forget = (
+        update(options)
+        .where(options.c.policy == policy, options.c.context_key == context_key)
+        .values(
+            pulls=options.c.pulls * decay,
+            total_reward=options.c.total_reward * decay,
+            updated_at=now,
+        )
+    )
+    add = (
+        self._insert()
+        .values(
+            policy=policy,
+            context_key=context_key,
+            offer_id=offer_id,
+            pulls=1.0,
+            total_reward=reward,
+            updated_at=now,
+        )
+        .on_conflict_do_update(
+            index_elements=KEY_COLUMNS,
+            set_={
+                &quot;pulls&quot;: options.c.pulls + 1.0,
+                &quot;total_reward&quot;: options.c.total_reward + reward,
+                &quot;updated_at&quot;: now,
+            },
+        )
+    )
+    # One transaction. Each statement computes from the row&#x27;s current value inside
+    # the database, so two requests running at once cannot overwrite each other.
+    with self.engine.begin() as connection:
+        if decay &lt; 1:
+            if connection.dialect.name == &quot;postgresql&quot;:
+                # Forgetting locks every row in the context. Two requests locking them in
+                # different orders deadlock (seen with 4 workers), so updates to one
+                # context queue on a lock of their own first. SQLite locks the whole file.
+                connection.execute(
+                    select(
+                        func.pg_advisory_xact_lock(
+                            func.hashtext(policy), func.hashtext(context_key)
+                        )
+                    )
+                )
+            connection.execute(forget)
+        connection.execute(add)</code></pre>
+<p class="source">src/recommender/store/sql.py</p>
+<!-- END generated:code-update -->
+  <div class="note">
+    <p><strong>Why the default is γ = 0.9998.</strong> Forgetting matters little for a new hit offer, because Thompson sampling keeps testing offers it has rarely shown. It matters a lot when an offer the model is confident about changes. Over 5 seeds, after families' favourite switched, the policy without forgetting ranked the new favourite first in 15% of their app opens; at γ = 0.9998 it was 74%. <code>make experiment</code> reruns it; full numbers are in <a href="decisions.html#log-phase-2-algorithms">decision P9</a>.</p>
+  </div>
+</section>
+
+<section aria-labelledby="rewards">
+  <div class="section-head"><h2 id="rewards">Rewards</h2><span class="chip built">Built</span></div>
+  <p>A reward function turns the outcome of one shown offer into the number a policy learns from, or into no update at all. Each policy's reward is set in <code>settings.yaml</code>; the default is <code>recommendation.reward</code>.</p>
+<!-- BEGIN generated:rewards -->
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Outcome</th><th scope="col" class=num>Binary</th><th scope="col" class=num>Revenue: data_20gb (R150)</th><th scope="col" class=num>Revenue: funeral_cover (R50)</th><th scope="col" class=num>Revenue: airtime_r50_bonus (R4)</th><th scope="col" class=num>Binary, learning from ignored</th></tr></thead>
+<tbody>
+<tr><td><code>taken_up</code></td><td class=num>1</td><td class=num>1</td><td class=num>0.333</td><td class=num>0.0267</td><td class=num>1</td></tr>
+<tr><td><code>viewed</code></td><td class=num>0</td><td class=num>0</td><td class=num>0</td><td class=num>0</td><td class=num>0</td></tr>
+<tr><td><code>ignored</code></td><td class=num>no update</td><td class=num>no update</td><td class=num>no update</td><td class=num>no update</td><td class=num>0</td></tr>
+</tbody></table></div>
+<p class="source">Revenue reward = margin ÷ top margin (R150). <code>ignored</code> makes no update unless learn_from_ignored is set; <code>taken_up</code> is the only outcome that earns.</p>
+<!-- END generated:rewards -->
+  <p class="source">Computed with the reward functions in src/recommender/algorithms/rewards.py</p>
 </section>
 
 <section aria-labelledby="cards">
-  <h2 id="cards">The nine policies</h2>
-  <p>Each card says what the model is for here and where you will meet it, then its configuration and how it did on the same 50,000 app opens as every other policy.</p>
+  <h2 id="cards">The policies, card by card</h2>
+  <p>Each card says what the policy is for here and where you will meet it, then its configuration and how it did on the same 50,000 app opens as every other policy.</p>
 <!-- BEGIN generated:model-cards -->
 <div class="models">
 <article class="card model" id="model-random">
@@ -260,6 +544,17 @@ flowchart TD
 <dt>Results</dt><dd>205 take-ups per 1,000 app opens · 72.4% of what was possible · regret 3,916 ± 92 · R13.37 revenue per app open · #5 of 9</dd>
 </dl>
 </article>
+<article class="card model" id="model-thompson-features">
+<h3>Thompson on customer features <code>thompson_features</code></h3>
+<dl>
+<dt>The idea</dt><dd>Thompson sampling on customer features instead of segments: a Bayesian linear model of each offer's take-up over about 20 features.</dd>
+<dt>How it ranks</dt><dd>Draws one set of weights per offer from its posterior and scores the customer's features with them; shows the three highest scores.</dd>
+<dt>How it learns</dt><dd>Each response updates the offer's model: the features' outer product joins its precision and reward times features joins its targets, after forgetting a little.</dd>
+<dt>Settings</dt><dd>a linear model over 20 features per offer; forgetting γ = 0.99996 (memory ≈ 25,000 responses); posterior width 0.05; reward: 1 per take-up</dd>
+<dt>Its role here</dt><dd>The step beyond segments: it can learn that flagship handsets favour device insurance in every segment, or that evenings favour entertainment, once instead of five times.</dd>
+<dt>Where it's used</dt><dd>The comparison and the sensitivity sweep. It can't serve yet: its state is a matrix per offer, which the options store can't hold. Any request can ask for it with <code>?policy=thompson_features</code>.</dd>
+</dl>
+</article>
 </div>
 <p class="source">Settings from config/settings.yaml; results from the published run (10 seeds × 50,000 app opens) · rebuilt by make docs</p>
 <!-- END generated:model-cards -->
@@ -271,14 +566,15 @@ flowchart TD
     <table>
       <thead><tr><th scope="col">Model</th><th scope="col">What it does</th><th scope="col">Used by</th><th scope="col">Code</th></tr></thead>
       <tbody>
-        <tr><td><strong>Beta belief</strong></td><td>What a policy believes about one offer's take-up rate in one context. It starts at Beta(1, 1), "anything from 0 to 100% is equally likely"; then α = 1 + rewards and β = 1 + responses − rewards. Its mean, α ÷ (α + β), is the expected take-up rate, and its width is the doubt.</td><td>Thompson sampling; the options store keeps responses and rewards, and the database computes α and β from them.</td><td><code>store/options_store.py</code>, <code>store/sql.py</code></td></tr>
-        <tr><td><strong>Forgetting</strong></td><td>Before each update, all the evidence in the context is multiplied by γ, then the new response is added. Evidence levels off at about 1 ÷ (1 − γ) responses, so old behaviour fades.</td><td>The two policies with forgetting (γ = 0.9998, about 5,000 responses).</td><td><code>algorithms/base.py</code>, <code>store/</code></td></tr>
-        <tr><td><strong>Context key</strong></td><td>Which belief a response updates and a ranking reads: one for everyone, one per segment, or one per segment and part of the month.</td><td>Every learning policy.</td><td><code>algorithms/base.py</code></td></tr>
-        <tr><td><strong>Rewards</strong></td><td>Turn one outcome into what a policy learns: 1 for a take-up and 0 for a view (binary), or the offer's margin ÷ the top margin for a take-up (revenue). An ignored offer teaches nothing by default.</td><td>Set per policy in <code>settings.yaml</code>; see the <a href="algorithms.html#rewards">reward table</a>.</td><td><code>algorithms/rewards.py</code></td></tr>
+        <tr><td><strong>Beta belief</strong></td><td>What a policy believes about one offer's take-up rate in one context. It starts at Beta(1, 1), "anything from 0 to 100% is equally likely"; then α = 1 + rewards and β = 1 + responses − rewards. Its mean, α ÷ (α + β), is the expected take-up rate, and its width is the doubt.</td><td>The Beta Thompson policies; the options store keeps responses and rewards, and the database computes α and β from them.</td><td><code>store/options_store.py</code>, <code>store/sql.py</code></td></tr>
+        <tr><td><strong>Bayesian linear model</strong></td><td>Per offer, a Gaussian belief about how each feature moves take-up: precision A and targets b, so the mean weights are A⁻¹b and the doubt is A⁻¹.</td><td>Thompson on customer features.</td><td><code>algorithms/linear_thompson.py</code></td></tr>
+        <tr><td><strong>Forgetting</strong></td><td>Before each update, the evidence is multiplied by γ, then the new response is added. Evidence levels off at about 1 ÷ (1 − γ) responses, so old behaviour fades.</td><td>The policies with forgetting: γ = 0.9998 per segment (about 5,000 responses), and 0.99996 for the feature model (about 25,000, the same total over five segments).</td><td><code>algorithms/base.py</code>, <code>store/</code></td></tr>
+        <tr><td><strong>Context key</strong></td><td>Which belief a response updates and a ranking reads: one for everyone, one per segment, or one per segment and part of the month.</td><td>Every Beta learning policy.</td><td><code>algorithms/base.py</code></td></tr>
+        <tr><td><strong>Rewards</strong></td><td>Turn one outcome into what a policy learns: 1 for a take-up and 0 for a view (binary), or the offer's margin ÷ the top margin for a take-up (revenue). An ignored offer teaches nothing by default.</td><td>Set per policy in <code>settings.yaml</code>; see <a href="#rewards">Rewards</a>.</td><td><code>algorithms/rewards.py</code></td></tr>
         <tr><td><strong>Ground truth</strong></td><td>The hidden probability that a given customer takes up a given offer at a given moment: a base rate per segment and offer, adjusted by 14 context effects (payday week, time of day, device, contract, spend and more), capped at 90%. It changes at the behaviour shift.</td><td>The simulator only. No policy ever sees it.</td><td><code>simulator/ground_truth.py</code>; see <a href="simulation.html">Simulated world</a></td></tr>
         <tr><td><strong>Response model</strong></td><td>How a customer reads a list of offers: they notice the offer in position 1, 2, 3 … with probability 1.0, 0.6, 0.4, 0.25, 0.15, and take up at most one per app open.</td><td>The simulator; the reason ignored offers teach nothing.</td><td><code>simulator/ground_truth.py</code></td></tr>
         <tr><td><strong>Oracle</strong></td><td>Shows the three offers with the highest true probability. Regret is the oracle's expected take-ups minus the policy's: take-ups lost to not knowing.</td><td>The comparison and every results page.</td><td><code>simulator/engine.py</code></td></tr>
-        <tr><td><strong>Story measures</strong></td><td>Chance of being best (drawn from the Beta beliefs), exploration share, evidence, time to switch (the new favourite leads 80% of the segment's last 100 app opens), and every claim counted seed by seed.</td><td>The dashboard's Algorithm comparison, Explore vs exploit and Behaviour shift pages.</td><td><code>evaluation/story.py</code>, <code>exploration.py</code>, <code>adaptation.py</code>, <code>metrics.py</code></td></tr>
+        <tr><td><strong>Story and evidence measures</strong></td><td>Chance of being best (drawn from the Beta beliefs), exploration share, evidence, time to switch (the new favourite leads 80% of the segment's last 100 app opens), every claim counted seed by seed, and 95% bootstrap intervals over the seeds.</td><td>The dashboard's story pages, the Results page and the write-up.</td><td><code>evaluation/story.py</code>, <code>exploration.py</code>, <code>adaptation.py</code>, <code>stats.py</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -287,14 +583,14 @@ flowchart TD
 <section aria-labelledby="use">
   <h2 id="use">How they are used here</h2>
   <ol>
-    <li><strong>Serving.</strong> Every app open is ranked by the policy named in <code>recommendation.active_policy</code> in <code>settings.yaml</code>. Any request can ask for another with <code>?policy=</code>, which is how an A/B test or a holdout would run. Each policy keeps its own beliefs in the options store, so all nine can learn side by side.</li>
+    <li><strong>Serving.</strong> Every app open is ranked by the policy named in <code>recommendation.active_policy</code> in <code>settings.yaml</code>. Any request can ask for another with <code>?policy=</code>, which is how an A/B test or a holdout would run. Each Beta policy keeps its own beliefs in the options store, so they can all learn side by side. The feature model can't serve yet; asked for by name, the API says so.</li>
     <li><strong>Learning.</strong> <code>POST /response</code> looks up which policy served the app open, turns the outcome into that policy's reward, and updates its belief in one database transaction.</li>
-    <li><strong>Comparing.</strong> The simulator runs all nine on the identical 50,000 app opens, 10 times with different seeds, against the oracle. The <a href="results.html">Results</a> page and the dashboard read what it saves.</li>
+    <li><strong>Comparing.</strong> The simulator runs every policy on the identical 50,000 app opens, 10 times with different seeds, against the oracle, and the <a href="results.html#sensitivity">sensitivity sweep</a> reruns the key ones in five other versions of the world. The <a href="results.html">Results</a> page and the dashboard read what they save.</li>
     <li><strong>Explaining.</strong> The dashboard's stories cast four of them: the serving policy as the learner, the fixed popularity ranking as the baseline, Thompson per segment as the learner without forgetting, and epsilon-greedy per segment as the explorer that never stops.</li>
   </ol>
 </section>
 
-<p class="foot">The cards and the family tree are generated from <code>config/settings.yaml</code> and <code>docs/data/comparison.json</code> by <code>make docs</code>.</p>
+<p class="foot">The table, the cards, the family tree and every code block are generated from <code>config/settings.yaml</code>, <code>docs/data/comparison.json</code> and the source by <code>make docs</code>; edit the source, never this page.</p>
 </main>
 </div>
 </body>

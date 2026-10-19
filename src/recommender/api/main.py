@@ -23,6 +23,7 @@ from recommender.api.schemas import (
     MetricsResponse,
     OfferOut,
     PolicyInfo,
+    PolicyMetrics,
     PolicyState,
     RankedOffer,
     ResponseRequest,
@@ -41,6 +42,7 @@ def create_app(settings: Settings | None = None, database_url: str | None = None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        """Connect the database and build the policies at start-up; release them at shutdown."""
         configure_logging()
         resolved = settings or load_settings()
         app.state.services = Services.build(resolved, database_url or resolved.database_url)
@@ -63,6 +65,7 @@ def create_app(settings: Settings | None = None, database_url: str | None = None
 
 
 def get_services(request: Request) -> Services:
+    """The services built at start-up, for a request's dependencies."""
     return request.app.state.services
 
 
@@ -76,6 +79,7 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 def check_api_key(
     services: ServicesDep, key: Annotated[str | None, Depends(api_key_header)]
 ) -> None:
+    """Refuse the request with 401 if keys are required and this one isn't valid."""
     if services.require_api_key and not services.accounts.api_key_valid(key):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
@@ -88,11 +92,21 @@ def check_api_key(
 PROTECTED = [Depends(check_api_key)]
 
 
+def unknown_policy(services: Services, name: str) -> str:
+    """Why ``name`` can't serve: not configured, or configured for the simulator only."""
+    if name in services.settings.policies:
+        return f"policy {name!r} runs in the simulator only; it can't serve requests yet"
+    return f"unknown policy {name!r}; configured: {list(services.policies)}"
+
+
 def not_found(message: str) -> HTTPException:
+    """A 404 with ``message`` as its detail."""
     return HTTPException(status.HTTP_404_NOT_FOUND, detail=message)
 
 
 def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoints
+    """Add every endpoint to ``app``."""
+
     @app.get("/health", tags=["ops"])
     def health(services: ServicesDep) -> dict:
         """Liveness and readiness: is the database reachable, and what is being served."""
@@ -143,7 +157,7 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
         settings = services.settings.recommendation
         name = policy or settings.active_policy
         if name not in services.policies:
-            raise not_found(f"unknown policy {name!r}; configured: {list(services.policies)}")
+            raise not_found(unknown_policy(services, name))
         n = body.number_of_offers or settings.number_of_offers
         if n > settings.max_offers:
             raise HTTPException(
@@ -218,9 +232,10 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
             raise HTTPException(status.HTTP_409_CONFLICT, detail=str(duplicate)) from None
 
         policy = services.policies.get(invocation.policy)
-        model_updated = reward is not None and policy is not None and policy.learns
-        if model_updated:
+        model_updated = False
+        if reward is not None and policy is not None and policy.learns:
             policy.update(invocation.context, body.offer_id, reward)
+            model_updated = True
         return ResponseResult(
             invocation_id=body.invocation_id,
             offer_id=body.offer_id,
@@ -247,6 +262,7 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
                 active=name == active,
             )
             for name, spec in services.settings.policies.items()
+            if name in services.policies  # simulation-only policies can't serve requests
         ]
 
     @app.get(
@@ -263,7 +279,7 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
         """What a policy has learned: its rows in the options store."""
         policy = services.policies.get(name)
         if policy is None:
-            raise not_found(f"unknown policy {name!r}; configured: {list(services.policies)}")
+            raise not_found(unknown_policy(services, name))
         rows = [
             row
             for row in services.store.rows(name)
@@ -294,7 +310,10 @@ def register_routes(app: FastAPI) -> None:  # noqa: C901 - a flat list of endpoi
         """Per-policy take-up and revenue from the event log; latency per endpoint."""
         margins = {offer_id: offer.margin_zar for offer_id, offer in services.offers.items()}
         return MetricsResponse(
-            policies=services.events.summary(margins),
+            policies={
+                name: PolicyMetrics(**numbers)
+                for name, numbers in services.events.summary(margins).items()
+            },
             latency=request.app.state.latency.summary(),
         )
 

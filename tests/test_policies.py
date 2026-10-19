@@ -16,6 +16,7 @@ from recommender.store.sql import create_store
 
 
 def make_offers(*offer_ids: str) -> list[Offer]:
+    """A small catalogue for policy tests."""
     return [
         Offer(
             offer_id=offer_id,
@@ -30,6 +31,7 @@ def make_offers(*offer_ids: str) -> list[Offer]:
 
 
 def make_context(segment: str = "family", payday: bool = False) -> Context:
+    """A context in ``segment``, optionally in payday week."""
     return Context(
         customer_id="C00001",
         segment=segment,
@@ -45,6 +47,7 @@ def make_context(segment: str = "family", payday: bool = False) -> Context:
 
 
 def rng(seed: int = 0) -> np.random.Generator:
+    """A seeded random generator."""
     return np.random.default_rng(seed)
 
 
@@ -102,6 +105,7 @@ def test_static_policy_without_history_uses_catalogue_order() -> None:
 
 
 def seeded_store(stats: dict[str, ArmStats], policy="eg", key="all") -> InMemoryOptionsStore:
+    """An in-memory store holding ``stats`` for one policy and context key."""
     store = InMemoryOptionsStore()
     store.put(policy, key, stats)
     return store

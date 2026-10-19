@@ -51,6 +51,7 @@ def to_markdown(table: pd.DataFrame) -> str:
 
 
 def main() -> None:
+    """Run every policy on the same world over several seeds and save the results."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--rounds", type=int, default=50_000)
     parser.add_argument("--seeds", type=int, default=10)

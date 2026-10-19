@@ -19,6 +19,7 @@ class JsonFormatter(logging.Formatter):
     """Formats a record as JSON: timestamp, level, logger, event, then any extra fields."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """One log record as a single JSON line, with any extra fields it carries."""
         payload = {
             "ts": datetime.fromtimestamp(record.created, UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname.lower(),

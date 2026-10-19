@@ -45,6 +45,7 @@ class World:
     offers_by_id: dict[str, Offer] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        """Index the offers by id once, for fast lookups during a run."""
         object.__setattr__(self, "offers_by_id", {o.offer_id: o for o in self.offers})
 
     @classmethod
@@ -68,6 +69,7 @@ class World:
         return sample_context(customer, rng, self.days[round_ * len(self.days) // rounds])
 
     def eligible(self, segment: str) -> list[Offer]:
+        """The offers a customer in ``segment`` may be shown."""
         return [offer for offer in self.offers if offer.is_eligible(segment)]
 
 
@@ -93,7 +95,7 @@ def score_round(
     response = truth.response
     margins = {offer_id: world.offers_by_id[offer_id].margin_zar for offer_id in probabilities}
     n = len(shown)
-    by_take_up = sorted(probabilities, key=probabilities.get, reverse=True)[:n]
+    by_take_up = sorted(probabilities, key=probabilities.__getitem__, reverse=True)[:n]
     by_revenue = sorted(probabilities, key=lambda o: probabilities[o] * margins[o], reverse=True)[
         :n
     ]
@@ -160,6 +162,7 @@ def simulate(
 
 
 def context_day(world: World, round_: int, rounds: int) -> date:
+    """The calendar day of app open ``round_``: rounds spread evenly over the days."""
     return world.days[round_ * len(world.days) // rounds]
 
 

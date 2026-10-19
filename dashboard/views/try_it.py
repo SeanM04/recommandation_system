@@ -32,6 +32,7 @@ with st.expander("The moment (defaults to now)"):
 
 
 def context_key(mode: str, context: dict) -> str:
+    """The key a policy pools this context's evidence under (mirrors the API's)."""
     if mode == "global":
         return "all"
     if mode == "segment_payday":
@@ -40,6 +41,7 @@ def context_key(mode: str, context: dict) -> str:
 
 
 def belief(name: str, key: str, offer_id: str) -> dict | None:
+    """One offer's current belief under a policy and context key, or None."""
     arms = client.get(f"/policies/{name}/state", context_key=key)["arms"]
     return next((arm for arm in arms if arm["offer_id"] == offer_id), None)
 

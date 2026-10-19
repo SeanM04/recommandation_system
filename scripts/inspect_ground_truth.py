@@ -16,6 +16,7 @@ from recommender.simulator.settings import load_simulation_settings
 
 
 def _heading(title: str) -> None:
+    """Print a title underlined with dashes."""
     print(f"\n{title}\n{'-' * len(title)}")
 
 
@@ -28,6 +29,7 @@ def _label(key: str | tuple) -> str:
 
 
 def _favourites(table: pd.DataFrame, value_format: str) -> str:
+    """Each row's best offer, its rate, and its lead over the runner-up, as text."""
     best = winners(table)
     lines = [
         f"  {_label(key):<36} {row.best:<22} {format(row.value, value_format):>8}"
@@ -38,6 +40,7 @@ def _favourites(table: pd.DataFrame, value_format: str) -> str:
 
 
 def main() -> None:
+    """Print the hidden take-up rates and each segment's favourites, before and after."""
     settings = load_settings()
     simulation = load_simulation_settings()
     offers = load_offers()
@@ -47,6 +50,7 @@ def main() -> None:
     margins = pd.Series({offer.offer_id: offer.margin_zar for offer in offers})
 
     def table(world: GroundTruth, by: tuple[str, ...] = ("segment",)) -> pd.DataFrame:
+        """True take-up rates under ``world``, averaged by ``by``."""
         return take_up_table(world, customers, offers, days, by=by, seed=settings.seed)
 
     before = table(truth)

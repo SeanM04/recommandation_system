@@ -17,6 +17,7 @@ def summarize(log: pd.DataFrame) -> dict[str, float]:
     regret = log["oracle_take_ups"] - log["expected_take_ups"]
 
     def mean(frame: pd.DataFrame, column: str) -> float:
+        """The mean of a column, or NaN when the frame is empty (e.g. no shift)."""
         return float(frame[column].mean()) if len(frame) else math.nan
 
     return {

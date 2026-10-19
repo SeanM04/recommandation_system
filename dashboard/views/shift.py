@@ -22,7 +22,16 @@ from recommender.evaluation.compare import moment_favourites
 from recommender.evaluation.metrics import selection_share
 from recommender.evaluation.story import label
 from recommender.simulator.engine import World
-from shared import colour, mark_shift, need_results, provenance, results_file, settings, style
+from shared import (
+    colour,
+    mark_shift,
+    need_results,
+    provenance,
+    results_dir,
+    results_file,
+    settings,
+    style,
+)
 
 MUTED = "#a3acb5"  # everything the current message is not about
 SEGMENTS = {
@@ -72,10 +81,18 @@ def opens(count: float | None) -> str:
 
 old, new = favourites()
 changed = [segment for segment in SEGMENTS if old.get(segment) != new.get(segment)]
-stories = {
-    segment: build_shift_story(table, by_seed, rounds, convergence, (old, new), segment)
-    for segment in changed
-}
+
+
+@st.cache_data(max_entries=4)
+def shift_stories(saved_at: float) -> dict:
+    """Each changed segment's story, computed once per saved run (keyed by when it was saved)."""
+    return {
+        segment: build_shift_story(table, by_seed, rounds, convergence, (old, new), segment)
+        for segment in changed
+    }
+
+
+stories = shift_stories((results_dir() / "comparison_rounds.parquet").stat().st_mtime)
 overall = stories[changed[0]]  # the overall numbers are the same in every segment's story
 
 # --- headline and setting ------------------------------------------------------------------

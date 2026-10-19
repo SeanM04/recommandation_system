@@ -34,6 +34,7 @@ DEFAULT_ROUNDS = {"fast": 50_000, "api": 5_000}  # API mode makes ~4 HTTP calls 
 
 
 def main() -> None:
+    """Simulate app opens through the fast loop or the API and print the summary."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--mode", choices=["fast", "api"], default="fast")
     parser.add_argument("--policy", help="a policy from settings.yaml (default: the active one)")
@@ -92,6 +93,7 @@ def main() -> None:
             client_context.headers.update(api_client_headers())
 
         def progress(done: int) -> None:
+            """Print the rate and time left every 500 app opens."""
             if done % 500 == 0 or done == rounds:
                 rate = done / (time.perf_counter() - start)
                 print(f"  {done:,} app opens ({rate:.0f}/s, {(rounds - done) / rate:.0f}s left)")

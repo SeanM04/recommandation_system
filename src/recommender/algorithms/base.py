@@ -36,6 +36,7 @@ def context_key(context: Context, mode: str) -> str:
 
 
 def check_slate_size(n: int) -> None:
+    """Refuse a request for fewer than one offer."""
     if n < 1:
         raise ValueError(f"number of offers must be at least 1, got {n}")
 
@@ -73,6 +74,7 @@ class BanditPolicy(Policy):
         context_mode: str = "global",
         decay: float = 1.0,
     ) -> None:
+        """A learning policy reading and writing its statistics in ``store``."""
         if context_mode not in CONTEXT_MODES:
             raise ValueError(
                 f"unknown context mode {context_mode!r}; expected one of {CONTEXT_MODES}"
@@ -86,6 +88,7 @@ class BanditPolicy(Policy):
         self.decay = decay
 
     def key(self, context: Context) -> str:
+        """The context key this app open's evidence is pooled under."""
         return context_key(context, self.context_mode)
 
     def stats(self, context: Context, candidates: Sequence[Offer]) -> dict[str, ArmStats]:

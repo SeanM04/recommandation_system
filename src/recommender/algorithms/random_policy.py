@@ -14,10 +14,12 @@ class RandomPolicy(Policy):
     """The floor every other policy must beat: offers in random order. Learns nothing."""
 
     def __init__(self, name: str = "random", *, rng: np.random.Generator) -> None:
+        """A policy that shows offers in random order, drawn from ``rng``."""
         self.name = name
         self.rng = rng
 
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:
+        """The eligible offers in a random order, cut to ``n``."""
         check_slate_size(n)
         draws = self.rng.random(len(candidates))
         order = np.argsort(-draws)[:n]

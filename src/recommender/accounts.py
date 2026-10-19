@@ -61,10 +61,12 @@ class User:
 
     @property
     def is_admin(self) -> bool:
+        """Whether this user may change the model and manage accounts."""
         return self.role == "admin"
 
 
 def hash_password(password: str) -> str:
+    """A salted scrypt hash of ``password``, with the scrypt settings stored alongside."""
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(password.encode(), salt=salt, **_SCRYPT)
     encoded = (base64.b64encode(part).decode() for part in (salt, digest))
@@ -72,6 +74,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, stored: str) -> bool:
+    """Whether ``password`` matches the stored hash, compared in constant time."""
     try:
         scheme, n, r, p, salt, digest = stored.split("$")
     except ValueError:
@@ -85,6 +88,7 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def _hash_key(key: str) -> str:
+    """The SHA-256 of an API key: enough for long random keys, unlike passwords."""
     return hashlib.sha256(key.encode()).hexdigest()
 
 
@@ -92,6 +96,7 @@ class Accounts:
     """Users and API keys, in the ``users`` and ``api_keys`` tables."""
 
     def __init__(self, engine: Engine) -> None:
+        """Accounts in ``engine``'s database, creating the two tables if missing."""
         self.engine = engine
         for table in (users, api_keys):
             table.create(engine, checkfirst=True)
@@ -99,10 +104,12 @@ class Accounts:
     # --- users ----------------------------------------------------------------------
 
     def user_count(self) -> int:
+        """How many accounts exist (0 means the first admin is still to be created)."""
         with self.engine.connect() as connection:
             return connection.execute(select(func.count()).select_from(users)).scalar_one()
 
     def create_user(self, username: str, password: str, role: str = "viewer") -> User:
+        """Add an account after checking the username, password length and role."""
         username = username.strip().lower()
         if not USERNAME.match(username):
             raise AccountError("username: 3-64 characters, lowercase letters, digits, . _ -")
@@ -145,6 +152,7 @@ class Accounts:
         return User(username, row.role)
 
     def set_password(self, username: str, password: str) -> None:
+        """Give an existing account a new password."""
         if len(password) < MIN_PASSWORD_LENGTH:
             raise AccountError(f"password: at least {MIN_PASSWORD_LENGTH} characters")
         with self.engine.begin() as connection:
@@ -157,10 +165,12 @@ class Accounts:
             raise AccountError(f"no user {username!r}")
 
     def delete_user(self, username: str) -> None:
+        """Remove an account (nothing happens if it doesn't exist)."""
         with self.engine.begin() as connection:
             connection.execute(users.delete().where(users.c.username == username))
 
     def list_users(self) -> list[dict]:
+        """Every account with its role, creation time and last sign-in; never a password."""
         query = select(users.c.username, users.c.role, users.c.created_at, users.c.last_login_at)
         with self.engine.connect() as connection:
             return [dict(row._mapping) for row in connection.execute(query.order_by("username"))]
@@ -183,6 +193,7 @@ class Accounts:
         return key
 
     def api_key_valid(self, key: str | None) -> bool:
+        """Whether ``key`` is an active key: looked up by its hash, never stored in clear."""
         if not key or not key.startswith(API_KEY_PREFIX):
             return False
         query = select(api_keys.c.key_id).where(
@@ -192,12 +203,14 @@ class Accounts:
             return connection.execute(query).first() is not None
 
     def revoke_api_key(self, key_id: str) -> None:
+        """Switch off one key, by the first characters that name it."""
         with self.engine.begin() as connection:
             connection.execute(
                 update(api_keys).where(api_keys.c.key_id == key_id).values(active=False)
             )
 
     def list_api_keys(self) -> list[dict]:
+        """Every key's name, label, creation time and status; never the key itself."""
         query = select(
             api_keys.c.key_id, api_keys.c.label, api_keys.c.created_at, api_keys.c.active
         )

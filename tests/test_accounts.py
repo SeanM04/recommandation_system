@@ -7,6 +7,7 @@ from recommender.db import make_engine
 
 @pytest.fixture(params=["sqlite", "postgres"])
 def accounts(request, tmp_path):
+    """Accounts on a throwaway SQLite file, and on Postgres when configured."""
     if request.param == "sqlite":
         engine = make_engine(f"sqlite:///{(tmp_path / 'accounts.db').as_posix()}")
         yield Accounts(engine)

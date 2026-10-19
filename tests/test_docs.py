@@ -11,11 +11,13 @@ class _PageIndex(HTMLParser):
     """Collects element ids and local links from one HTML page."""
 
     def __init__(self) -> None:
+        """Start with no ids or links collected."""
         super().__init__()
         self.ids: list[str] = []
         self.links: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Collect the element's id and any local link or image it carries."""
         attributes = dict(attrs)
         if attributes.get("id"):
             self.ids.append(attributes["id"])
@@ -25,6 +27,7 @@ class _PageIndex(HTMLParser):
 
 
 def _index_pages() -> dict[str, _PageIndex]:
+    """Ids and local links of every page in docs/."""
     pages = {}
     for path in sorted(DOCS.glob("*.html")):
         index = _PageIndex()

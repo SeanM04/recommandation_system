@@ -11,6 +11,7 @@ from recommender.db import make_engine
 
 @pytest.fixture
 def database(tmp_path, monkeypatch) -> str:
+    """Point the commands at a throwaway SQLite file."""
     url = f"sqlite:///{(tmp_path / 'manage.db').as_posix()}"
     monkeypatch.setenv("RECOMMENDER_DATABASE_URL", url)
     return url

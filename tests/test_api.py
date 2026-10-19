@@ -17,6 +17,7 @@ OFFERS = {offer.offer_id: offer for offer in load_offers()}
 
 
 def _client_for(url: str):
+    """The API on the database at ``url``, with the synthetic customers loaded."""
     engine = make_engine(url)
     CustomerRepository(engine).load(World.load().customers)
     engine.dispose()
@@ -38,6 +39,7 @@ def client(request, tmp_path_factory):
 
 
 def invoke(client: TestClient, customer_id="C00001", policy=None, **body) -> dict:
+    """Open the app for a customer and return the JSON, failing the test on an error."""
     params = {"policy": policy} if policy else None
     response = client.post("/invocations", json={"customer_id": customer_id, **body}, params=params)
     assert response.status_code == 200, response.text
@@ -45,6 +47,7 @@ def invoke(client: TestClient, customer_id="C00001", policy=None, **body) -> dic
 
 
 def respond(client: TestClient, invocation_id: str, offer_id: str, outcome: str):
+    """Report one outcome for one shown offer."""
     return client.post(
         "/response",
         json={"invocation_id": invocation_id, "offer_id": offer_id, "outcome": outcome},
@@ -143,6 +146,7 @@ def test_response_updates_the_model_immediately(client: TestClient) -> None:
     segment = body["context"]["segment"]
 
     def pulls() -> float:
+        """Responses the decay policy has counted for this offer and segment."""
         state = client.get("/policies/thompson_segment/state", params={"context_key": segment})
         arms = {arm["offer_id"]: arm for arm in state.json()["arms"]}
         return arms.get(offer_id, {}).get("pulls", 0.0)
@@ -199,6 +203,16 @@ def test_policies_list_marks_the_active_one(client: TestClient) -> None:
     assert policies["random"]["learns"] is False
     assert policies["thompson_segment"]["context"] == "segment"
     assert client.get("/policies/nope/state").status_code == 404
+
+
+def test_simulation_only_policies_are_listed_nowhere_and_explained(client: TestClient) -> None:
+    """thompson_features is configured, but its matrices have no store: it can't serve."""
+    assert "thompson_features" not in {p["name"] for p in client.get("/policies").json()}
+    response = client.post(
+        "/invocations", json={"customer_id": "C00001"}, params={"policy": "thompson_features"}
+    )
+    assert response.status_code == 404
+    assert "simulator only" in response.json()["detail"]
 
 
 def test_static_policy_state_shows_its_frozen_table(client: TestClient) -> None:

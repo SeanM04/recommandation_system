@@ -23,8 +23,7 @@
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html" aria-current=page>Simulated world</a></li>
-<li><a href="algorithms.html">Policies</a></li>
-<li><a href="models.html">Models</a></li>
+<li><a href="models.html">Policies &amp; models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
@@ -329,7 +328,7 @@
 </tbody></table></div>
 <!-- END generated:attention -->
   <p>Because the model is this simple, the expected reward of any ranked list can be computed exactly: each position adds <em>P(nothing taken above it) × attention × p × value</em>. The regret oracle in Phase 5 uses that formula with the true probabilities.</p>
-  <div class="note"><p><strong>Consequence for learning.</strong> An <code>ignored</code> offer was usually never seen, so it says little about how appealing the offer is. Policies learn from <code>taken_up</code> and <code>viewed</code> and skip <code>ignored</code> unless <code>learn_from_ignored</code> is set; see the <a href="algorithms.html#rewards">reward functions</a>.</p></div>
+  <div class="note"><p><strong>Consequence for learning.</strong> An <code>ignored</code> offer was usually never seen, so it says little about how appealing the offer is. Policies learn from <code>taken_up</code> and <code>viewed</code> and skip <code>ignored</code> unless <code>learn_from_ignored</code> is set; see the <a href="models.html#rewards">reward functions</a>.</p></div>
 </section>
 
 <p class="foot">Tables on this page are rebuilt from the simulator and config by <code>make docs</code>.</p>

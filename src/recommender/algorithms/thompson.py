@@ -17,10 +17,11 @@ class ThompsonSamplingPolicy(BanditPolicy):
     """
 
     def rank(self, context: Context, candidates: Sequence[Offer], n: int) -> list[ScoredOffer]:
+        """Draw a take-up rate from each offer's Beta belief and show the highest draws."""
         check_slate_size(n)
         stats = self.stats(context, candidates)
         draws = {
             offer_id: float(self.rng.beta(arm.alpha, arm.beta)) for offer_id, arm in stats.items()
         }
-        best = sorted(draws, key=draws.get, reverse=True)[:n]
+        best = sorted(draws, key=draws.__getitem__, reverse=True)[:n]
         return [ScoredOffer(offer_id, draws[offer_id]) for offer_id in best]

@@ -98,6 +98,7 @@ class EventLog:
     """Writes and reads the event tables."""
 
     def __init__(self, engine: Engine) -> None:
+        """The event log in ``engine``'s database, creating its tables if missing."""
         self.engine = engine
         for table in EVENT_TABLES:
             table.create(engine, checkfirst=True)

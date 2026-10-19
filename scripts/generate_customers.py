@@ -17,6 +17,7 @@ from recommender.simulator.settings import load_simulation_settings
 
 
 def main() -> None:
+    """Generate the customers, write the CSV, load the database and print a summary."""
     settings = load_settings()
     population = load_simulation_settings().population
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])

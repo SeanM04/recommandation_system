@@ -25,6 +25,7 @@ def margin_reward(offers: Sequence[Offer]) -> RewardFn:
     top_margin = max(offer.margin_zar for offer in offers)
 
     def reward(offer: Offer, outcome: str) -> float | None:
+        """The offer's share of the top margin for a take-up; 0 for a view."""
         if outcome == TAKEN_UP:
             return offer.margin_zar / top_margin
         return 0.0 if outcome == VIEWED else None
@@ -39,6 +40,7 @@ def make_reward(name: str, offers: Sequence[Offer], learn_from_ignored: bool = F
     base = binary_reward if name == "binary" else margin_reward(offers)
 
     def reward(offer: Offer, outcome: str) -> float | None:
+        """The configured reward, or None (no update) for an ignored offer."""
         if outcome not in OUTCOMES:
             raise ValueError(f"unknown outcome {outcome!r}; expected one of {OUTCOMES}")
         if outcome == IGNORED and learn_from_ignored:

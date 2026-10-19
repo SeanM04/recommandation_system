@@ -123,10 +123,11 @@ def build_story(
         & (convergence["segment"] == "young_professional")
     ].set_index("policy")["app_opens"]
     if {"thompson_segment_decay", "thompson_segment"} <= set(after_shift.index):
-        adaptation = tuple(
+        with_forgetting, without = (
             None if pd.isna(after_shift[p]) else float(after_shift[p])
             for p in ("thompson_segment_decay", "thompson_segment")
         )
+        adaptation = (with_forgetting, without)
 
     return Story(
         best=best,

@@ -12,6 +12,7 @@ PG_TEST_SCHEMA = "pytest_recommender"  # tests never touch the real tables
 
 
 def _postgres_store():
+    """A SQL store in a throwaway Postgres schema, or skip without Postgres."""
     with postgres_schema(PG_TEST_SCHEMA) as url:
         engine = make_engine(url)
         yield SqlOptionsStore(engine)
@@ -20,6 +21,7 @@ def _postgres_store():
 
 @pytest.fixture(params=["memory", "sqlite", "postgres"])
 def store(request, tmp_path):
+    """Every store implementation in turn: in memory, SQLite and Postgres."""
     if request.param == "memory":
         yield InMemoryOptionsStore()
     elif request.param == "sqlite":
@@ -91,6 +93,7 @@ def test_concurrent_learning_loses_nothing(store: OptionsStore) -> None:
     """Four request threads updating the same offer at once: every update must count."""
 
     def worker() -> None:
+        """One request thread: 100 updates to the same offer."""
         for _ in range(100):
             store.learn("thompson", "family", "a", 1.0)
 
@@ -106,6 +109,7 @@ def test_concurrent_learning_with_decay_matches_the_sequential_result(store: Opt
     gamma, updates = 0.99, 4 * 50
 
     def worker() -> None:
+        """One request thread: 50 updates with forgetting."""
         for _ in range(50):
             store.learn("thompson", "family", "a", 1.0, decay=gamma)
 
@@ -127,6 +131,7 @@ def test_concurrent_learning_with_decay_across_many_offers(store: OptionsStore) 
     errors: list[Exception] = []
 
     def worker(seed: int) -> None:
+        """One request thread updating offers in its own order, keeping any error."""
         for i in range(per_thread):
             offer = offers[(seed * 5 + i * 7) % 12]
             try:

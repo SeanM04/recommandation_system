@@ -59,6 +59,7 @@ def day_bounds(day: date, timezone: str) -> tuple[datetime, datetime]:
 
 
 def _count(outcome: str):
+    """A SQL sum counting responses with this outcome."""
     return func.sum(case((responses.c.outcome == outcome, 1), else_=0))
 
 

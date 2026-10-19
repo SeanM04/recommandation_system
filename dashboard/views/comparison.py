@@ -18,6 +18,7 @@ from shared import (
     mark_shift,
     need_results,
     provenance,
+    results_dir,
     results_file,
     settings,
     style,
@@ -33,7 +34,14 @@ if not need_results(table, by_seed, rounds, convergence):
     st.title("Algorithm comparison")
     st.stop()
 
-story = build_story(table, by_seed, rounds, convergence)
+
+@st.cache_data(max_entries=4)
+def comparison_story(saved_at: float):
+    """The story's numbers, computed once per saved run (keyed by when it was saved)."""
+    return build_story(table, by_seed, rounds, convergence)
+
+
+story = comparison_story((results_dir() / "comparison_rounds.parquet").stat().st_mtime)
 best, n = story.best, story.seeds
 best_name, baseline_name = label(best), label(BASELINE).lower()
 extra = story.per_1000[best] - story.per_1000[BASELINE]

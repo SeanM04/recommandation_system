@@ -20,20 +20,24 @@ LOCKOUT_S = 30
 
 @st.cache_resource
 def accounts() -> Accounts:
+    """The accounts store, built once per dashboard process."""
     return Accounts(engine())
 
 
 def current_user() -> User | None:
+    """Who is signed in in this browser session, or None."""
     return st.session_state.get("user")
 
 
 def _sign_in(user: User) -> None:
+    """Remember ``user`` for this session, clear failed attempts and reload the page."""
     st.session_state["user"] = user
     st.session_state.pop("failed_sign_ins", None)
     st.rerun()
 
 
 def _first_admin() -> None:
+    """The first-run form that creates the admin account."""
     st.info("No accounts yet. Create the admin account to start.", icon=":material/person_add:")
     with st.form("first_admin"):
         username = st.text_input("Username", value="admin")
@@ -56,6 +60,7 @@ def _first_admin() -> None:
 
 
 def _sign_in_form() -> None:
+    """The sign-in form, locked for 30 seconds after five failures in a row."""
     failures = st.session_state.get("failed_sign_ins", [])
     recent = [t for t in failures if time.time() - t < LOCKOUT_S]
     if len(recent) >= MAX_ATTEMPTS:
@@ -92,6 +97,7 @@ def login_gate() -> User:
 
 
 def sidebar_account(user: User) -> None:
+    """Who is signed in, and a Sign out button, in the sidebar."""
     with st.sidebar:
         st.caption(f"Signed in as **{user.username}** · {user.role}")
         if st.button("Sign out", icon=":material/logout:"):

@@ -22,10 +22,12 @@ class LatencyTracker:
     """Keeps the most recent request durations per endpoint (per server process)."""
 
     def __init__(self, window: int = 5000) -> None:
+        """Keep the last ``window`` timings per endpoint."""
         self._samples: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=window))
         self._lock = threading.Lock()
 
     def record(self, endpoint: str, milliseconds: float) -> None:
+        """Add one request's duration to its endpoint's window."""
         with self._lock:
             self._samples[endpoint].append(milliseconds)
 
@@ -48,10 +50,12 @@ class TimingMiddleware:
     """Times every HTTP request: ``X-Response-Time-ms`` header, a log line, the tracker."""
 
     def __init__(self, app: ASGIApp, tracker: LatencyTracker) -> None:
+        """Wrap ``app``, recording every request's duration in ``tracker``."""
         self.app = app
         self.tracker = tracker
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Time one HTTP request, add the X-Response-Time-ms header and log a JSON line."""
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -59,6 +63,7 @@ class TimingMiddleware:
         status = 500
 
         async def send_with_timing(message: Message) -> None:
+            """Add the timing header as the response starts."""
             nonlocal status
             if message["type"] == "http.response.start":
                 status = message["status"]
