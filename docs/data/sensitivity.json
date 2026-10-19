@@ -1,0 +1,1166 @@
+{
+ "rounds": 30000,
+ "seeds": 3,
+ "scenarios": [
+  {
+   "name": "As published",
+   "change": "the world the results use"
+  },
+  {
+   "name": "No behaviour shift",
+   "change": "customers never change"
+  },
+  {
+   "name": "Weaker context",
+   "change": "context effects at half strength"
+  },
+  {
+   "name": "Stronger context",
+   "change": "context effects at double strength"
+  },
+  {
+   "name": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart"
+  },
+  {
+   "name": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run"
+  }
+ ],
+ "by_seed": [
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "random",
+   "seed": 0,
+   "share_of_oracle": 0.5269663144142457,
+   "regret": 4025.2751566466836,
+   "take_up_rate": 0.15173333333333333
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "static",
+   "seed": 0,
+   "share_of_oracle": 0.6089758997451759,
+   "regret": 3327.415455533189,
+   "take_up_rate": 0.1734
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "epsilon_greedy_segment",
+   "seed": 0,
+   "share_of_oracle": 0.8887544039545832,
+   "regret": 946.6432258274964,
+   "take_up_rate": 0.2553666666666667
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson",
+   "seed": 0,
+   "share_of_oracle": 0.656845132902483,
+   "regret": 2920.0727210358905,
+   "take_up_rate": 0.18846666666666667
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_segment",
+   "seed": 0,
+   "share_of_oracle": 0.879205043656202,
+   "regret": 1027.9034065339592,
+   "take_up_rate": 0.24523333333333333
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_segment_decay",
+   "seed": 0,
+   "share_of_oracle": 0.9186475726216485,
+   "regret": 692.2676224495153,
+   "take_up_rate": 0.2574
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_features",
+   "seed": 0,
+   "share_of_oracle": 0.9378505647548915,
+   "regret": 528.8599634970498,
+   "take_up_rate": 0.2664
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "random",
+   "seed": 1,
+   "share_of_oracle": 0.525755845445437,
+   "regret": 4035.646807933685,
+   "take_up_rate": 0.15116666666666667
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "static",
+   "seed": 1,
+   "share_of_oracle": 0.5222553495353889,
+   "regret": 4065.4347663300077,
+   "take_up_rate": 0.14726666666666666
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "epsilon_greedy_segment",
+   "seed": 1,
+   "share_of_oracle": 0.8954952051560322,
+   "regret": 889.298134042262,
+   "take_up_rate": 0.2539
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson",
+   "seed": 1,
+   "share_of_oracle": 0.692264486941292,
+   "regret": 2618.718288957475,
+   "take_up_rate": 0.19486666666666666
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_segment",
+   "seed": 1,
+   "share_of_oracle": 0.9196536788813031,
+   "regret": 683.7182308687325,
+   "take_up_rate": 0.2603
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_segment_decay",
+   "seed": 1,
+   "share_of_oracle": 0.9146610307141245,
+   "regret": 726.2038671080134,
+   "take_up_rate": 0.2593666666666667
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_features",
+   "seed": 1,
+   "share_of_oracle": 0.9253206900759148,
+   "regret": 635.4940083487095,
+   "take_up_rate": 0.2608333333333333
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "random",
+   "seed": 2,
+   "share_of_oracle": 0.5248255823522305,
+   "regret": 4047.8557376559716,
+   "take_up_rate": 0.14683333333333334
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "static",
+   "seed": 2,
+   "share_of_oracle": 0.6298408505618446,
+   "regret": 3153.2649512494745,
+   "take_up_rate": 0.1764
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "epsilon_greedy_segment",
+   "seed": 2,
+   "share_of_oracle": 0.8988089000830779,
+   "regret": 862.0139451658356,
+   "take_up_rate": 0.25416666666666665
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson",
+   "seed": 2,
+   "share_of_oracle": 0.7000071240217236,
+   "regret": 2555.5413742511746,
+   "take_up_rate": 0.19623333333333334
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_segment",
+   "seed": 2,
+   "share_of_oracle": 0.8941792803459074,
+   "regret": 901.4521643128986,
+   "take_up_rate": 0.25166666666666665
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_segment_decay",
+   "seed": 2,
+   "share_of_oracle": 0.9121824640647083,
+   "regret": 748.0889195638049,
+   "take_up_rate": 0.2564
+  },
+  {
+   "scenario": "As published",
+   "change": "the world the results use",
+   "policy": "thompson_features",
+   "seed": 2,
+   "share_of_oracle": 0.8416588546227528,
+   "regret": 1348.856525136874,
+   "take_up_rate": 0.23783333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "random",
+   "seed": 0,
+   "share_of_oracle": 0.5600066311966405,
+   "regret": 3367.384284374135,
+   "take_up_rate": 0.14686666666666667
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "static",
+   "seed": 0,
+   "share_of_oracle": 0.6583402894799517,
+   "regret": 2614.8110889443988,
+   "take_up_rate": 0.16903333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "epsilon_greedy_segment",
+   "seed": 0,
+   "share_of_oracle": 0.9137624636814367,
+   "regret": 659.9984115943721,
+   "take_up_rate": 0.23653333333333335
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson",
+   "seed": 0,
+   "share_of_oracle": 0.6411484803420552,
+   "regret": 2746.3844989445506,
+   "take_up_rate": 0.16546666666666668
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_segment",
+   "seed": 0,
+   "share_of_oracle": 0.9260749458801806,
+   "regret": 565.7677663224955,
+   "take_up_rate": 0.23203333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_segment_decay",
+   "seed": 0,
+   "share_of_oracle": 0.9139112522851719,
+   "regret": 658.8596935103369,
+   "take_up_rate": 0.23333333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_features",
+   "seed": 0,
+   "share_of_oracle": 0.9411887997947919,
+   "regret": 450.0974909117459,
+   "take_up_rate": 0.23966666666666667
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "random",
+   "seed": 1,
+   "share_of_oracle": 0.5591471440365595,
+   "regret": 3377.0711185293867,
+   "take_up_rate": 0.14433333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "static",
+   "seed": 1,
+   "share_of_oracle": 0.5945735693492,
+   "regret": 3105.6935916795246,
+   "take_up_rate": 0.1497
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "epsilon_greedy_segment",
+   "seed": 1,
+   "share_of_oracle": 0.9091416906700738,
+   "regret": 696.0031406532349,
+   "take_up_rate": 0.233
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson",
+   "seed": 1,
+   "share_of_oracle": 0.6549691899955238,
+   "regret": 2643.044198778073,
+   "take_up_rate": 0.16636666666666666
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_segment",
+   "seed": 1,
+   "share_of_oracle": 0.925742397992589,
+   "regret": 568.8365169426822,
+   "take_up_rate": 0.23353333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_segment_decay",
+   "seed": 1,
+   "share_of_oracle": 0.9098164328479246,
+   "regret": 690.8344039864538,
+   "take_up_rate": 0.23413333333333333
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_features",
+   "seed": 1,
+   "share_of_oracle": 0.9222207985853,
+   "regret": 595.8130726993536,
+   "take_up_rate": 0.23643333333333333
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "random",
+   "seed": 2,
+   "share_of_oracle": 0.5574264813318078,
+   "regret": 3390.3043602054804,
+   "take_up_rate": 0.1424
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "static",
+   "seed": 2,
+   "share_of_oracle": 0.7004054813783505,
+   "regret": 2295.0234479305727,
+   "take_up_rate": 0.1764
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "epsilon_greedy_segment",
+   "seed": 2,
+   "share_of_oracle": 0.9148152398657654,
+   "regret": 652.5520654178035,
+   "take_up_rate": 0.23196666666666665
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson",
+   "seed": 2,
+   "share_of_oracle": 0.6557140928680559,
+   "regret": 2637.378792159122,
+   "take_up_rate": 0.16473333333333334
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_segment",
+   "seed": 2,
+   "share_of_oracle": 0.9285485064787371,
+   "regret": 547.3493099119344,
+   "take_up_rate": 0.23823333333333332
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_segment_decay",
+   "seed": 2,
+   "share_of_oracle": 0.9128223840118448,
+   "regret": 667.8182022421207,
+   "take_up_rate": 0.2328
+  },
+  {
+   "scenario": "No behaviour shift",
+   "change": "customers never change",
+   "policy": "thompson_features",
+   "seed": 2,
+   "share_of_oracle": 0.9305502086036367,
+   "regret": 532.0154068300194,
+   "take_up_rate": 0.2334
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "random",
+   "seed": 0,
+   "share_of_oracle": 0.5478353492043991,
+   "regret": 3519.9115704450433,
+   "take_up_rate": 0.14183333333333334
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "static",
+   "seed": 0,
+   "share_of_oracle": 0.5849440705496218,
+   "regret": 3231.035787259338,
+   "take_up_rate": 0.1541
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "epsilon_greedy_segment",
+   "seed": 0,
+   "share_of_oracle": 0.9321250512523885,
+   "regret": 528.3779194585516,
+   "take_up_rate": 0.2415
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson",
+   "seed": 0,
+   "share_of_oracle": 0.6787913383411373,
+   "regret": 2500.474291191978,
+   "take_up_rate": 0.17526666666666665
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_segment",
+   "seed": 0,
+   "share_of_oracle": 0.9049877019009014,
+   "regret": 739.6307668570292,
+   "take_up_rate": 0.2347
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_segment_decay",
+   "seed": 0,
+   "share_of_oracle": 0.9365233167447674,
+   "regret": 494.13927305115743,
+   "take_up_rate": 0.24446666666666667
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_features",
+   "seed": 0,
+   "share_of_oracle": 0.9313637296920076,
+   "regret": 534.3044875007417,
+   "take_up_rate": 0.24226666666666666
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "random",
+   "seed": 1,
+   "share_of_oracle": 0.546929334182091,
+   "regret": 3529.439126645506,
+   "take_up_rate": 0.13906666666666667
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "static",
+   "seed": 1,
+   "share_of_oracle": 0.591221322257933,
+   "regret": 3184.402717303964,
+   "take_up_rate": 0.1494
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "epsilon_greedy_segment",
+   "seed": 1,
+   "share_of_oracle": 0.8559114103327852,
+   "regret": 1122.4560415019814,
+   "take_up_rate": 0.2222
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson",
+   "seed": 1,
+   "share_of_oracle": 0.6475336320071169,
+   "regret": 2745.727507595222,
+   "take_up_rate": 0.16543333333333332
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_segment",
+   "seed": 1,
+   "share_of_oracle": 0.9257835570753344,
+   "regret": 578.1491437453672,
+   "take_up_rate": 0.23943333333333333
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_segment_decay",
+   "seed": 1,
+   "share_of_oracle": 0.9365956734882451,
+   "regret": 493.92231206408144,
+   "take_up_rate": 0.243
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_features",
+   "seed": 1,
+   "share_of_oracle": 0.9261608993389602,
+   "regret": 575.2096319873652,
+   "take_up_rate": 0.23793333333333333
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "random",
+   "seed": 2,
+   "share_of_oracle": 0.5466279406089504,
+   "regret": 3530.1970408906413,
+   "take_up_rate": 0.1391
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "static",
+   "seed": 2,
+   "share_of_oracle": 0.5943109488742538,
+   "regret": 3158.911666787454,
+   "take_up_rate": 0.1516
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "epsilon_greedy_segment",
+   "seed": 2,
+   "share_of_oracle": 0.8944672220505174,
+   "regret": 821.7345835882063,
+   "take_up_rate": 0.23
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson",
+   "seed": 2,
+   "share_of_oracle": 0.6766158347836925,
+   "regret": 2518.0418587128224,
+   "take_up_rate": 0.1756
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_segment",
+   "seed": 2,
+   "share_of_oracle": 0.9283710545665812,
+   "regret": 557.7412325559018,
+   "take_up_rate": 0.23893333333333333
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_segment_decay",
+   "seed": 2,
+   "share_of_oracle": 0.9267340155350009,
+   "regret": 570.4880929444089,
+   "take_up_rate": 0.23826666666666665
+  },
+  {
+   "scenario": "Weaker context",
+   "change": "context effects at half strength",
+   "policy": "thompson_features",
+   "seed": 2,
+   "share_of_oracle": 0.9317777707582082,
+   "regret": 531.2147204567905,
+   "take_up_rate": 0.23843333333333333
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "random",
+   "seed": 0,
+   "share_of_oracle": 0.4761554942443819,
+   "regret": 5464.450579257811,
+   "take_up_rate": 0.16613333333333333
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "static",
+   "seed": 0,
+   "share_of_oracle": 0.661829186811179,
+   "regret": 3527.607287495007,
+   "take_up_rate": 0.23506666666666667
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "epsilon_greedy_segment",
+   "seed": 0,
+   "share_of_oracle": 0.8668143413978183,
+   "regret": 1389.3177103150697,
+   "take_up_rate": 0.30273333333333335
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson",
+   "seed": 0,
+   "share_of_oracle": 0.6240702272814261,
+   "regret": 3921.4874676009467,
+   "take_up_rate": 0.21776666666666666
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_segment",
+   "seed": 0,
+   "share_of_oracle": 0.8794884158269926,
+   "regret": 1257.1089105756168,
+   "take_up_rate": 0.30706666666666665
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_segment_decay",
+   "seed": 0,
+   "share_of_oracle": 0.8739057193266865,
+   "regret": 1315.3444533554616,
+   "take_up_rate": 0.3018
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_features",
+   "seed": 0,
+   "share_of_oracle": 0.9190379488658164,
+   "regret": 844.5504770159482,
+   "take_up_rate": 0.3216
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "random",
+   "seed": 1,
+   "share_of_oracle": 0.474460378217408,
+   "regret": 5474.431461415303,
+   "take_up_rate": 0.1667
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "static",
+   "seed": 1,
+   "share_of_oracle": 0.5951366336744357,
+   "regret": 4217.37326420665,
+   "take_up_rate": 0.20483333333333334
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "epsilon_greedy_segment",
+   "seed": 1,
+   "share_of_oracle": 0.8476491192017452,
+   "regret": 1587.0058515993796,
+   "take_up_rate": 0.2927666666666667
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson",
+   "seed": 1,
+   "share_of_oracle": 0.6507838492238976,
+   "regret": 3637.7083732687825,
+   "take_up_rate": 0.22363333333333332
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_segment",
+   "seed": 1,
+   "share_of_oracle": 0.8618633986963053,
+   "regret": 1438.938806525923,
+   "take_up_rate": 0.29633333333333334
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_segment_decay",
+   "seed": 1,
+   "share_of_oracle": 0.8759857180298115,
+   "regret": 1291.8296903659193,
+   "take_up_rate": 0.3022666666666667
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_features",
+   "seed": 1,
+   "share_of_oracle": 0.9197478179646457,
+   "regret": 835.9694530573734,
+   "take_up_rate": 0.3169
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "random",
+   "seed": 2,
+   "share_of_oracle": 0.47299747528702607,
+   "regret": 5508.9932527237015,
+   "take_up_rate": 0.1642
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "static",
+   "seed": 2,
+   "share_of_oracle": 0.6197420844053171,
+   "regret": 3975.0061775260338,
+   "take_up_rate": 0.21273333333333333
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "epsilon_greedy_segment",
+   "seed": 2,
+   "share_of_oracle": 0.842417617060222,
+   "regret": 1647.2791754388109,
+   "take_up_rate": 0.29536666666666667
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson",
+   "seed": 2,
+   "share_of_oracle": 0.6285805937457515,
+   "regret": 3882.613283683432,
+   "take_up_rate": 0.21866666666666668
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_segment",
+   "seed": 2,
+   "share_of_oracle": 0.8714808552474227,
+   "regret": 1343.4681393099222,
+   "take_up_rate": 0.2982
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_segment_decay",
+   "seed": 2,
+   "share_of_oracle": 0.8682285682948295,
+   "regret": 1377.4657503982453,
+   "take_up_rate": 0.30093333333333333
+  },
+  {
+   "scenario": "Stronger context",
+   "change": "context effects at double strength",
+   "policy": "thompson_features",
+   "seed": 2,
+   "share_of_oracle": 0.9398245167590403,
+   "regret": 629.041258074401,
+   "take_up_rate": 0.3273
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "random",
+   "seed": 0,
+   "share_of_oracle": 0.6363474982111851,
+   "regret": 2497.21536056467,
+   "take_up_rate": 0.1476
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "static",
+   "seed": 0,
+   "share_of_oracle": 0.650416356088918,
+   "regret": 2400.6039861755053,
+   "take_up_rate": 0.15103333333333332
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "epsilon_greedy_segment",
+   "seed": 0,
+   "share_of_oracle": 0.8542200317030932,
+   "regret": 1001.0765065630669,
+   "take_up_rate": 0.1977
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson",
+   "seed": 0,
+   "share_of_oracle": 0.7395699744305656,
+   "regret": 1788.382747279768,
+   "take_up_rate": 0.1686
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_segment",
+   "seed": 0,
+   "share_of_oracle": 0.8580821633766698,
+   "regret": 974.5551035963981,
+   "take_up_rate": 0.19656666666666667
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_segment_decay",
+   "seed": 0,
+   "share_of_oracle": 0.8586801077069299,
+   "regret": 970.4489974677631,
+   "take_up_rate": 0.19616666666666666
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_features",
+   "seed": 0,
+   "share_of_oracle": 0.8897400637222059,
+   "regret": 757.1591152910312,
+   "take_up_rate": 0.20546666666666666
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "random",
+   "seed": 1,
+   "share_of_oracle": 0.6356310598537738,
+   "regret": 2501.141101272506,
+   "take_up_rate": 0.1443
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "static",
+   "seed": 1,
+   "share_of_oracle": 0.7201554661081505,
+   "regret": 1920.9394340869446,
+   "take_up_rate": 0.16403333333333334
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "epsilon_greedy_segment",
+   "seed": 1,
+   "share_of_oracle": 0.8626248260327155,
+   "regret": 942.9856830446271,
+   "take_up_rate": 0.19586666666666666
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson",
+   "seed": 1,
+   "share_of_oracle": 0.7618458321115997,
+   "regret": 1634.7638673757035,
+   "take_up_rate": 0.17123333333333332
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_segment",
+   "seed": 1,
+   "share_of_oracle": 0.8889023985512025,
+   "regret": 762.6082978556453,
+   "take_up_rate": 0.20163333333333333
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_segment_decay",
+   "seed": 1,
+   "share_of_oracle": 0.8791408407315894,
+   "regret": 829.6146498934577,
+   "take_up_rate": 0.20183333333333334
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_features",
+   "seed": 1,
+   "share_of_oracle": 0.8859733529020979,
+   "regret": 782.7141731191604,
+   "take_up_rate": 0.20003333333333334
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "random",
+   "seed": 2,
+   "share_of_oracle": 0.6340546764691122,
+   "regret": 2514.545975209953,
+   "take_up_rate": 0.14326666666666665
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "static",
+   "seed": 2,
+   "share_of_oracle": 0.7137479737013621,
+   "regret": 1966.9437873392558,
+   "take_up_rate": 0.1616
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "epsilon_greedy_segment",
+   "seed": 2,
+   "share_of_oracle": 0.8510733728571195,
+   "regret": 1023.3300627275678,
+   "take_up_rate": 0.19366666666666665
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson",
+   "seed": 2,
+   "share_of_oracle": 0.7214650774684942,
+   "regret": 1913.9167065975564,
+   "take_up_rate": 0.16303333333333334
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_segment",
+   "seed": 2,
+   "share_of_oracle": 0.8736680770027181,
+   "regret": 868.0734746062026,
+   "take_up_rate": 0.19773333333333334
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_segment_decay",
+   "seed": 2,
+   "share_of_oracle": 0.8558064682612969,
+   "regret": 990.8072096302119,
+   "take_up_rate": 0.1939
+  },
+  {
+   "scenario": "Flatter preferences",
+   "change": "offers' take-up rates half as far apart",
+   "policy": "thompson_features",
+   "seed": 2,
+   "share_of_oracle": 0.9070906741851011,
+   "regret": 638.4144194907433,
+   "take_up_rate": 0.20646666666666666
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "random",
+   "seed": 0,
+   "share_of_oracle": 0.5094099366442534,
+   "regret": 4433.812830148487,
+   "take_up_rate": 0.15506666666666666
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "static",
+   "seed": 0,
+   "share_of_oracle": 0.5832738459783992,
+   "regret": 3766.251920637815,
+   "take_up_rate": 0.1762
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "epsilon_greedy_segment",
+   "seed": 0,
+   "share_of_oracle": 0.9103300418101782,
+   "regret": 810.411463251771,
+   "take_up_rate": 0.27476666666666666
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson",
+   "seed": 0,
+   "share_of_oracle": 0.7203260928064971,
+   "regret": 2527.6128698781254,
+   "take_up_rate": 0.2185
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_segment",
+   "seed": 0,
+   "share_of_oracle": 0.9369722683822035,
+   "regret": 569.6266312257092,
+   "take_up_rate": 0.2830666666666667
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_segment_decay",
+   "seed": 0,
+   "share_of_oracle": 0.9312347421058731,
+   "regret": 621.4807544896369,
+   "take_up_rate": 0.2816
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_features",
+   "seed": 0,
+   "share_of_oracle": 0.9460114563365368,
+   "regret": 487.93303300664945,
+   "take_up_rate": 0.2845666666666667
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "random",
+   "seed": 1,
+   "share_of_oracle": 0.5083754809448826,
+   "regret": 4442.759241410962,
+   "take_up_rate": 0.1545
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "static",
+   "seed": 1,
+   "share_of_oracle": 0.484298356617899,
+   "regret": 4660.341689934681,
+   "take_up_rate": 0.14293333333333333
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "epsilon_greedy_segment",
+   "seed": 1,
+   "share_of_oracle": 0.9074024141347299,
+   "regret": 836.7946764045591,
+   "take_up_rate": 0.2726
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson",
+   "seed": 1,
+   "share_of_oracle": 0.72970969621176,
+   "regret": 2442.5851406413503,
+   "take_up_rate": 0.2179
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_segment",
+   "seed": 1,
+   "share_of_oracle": 0.9335493199475902,
+   "regret": 600.5078295693967,
+   "take_up_rate": 0.2804333333333333
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_segment_decay",
+   "seed": 1,
+   "share_of_oracle": 0.9256610924061814,
+   "regret": 671.7929149335305,
+   "take_up_rate": 0.2779333333333333
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_features",
+   "seed": 1,
+   "share_of_oracle": 0.9346244179379581,
+   "regret": 590.792281733601,
+   "take_up_rate": 0.27736666666666665
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "random",
+   "seed": 2,
+   "share_of_oracle": 0.5072004793435226,
+   "regret": 4459.411499034987,
+   "take_up_rate": 0.15313333333333334
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "static",
+   "seed": 2,
+   "share_of_oracle": 0.5929192182327747,
+   "regret": 3683.7306920076353,
+   "take_up_rate": 0.1764
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "epsilon_greedy_segment",
+   "seed": 2,
+   "share_of_oracle": 0.9121813929652567,
+   "regret": 794.6828063433948,
+   "take_up_rate": 0.2718
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson",
+   "seed": 2,
+   "share_of_oracle": 0.7315043761626896,
+   "regret": 2429.654295900413,
+   "take_up_rate": 0.21583333333333332
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_segment",
+   "seed": 2,
+   "share_of_oracle": 0.9265867243977888,
+   "regret": 664.3269558505444,
+   "take_up_rate": 0.2771666666666667
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_segment_decay",
+   "seed": 2,
+   "share_of_oracle": 0.9242469285095409,
+   "regret": 685.5000947276841,
+   "take_up_rate": 0.27726666666666666
+  },
+  {
+   "scenario": "Earlier shift",
+   "change": "behaviour shifts after 20% of the run",
+   "policy": "thompson_features",
+   "seed": 2,
+   "share_of_oracle": 0.8892535613586423,
+   "regret": 1002.159947916647,
+   "take_up_rate": 0.2671
+  }
+ ]
+}

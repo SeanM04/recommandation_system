@@ -55,6 +55,7 @@
     <li><a href="#table">Results table</a></li>
     <li><a href="#regret">Regret over time</a></li>
     <li><a href="#adaptation">Adaptation speed</a></li>
+    <li><a href="#sensitivity">A different world</a></li>
     <li><a href="#method">Method</a></li>
     <li><a href="#reproduce">Reproduce</a></li>
   </ul>
@@ -64,13 +65,14 @@
   <div class="section-head"><h2 id="findings">Findings</h2><span class="chip built">Measured</span></div>
 <!-- BEGIN generated:findings -->
 <ol class="findings">
-<li><strong>Learning per segment beats both baselines, in every run.</strong> thompson_segment_decay reached 92.7% of the oracle, with 53% more take-ups per app open than the static batch model (0.263 against 0.172). It cut regret by 85% against random and 81% against static: below random's regret in 10 of 10 seeds and below static's in 10 of 10.</li>
+<li><strong>Learning per segment beats both baselines, in every run.</strong> thompson_segment_decay reached 92.7% of the oracle, with 53% more take-ups per app open than the static batch model (0.263 against 0.172; 95% interval 46%–61% more). It cut regret by 85% against random (95% interval 84%–85%) and 81% against static (95% interval 80%–83%): below random's regret in 10 of 10 seeds and below static's in 10 of 10.</li>
 <li><strong>It adapts when behaviour changes; the batch model does not.</strong> After the shift its take-up rose from 0.231 to 0.295 per app open; the static model went from 0.168 to 0.175.</li>
-<li><strong>The top of the table is a tie.</strong> thompson_segment_decay has the lowest mean regret, but thompson_segment, thompson_segment_payday had lower regret in at least a fifth of the seeds, so the order among them is within the noise.</li>
+<li><strong>Among the policies the API can serve, the top is a tie.</strong> thompson_segment_decay has the lowest mean regret of them, but thompson_segment, thompson_segment_payday had lower regret in at least a fifth of the seeds, so the order among them is within the noise.</li>
 <li><strong>Personalisation is the biggest single lever.</strong> Thompson sampling with statistics per segment reached 92.4% of the oracle; one global model reached 67.7% (lower regret per segment in 10 of 10 seeds).</li>
-<li><strong>Forgetting trades a little before the shift for more after it.</strong> With forgetting, regret after the shift was lower in 10 of 10 seeds, by 130 take-ups on average; before the shift it cost 93 on average (higher in 8 of 10 seeds). Its value grows with how often, and how sharply, behaviour changes.</li>
-<li><strong>The reward decides the business outcome.</strong> The same policy learning from margin instead of take-up earned 38% more revenue per app open (R13.37 against R9.68, more in 10 of 10 seeds), at the cost of 22% fewer take-ups. Which one is right is a business choice, not a modelling one.</li>
-<li><strong>Thompson sampling explores better than epsilon-greedy.</strong> With the same per-segment statistics, regret was 1,078 against 1,690, lower in 8 of 10 seeds: epsilon-greedy keeps spending a fixed share of slots on offers it already knows are poor.</li>
+<li><strong>Customer features go further than segments.</strong> Thompson sampling on customer features (thompson_features) reached 94.2% of the oracle against 92.7% for thompson_segment_decay, with lower regret in 10 of 10 seeds (225 fewer take-ups lost; 95% interval for the saving 174–277). It runs in the simulator only: its state is a matrix per offer, which the options store can't hold yet.</li>
+<li><strong>Forgetting trades a little before the shift for more after it.</strong> With forgetting, regret after the shift was lower in 10 of 10 seeds, by 130 take-ups on average (95% interval 51–242); before the shift it cost 93 on average (higher in 8 of 10 seeds). Whether the trade pays depends on how the world changes, which the sensitivity sweep tests.</li>
+<li><strong>The reward decides the business outcome.</strong> The same policy learning from margin instead of take-up earned 38% more revenue per app open (R13.37 against R9.68; 95% interval 36%–40% more; more in 10 of 10 seeds), at the cost of 22% fewer take-ups. Which one is right is a business choice, not a modelling one.</li>
+<li><strong>Thompson sampling explores better than epsilon-greedy.</strong> With the same per-segment statistics, regret was 1,078 against 1,690, lower in 8 of 10 seeds; Thompson sampling lost 612 fewer take-ups (95% interval 329–885): epsilon-greedy keeps spending a fixed share of slots on offers it already knows are poor.</li>
 <li><strong>Forgetting adapts sooner.</strong> After the shift, with forgetting the young professionals' new favourite led within 1,460 app opens, against 5,601 app opens without; for families, 7,980 app opens against not within the run. The static model adapted for neither segment (first seed; see the adaptation table).</li>
 </ol>
 <!-- END generated:findings -->
@@ -83,6 +85,7 @@
 <div class="table-wrap"><table class="results-table">
 <thead><tr><th scope="col">Policy</th><th scope="col" class=num>Take-up per open</th><th scope="col" class=num>Before shift</th><th scope="col" class=num>After shift</th><th scope="col" class=num>Revenue per open</th><th scope="col" class=num>Regret</th><th scope="col" class=num>Regret after shift</th><th scope="col" class=num>Share of oracle</th><th scope="col" class=num>Regret cut vs random</th><th scope="col" class=num>Regret cut vs static</th></tr></thead>
 <tbody>
+<tr><td><code>thompson_features</code> <small>simulation only</small></td><td class=num>0.267</td><td class=num>0.232</td><td class=num>0.302</td><td class=num>R9.99</td><td class=num>817 ± 88</td><td class=num>254</td><td class=num>94.2%</td><td class=num>88%</td><td class=num>85%</td></tr>
 <tr class="best"><td><code>thompson_segment_decay</code></td><td class=num>0.263</td><td class=num>0.231</td><td class=num>0.295</td><td class=num>R9.68</td><td class=num>1,041 ± 39</td><td class=num>446</td><td class=num>92.7%</td><td class=num>85%</td><td class=num>81%</td></tr>
 <tr><td><code>thompson_segment</code></td><td class=num>0.261</td><td class=num>0.234</td><td class=num>0.289</td><td class=num>R10.01</td><td class=num>1,078 ± 166</td><td class=num>576</td><td class=num>92.4%</td><td class=num>84%</td><td class=num>81%</td></tr>
 <tr><td><code>thompson_segment_payday</code></td><td class=num>0.261</td><td class=num>0.231</td><td class=num>0.291</td><td class=num>R10.16</td><td class=num>1,099 ± 127</td><td class=num>518</td><td class=num>92.3%</td><td class=num>84%</td><td class=num>80%</td></tr>
@@ -92,7 +95,7 @@
 <tr><td><code>epsilon_greedy</code></td><td class=num>0.186</td><td class=num>0.169</td><td class=num>0.204</td><td class=num>R4.97</td><td class=num>4,836 ± 359</td><td class=num>2,688</td><td class=num>65.9%</td><td class=num>28%</td><td class=num>13%</td></tr>
 <tr><td><code>static</code></td><td class=num>0.172</td><td class=num>0.168</td><td class=num>0.175</td><td class=num>R4.42</td><td class=num>5,563 ± 703</td><td class=num>3,418</td><td class=num>60.8%</td><td class=num>17%</td><td class=num>0%</td></tr>
 <tr><td><code>random</code></td><td class=num>0.149</td><td class=num>0.142</td><td class=num>0.157</td><td class=num>R5.80</td><td class=num>6,728 ± 17</td><td class=num>3,909</td><td class=num>52.6%</td><td class=num>0%</td><td class=num>-21%</td></tr>
-</tbody><caption>50,000 app opens per run, behaviour shift at 25,000, mean of 10 seeds; the static baseline was fitted on 5,000 warm-up app opens.</caption></table></div>
+</tbody><caption>50,000 app opens per run, behaviour shift at 25,000, mean of 10 seeds; the static baseline was fitted on 5,000 warm-up app opens. Highlighted: the best policy the API can serve.</caption></table></div>
 <!-- END generated:results-table -->
 </section>
 
@@ -146,7 +149,7 @@
 <text class="end-label" x="742" y="307.7">thompson_segment_decay <tspan class="end-value">986</tspan></text>
 </svg>
 </div>
-<figcaption><span class="legend"><span><i class="swatch-line" style="background: var(--series-1)"></i>thompson_segment_decay</span><span><i class="swatch-line" style="background: var(--series-2)"></i>static</span><span><i class="swatch-line" style="background: var(--series-3)"></i>random</span><span><i class="swatch-line" style="background: var(--series-4)"></i>thompson</span><span><i class="swatch-line" style="background: var(--series-5)"></i>epsilon_greedy_segment</span></span><span>Expected take-ups lost against an oracle that knows the true probabilities, first seed. The other policies are in the table: the per-segment Thompson variants overlap the blue line.</span></figcaption>
+<figcaption><span class="legend"><span><i class="swatch-line" style="background: var(--series-1)"></i>thompson_segment_decay</span><span><i class="swatch-line" style="background: var(--series-2)"></i>static</span><span><i class="swatch-line" style="background: var(--series-3)"></i>random</span><span><i class="swatch-line" style="background: var(--series-4)"></i>thompson</span><span><i class="swatch-line" style="background: var(--series-5)"></i>epsilon_greedy_segment</span></span><span>Expected take-ups lost against an oracle that knows the true probabilities, first seed. The other policies are in the table: the per-segment Thompson variants overlap the blue line, and thompson_features (simulation only) ends below it, at 640.</span></figcaption>
 </figure>
 <!-- END generated:regret-chart -->
 </section>
@@ -170,6 +173,30 @@
 <tr><td>after the shift</td><td><code>young_professional</code></td><td class=num>1,460</td><td class=num>5,601</td><td class=num>3,365</td><td class=num>1,109</td><td class=num>not within the run</td></tr>
 </tbody></table></div>
 <!-- END generated:adaptation -->
+</section>
+
+<section aria-labelledby="sensitivity">
+  <div class="section-head"><h2 id="sensitivity">A different world</h2><span class="chip built">Measured</span></div>
+  <p>This project wrote the world its policies are tested in, so the fair challenge is "you built a world your method wins in". The sweep changes one assumption at a time (whether and when behaviour shifts, how much context matters, how far apart the offers' take-up rates are) and reruns the key policies on the same seeds. A conclusion that only held in the published world would break here.</p>
+<!-- BEGIN generated:sensitivity -->
+<div class="table-wrap"><table class="sensitivity">
+<thead><tr><th scope="col">World</th><th scope="col" class=num><code>random</code></th><th scope="col" class=num><code>static</code></th><th scope="col" class=num><code>thompson</code></th><th scope="col" class=num><code>epsilon_greedy_segment</code></th><th scope="col" class=num><code>thompson_segment</code></th><th scope="col" class=num><code>thompson_segment_decay</code></th><th scope="col" class=num><code>thompson_features</code></th></tr></thead>
+<tbody>
+<tr><td>As published<br><small>the world the results use</small></td><td class=num>52.6%</td><td class=num>58.7%</td><td class=num>68.3%</td><td class=num>89.4%</td><td class=num>89.8%</td><td class=num><strong>91.5%</strong></td><td class=num>90.2%</td></tr>
+<tr><td>No behaviour shift<br><small>customers never change</small></td><td class=num>55.9%</td><td class=num>65.1%</td><td class=num>65.1%</td><td class=num>91.3%</td><td class=num>92.7%</td><td class=num>91.2%</td><td class=num><strong>93.1%</strong></td></tr>
+<tr><td>Weaker context<br><small>context effects at half strength</small></td><td class=num>54.7%</td><td class=num>59.0%</td><td class=num>66.8%</td><td class=num>89.4%</td><td class=num>92.0%</td><td class=num><strong>93.3%</strong></td><td class=num>93.0%</td></tr>
+<tr><td>Stronger context<br><small>context effects at double strength</small></td><td class=num>47.5%</td><td class=num>62.6%</td><td class=num>63.4%</td><td class=num>85.2%</td><td class=num>87.1%</td><td class=num>87.3%</td><td class=num><strong>92.6%</strong></td></tr>
+<tr><td>Flatter preferences<br><small>offers&#x27; take-up rates half as far apart</small></td><td class=num>63.5%</td><td class=num>69.5%</td><td class=num>74.1%</td><td class=num>85.6%</td><td class=num>87.4%</td><td class=num>86.5%</td><td class=num><strong>89.4%</strong></td></tr>
+<tr><td>Earlier shift<br><small>behaviour shifts after 20% of the run</small></td><td class=num>50.8%</td><td class=num>55.3%</td><td class=num>72.7%</td><td class=num>91.0%</td><td class=num><strong>93.2%</strong></td><td class=num>92.7%</td><td class=num>92.3%</td></tr>
+</tbody></table></div>
+<p class="source">Share of the oracle's take-ups, mean of 3 seeds × 30,000 app opens per world; the best in each world in bold · make sensitivity</p>
+<ul>
+<li>thompson_segment_decay had lower regret than both baselines in 18 of 18 runs across the 6 worlds, reaching 86%–93% of the oracle (lowest: flatter preferences).</li>
+<li>Learning per segment beat one global model in 6 of 6 worlds, by 13 to 28 points of the oracle.</li>
+<li>Forgetting is not free: it beat the same policy without forgetting in 3 of 6 worlds (as published, weaker context, stronger context; up to 1.7 points of the oracle) and cost up to 1.5 points in the others (no behaviour shift, flatter preferences, earlier shift). Its value depends on the world, so the forgetting rate is one to tune on real traffic, not to carry over from a simulation.</li>
+<li>Thompson sampling on customer features beat per-segment Thompson sampling in 5 of 6 worlds (as published, no behaviour shift, weaker context, stronger context, flatter preferences).</li>
+</ul>
+<!-- END generated:sensitivity -->
 </section>
 
 <section aria-labelledby="method">
@@ -231,23 +258,25 @@
     <li><strong>An oracle for scoring.</strong> For every app open, the oracle ranks the eligible offers by their true probability. Regret is the oracle's expected take-ups minus the policy's expected take-ups for the list it actually showed, using the response model. Expected values measure the choice, not the luck of one draw.</li>
     <li><strong>A fair batch baseline.</strong> The static policy is fitted on a warm-up month of 5,000 app opens gathered by a random policy before the experiment, then frozen. The learning policies start with no data at all.</li>
     <li><strong>The behaviour shift.</strong> Halfway through, streaming becomes the young professionals' favourite and electricity the families'. See the <a href="simulation.html#shift">simulated world</a>.</li>
-    <li><strong>Ten seeds, compared in pairs.</strong> The whole comparison runs on ten seeds and the table reports the mean and spread. Within a seed every policy sees the same app opens, so two policies can be compared seed by seed: each finding says in how many seeds a difference holds, and calls a tie a tie. The chart shows the first seed.</li>
+    <li><strong>Ten seeds, compared in pairs.</strong> The whole comparison runs on ten seeds and the table reports the mean and spread. Within a seed every policy sees the same app opens, so two policies can be compared seed by seed: each finding says in how many seeds a difference holds, and calls a tie a tie. The key numbers carry a 95% bootstrap interval: the seeds are resampled in pairs 10,000 times, which shows how far a claim could move had the runs come out differently. The chart shows the first seed.</li>
     <li><strong>Two objectives.</strong> Most policies learn from take-ups. <code>thompson_segment_revenue</code> learns from margin, so it is judged by revenue per app open rather than by take-up regret.</li>
   </ul>
 </section>
 
 <section aria-labelledby="reproduce">
   <h2 id="reproduce">Reproduce</h2>
-<pre><code>make compare      # every policy, 10 seeds, 50,000 app opens each (about 7 minutes)
+<pre><code>make compare      # every policy, 10 seeds, 50,000 app opens each (about 9 minutes)
 make docs         # rebuild this page from docs/data/comparison.json
 make simulate     # one policy, fast mode: 50,000 app opens in about 5 seconds
 python scripts/run_simulation.py --mode api      # the same loop through the running API
 python scripts/run_simulation.py --persist       # save the learned model to the database
-make experiment   # the focused forgetting experiment behind decision P9</code></pre>
+make experiment   # the focused forgetting experiment behind decision P9
+make sensitivity  # the key policies in six variants of the world (about 7 minutes)
+make experiment-features  # the feature model's exploration width, on held-out seeds (Q8)</code></pre>
   <p>Full outputs land in <code>results/</code>: the headline table as CSV and Markdown, one row per policy and seed, every app open of the first seed as Parquet, and the learning policies' beliefs over time for the dashboard.</p>
 </section>
 
-<p class="foot">Everything on this page is generated from <code>docs/data/comparison.json</code>, written by <code>make compare</code>.</p>
+<p class="foot">Everything on this page is generated from <code>docs/data/comparison.json</code>, written by <code>make compare</code>, and <code>docs/data/sensitivity.json</code>, written by <code>make sensitivity</code>.</p>
 </main>
 </div>
 </body>

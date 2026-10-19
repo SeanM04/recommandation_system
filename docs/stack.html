@@ -23,8 +23,7 @@
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
-<li><a href="algorithms.html">Policies</a></li>
-<li><a href="models.html">Models</a></li>
+<li><a href="models.html">Policies &amp; models</a></li>
 <li><a href="api.html">API</a></li>
 <li><a href="results.html">Results</a></li>
 <li><a href="dashboard.html">Dashboard</a></li>
@@ -160,6 +159,7 @@
 <tr><td>Baselines log responses without learning</td><td class="num">1</td></tr>
 <tr><td>Invalid responses get clear errors</td><td class="num">1</td></tr>
 <tr><td>Policies list marks the active one</td><td class="num">1</td></tr>
+<tr><td>Simulation only policies are listed nowhere and explained</td><td class="num">1</td></tr>
 <tr><td>Static policy state shows its frozen table</td><td class="num">1</td></tr>
 <tr><td>Metrics count events and report latency</td><td class="num">1</td></tr>
 <tr><td>Revenue policy learns from margin</td><td class="num">1</td></tr>
@@ -247,6 +247,11 @@
 <tr><td>Expected value weights by value and position</td><td class="num">1</td></tr>
 <tr><td>Response model rejects bad input</td><td class="num">1</td></tr>
 <tr><td>Respond maps outcomes to offer ids</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_linear_thompson.py</code> · Thompson sampling on customer features: features, learning per segment, forgetting, simulation only</th></tr>
+<tr><td>Features describe the customer and the moment</td><td class="num">1</td></tr>
+<tr><td>It learns a different favourite per segment</td><td class="num">1</td></tr>
+<tr><td>Forgetting shrinks old evidence</td><td class="num">1</td></tr>
+<tr><td>It runs in the simulator only</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_policies.py</code> · Bandit policies: ranking, learning, context keys, forgetting, convergence</th></tr>
 <tr><td>Context keys</td><td class="num">1</td></tr>
 <tr><td>Random policy returns distinct offers uniformly</td><td class="num">1</td></tr>
@@ -284,6 +289,10 @@
 <tr><td>Each policy has its own reproducible random stream</td><td class="num">1</td></tr>
 <tr><td>Settings reject bad policy config</td><td class="num">1</td></tr>
 <tr><td>A policy can learn from its own reward</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_sensitivity.py</code> · The sensitivity sweep: scaled effects, flatter preferences, a tiny sweep end to end</th></tr>
+<tr><td>Scaling effects moves every multiplier towards or away from one</td><td class="num">1</td></tr>
+<tr><td>Flattening keeps each segments average and narrows the gaps</td><td class="num">1</td></tr>
+<tr><td>A tiny sweep runs every scenario</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_simulation.py</code> · Simulator: oracle and regret, common random numbers, learning, the comparison and simulation through the API</th></tr>
 <tr><td>Regret is never negative</td><td class="num">1</td></tr>
 <tr><td>The oracle has no regret</td><td class="num">1</td></tr>
@@ -293,6 +302,11 @@
 <tr><td>Warm up history feeds the static baseline</td><td class="num">1</td></tr>
 <tr><td>Comparison runs every policy on every seed</td><td class="num">1</td></tr>
 <tr><td>Simulation through the api</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_stats.py</code> · Bootstrap intervals for paired, seed-by-seed comparisons</th></tr>
+<tr><td>The interval contains the estimate and is reproducible</td><td class="num">1</td></tr>
+<tr><td>A noisy difference gets a wide interval</td><td class="num">1</td></tr>
+<tr><td>Uplift and the text helpers</td><td class="num">1</td></tr>
+<tr><td>Series must pair up</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_store.py</code> · Options store: arm statistics, atomic learning under concurrency, and identical behaviour in memory, SQLite and Postgres</th></tr>
 <tr><td>New arm is the uniform prior</td><td class="num">1</td></tr>
 <tr><td>Update adds reward to alpha and the rest to beta</td><td class="num">1</td></tr>
@@ -311,11 +325,12 @@
 <tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_story.py</code> · The comparison story&#x27;s numbers on a hand-made run</th></tr>
 <tr><td>The story of a run</td><td class="num">1</td></tr>
+<tr><td>The story recommends only what the api can serve</td><td class="num">1</td></tr>
 <tr><td>When the learner overtakes the baseline</td><td class="num">1</td></tr>
 <tr><td>Gap curve samples the cumulative lead</td><td class="num">1</td></tr>
 <tr><td>Plain names for a business audience</td><td class="num">1</td></tr>
 </tbody>
-<caption>177 test cases in 162 test functions.</caption></table></div>
+<caption>190 test cases in 175 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>

@@ -23,7 +23,7 @@ simulate:  ## Everything the dashboard shows: customers, a 3-seed comparison, 1,
 	$(PYTHON) scripts/compare_algorithms.py --seeds 3 --no-docs
 	$(PYTHON) scripts/run_simulation.py --mode api --in-process --rounds 1000
 
-compare:  ## Compare every policy on the same world, 10 seeds (~7 min); results to results/ and the docs
+compare:  ## Compare every policy on the same world, 10 seeds (~9 min); results to results/ and the docs
 	$(PYTHON) scripts/compare_algorithms.py
 
 dashboard:  ## The Streamlit dashboard on http://localhost:8501 (run make simulate first)
@@ -41,7 +41,7 @@ nightly:  ## Roll yesterday's event log up into daily_offer_stats (cron: 5 0 * *
 experiment-features:  ## Rerun the choice of the feature model's exploration width (decision Q8)
 	$(PYTHON) scripts/experiment_features.py
 
-sensitivity:  ## Key policies in six variants of the world, 3 seeds (about 15 min); results to the docs
+sensitivity:  ## Key policies in six variants of the world, 3 seeds (about 7 min); results to the docs
 	$(PYTHON) scripts/sensitivity.py
 
 run:  ## Start the recommender API on http://localhost:8000 (docs at /docs)

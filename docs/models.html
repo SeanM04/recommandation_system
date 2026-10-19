@@ -78,7 +78,7 @@ flowchart TD
   TS["Thompson sampling per segment&lt;br/&gt;92% of possible"] -- "+ payday week" --> TSP["Thompson per segment and payday week&lt;br/&gt;92% of possible"]
   TS["Thompson sampling per segment&lt;br/&gt;92% of possible"] -- "+ forgetting" --> TSD["Thompson per segment, with forgetting&lt;br/&gt;93% of possible&lt;br/&gt;serving"]
   TSD["Thompson per segment, with forgetting&lt;br/&gt;93% of possible&lt;br/&gt;serving"] -- "learns from margin" --> TSR["Thompson with forgetting, from revenue&lt;br/&gt;72% of possible"]
-  T["Thompson sampling, one model&lt;br/&gt;68% of possible"] -- "+ customer features" --> TF["Thompson on customer features&lt;br/&gt;simulation only"]
+  T["Thompson sampling, one model&lt;br/&gt;68% of possible"] -- "+ customer features" --> TF["Thompson on customer features&lt;br/&gt;94% of possible&lt;br/&gt;simulation only"]
   classDef serving stroke-width:3px
   class TSD serving
 </pre>
@@ -146,9 +146,8 @@ def rank(self, context: Context, candidates: Sequence[Offer], n: int) -&gt; list
     &quot;&quot;&quot;The eligible offers by popularity, the same order for every customer.&quot;&quot;&quot;
     check_slate_size(n)
     scores = {offer.offer_id: self.popularity.get(offer.offer_id, 0.0) for offer in candidates}
-    best = sorted(scores, key=scores.__getitem__, reverse=True)[
-        :n
-    ]  # stable: ties keep catalogue order
+    # sorted() is stable: offers with equal popularity keep catalogue order.
+    best = sorted(scores, key=scores.__getitem__, reverse=True)[:n]
     return [ScoredOffer(offer_id, scores[offer_id]) for offer_id in best]</code></pre>
 <p class="source">src/recommender/algorithms/static.py</p>
 <!-- END generated:code-static -->
@@ -445,7 +444,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>none</dd>
 <dt>Its role here</dt><dd>The floor. A policy that can't beat random offers isn't learning anything.</dd>
 <dt>Where it's used</dt><dd>The comparison; the bottom bar of the comparison page's ladder. Any request can ask for it with <code>?policy=random</code>.</dd>
-<dt>Results</dt><dd>149 take-ups per 1,000 app opens · 52.6% of what was possible · regret 6,728 ± 17 · R5.80 revenue per app open · #9 of 9</dd>
+<dt>Results</dt><dd>149 take-ups per 1,000 app opens · 52.6% of what was possible · regret 6,728 ± 17 · R5.80 revenue per app open · #10 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-static">
@@ -457,7 +456,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>fitted from history; no settings</dd>
 <dt>Its role here</dt><dd>The usual batch approach, and the bar the brief asks to beat. Called the fixed popularity ranking in the dashboard.</dd>
 <dt>Where it's used</dt><dd>The comparison; the baseline in every dashboard story. Any request can ask for it with <code>?policy=static</code>.</dd>
-<dt>Results</dt><dd>172 take-ups per 1,000 app opens · 60.8% of what was possible · regret 5,563 ± 703 · R4.42 revenue per app open · #8 of 9</dd>
+<dt>Results</dt><dd>172 take-ups per 1,000 app opens · 60.8% of what was possible · regret 5,563 ± 703 · R4.42 revenue per app open · #9 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-epsilon-greedy">
@@ -469,7 +468,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs everyone together; ε = 0.1; reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>The classic simple bandit with one view of everyone: learning without personalisation or smart exploration.</dd>
 <dt>Where it's used</dt><dd>The comparison. Any request can ask for it with <code>?policy=epsilon_greedy</code>.</dd>
-<dt>Results</dt><dd>186 take-ups per 1,000 app opens · 65.9% of what was possible · regret 4,836 ± 359 · R4.97 revenue per app open · #7 of 9</dd>
+<dt>Results</dt><dd>186 take-ups per 1,000 app opens · 65.9% of what was possible · regret 4,836 ± 359 · R4.97 revenue per app open · #8 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-epsilon-greedy-segment">
@@ -481,7 +480,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs per segment; ε = 0.1; reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>Personalised but exploring blindly: the comparison point for Thompson sampling with the same segments.</dd>
 <dt>Where it's used</dt><dd>The comparison; the Explore vs exploit page (it never stops exploring). Any request can ask for it with <code>?policy=epsilon_greedy_segment</code>.</dd>
-<dt>Results</dt><dd>250 take-ups per 1,000 app opens · 88.1% of what was possible · regret 1,690 ± 381 · R9.94 revenue per app open · #4 of 9</dd>
+<dt>Results</dt><dd>250 take-ups per 1,000 app opens · 88.1% of what was possible · regret 1,690 ± 381 · R9.94 revenue per app open · #5 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-thompson">
@@ -493,7 +492,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs everyone together; reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>Thompson sampling without personalisation: isolates what segments add.</dd>
 <dt>Where it's used</dt><dd>The comparison; the comparison page's ladder (one model for everyone). Any request can ask for it with <code>?policy=thompson</code>.</dd>
-<dt>Results</dt><dd>193 take-ups per 1,000 app opens · 67.7% of what was possible · regret 4,582 ± 274 · R5.09 revenue per app open · #6 of 9</dd>
+<dt>Results</dt><dd>193 take-ups per 1,000 app opens · 67.7% of what was possible · regret 4,582 ± 274 · R5.09 revenue per app open · #7 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-thompson-segment">
@@ -505,7 +504,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs per segment; reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>Personalisation on its own, and the policy without forgetting that the stories compare forgetting against.</dd>
 <dt>Where it's used</dt><dd>The comparison; the Explore vs exploit and Behaviour shift pages. Any request can ask for it with <code>?policy=thompson_segment</code>.</dd>
-<dt>Results</dt><dd>261 take-ups per 1,000 app opens · 92.4% of what was possible · regret 1,078 ± 166 · R10.01 revenue per app open · #2 of 9</dd>
+<dt>Results</dt><dd>261 take-ups per 1,000 app opens · 92.4% of what was possible · regret 1,078 ± 166 · R10.01 revenue per app open · #3 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-thompson-segment-payday">
@@ -517,7 +516,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs per segment and payday week; reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>Tests whether payday context helps: pensioners and small businesses want different offers at payday. It splits the evidence in two to find out.</dd>
 <dt>Where it's used</dt><dd>The comparison. Any request can ask for it with <code>?policy=thompson_segment_payday</code>.</dd>
-<dt>Results</dt><dd>261 take-ups per 1,000 app opens · 92.3% of what was possible · regret 1,099 ± 127 · R10.16 revenue per app open · #3 of 9</dd>
+<dt>Results</dt><dd>261 take-ups per 1,000 app opens · 92.3% of what was possible · regret 1,099 ± 127 · R10.16 revenue per app open · #4 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-thompson-segment-decay">
@@ -529,7 +528,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs per segment; forgetting γ = 0.9998 (memory ≈ 5,000 responses); reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>The policy the API serves. Forgetting costs a little in quiet times and recovers much faster when customers change.</dd>
 <dt>Where it's used</dt><dd>Serving every app open; the learner in every dashboard story; Try it's default. Any request can ask for it with <code>?policy=thompson_segment_decay</code>.</dd>
-<dt>Results</dt><dd>263 take-ups per 1,000 app opens · 92.7% of what was possible · regret 1,041 ± 39 · R9.68 revenue per app open · #1 of 9</dd>
+<dt>Results</dt><dd>263 take-ups per 1,000 app opens · 92.7% of what was possible · regret 1,041 ± 39 · R9.68 revenue per app open · #2 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-thompson-segment-revenue">
@@ -541,7 +540,7 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>Settings</dt><dd>beliefs per segment; forgetting γ = 0.9998 (memory ≈ 5,000 responses); reward: margin ÷ top margin</dd>
 <dt>Its role here</dt><dd>Shows that what a policy learns from is a business choice: more revenue for fewer take-ups.</dd>
 <dt>Where it's used</dt><dd>The comparison; the comparison page's next steps. Any request can ask for it with <code>?policy=thompson_segment_revenue</code>.</dd>
-<dt>Results</dt><dd>205 take-ups per 1,000 app opens · 72.4% of what was possible · regret 3,916 ± 92 · R13.37 revenue per app open · #5 of 9</dd>
+<dt>Results</dt><dd>205 take-ups per 1,000 app opens · 72.4% of what was possible · regret 3,916 ± 92 · R13.37 revenue per app open · #6 of 10</dd>
 </dl>
 </article>
 <article class="card model" id="model-thompson-features">
@@ -552,7 +551,8 @@ def update(self, context: Context, offer_id: str, reward: float) -&gt; None:
 <dt>How it learns</dt><dd>Each response updates the offer's model: the features' outer product joins its precision and reward times features joins its targets, after forgetting a little.</dd>
 <dt>Settings</dt><dd>a linear model over 20 features per offer; forgetting γ = 0.99996 (memory ≈ 25,000 responses); posterior width 0.05; reward: 1 per take-up</dd>
 <dt>Its role here</dt><dd>The step beyond segments: it can learn that flagship handsets favour device insurance in every segment, or that evenings favour entertainment, once instead of five times.</dd>
-<dt>Where it's used</dt><dd>The comparison and the sensitivity sweep. It can't serve yet: its state is a matrix per offer, which the options store can't hold. Any request can ask for it with <code>?policy=thompson_features</code>.</dd>
+<dt>Where it's used</dt><dd>The comparison and the sensitivity sweep. It can't serve yet: its state is a matrix per offer, which the options store can't hold.</dd>
+<dt>Results</dt><dd>267 take-ups per 1,000 app opens · 94.2% of what was possible · regret 817 ± 88 · R9.99 revenue per app open · #1 of 10</dd>
 </dl>
 </article>
 </div>

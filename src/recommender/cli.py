@@ -319,7 +319,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--no-dashboard", action="store_true", help="the API only")
     for name, handler, help in [
         ("simulate", simulate, "customers, a 3-seed comparison and 1,000 app opens"),
-        ("compare", compare, "the 10-seed comparison (about 7 minutes)"),
+        ("compare", compare, "the 10-seed comparison (about 9 minutes)"),
         ("nightly", nightly, "roll the event log up into daily_offer_stats"),
         ("test", test, "run the test suite"),
     ]:

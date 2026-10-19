@@ -7,13 +7,14 @@ Built as a portfolio project for the ecosystem.Ai technical team. It implements 
 ## Results
 
 <!-- BEGIN generated:md-headline -->
-- **Learning per segment beats both baselines, in every run.** thompson_segment_decay reached 92.7% of the oracle, with 53% more take-ups per app open than the static batch model (0.263 against 0.172). It cut regret by 85% against random and 81% against static: below random's regret in 10 of 10 seeds and below static's in 10 of 10.
+- **Learning per segment beats both baselines, in every run.** thompson_segment_decay reached 92.7% of the oracle, with 53% more take-ups per app open than the static batch model (0.263 against 0.172; 95% interval 46%–61% more). It cut regret by 85% against random (95% interval 84%–85%) and 81% against static (95% interval 80%–83%): below random's regret in 10 of 10 seeds and below static's in 10 of 10.
 - **It adapts when behaviour changes; the batch model does not.** After the shift its take-up rose from 0.231 to 0.295 per app open; the static model went from 0.168 to 0.175.
 <!-- END generated:md-headline -->
 
 <!-- BEGIN generated:md-results -->
 | Policy | Take-up per app open | Revenue per app open | Regret (take-ups lost) | Share of oracle | Regret cut vs random | Regret cut vs static |
 |---|--:|--:|--:|--:|--:|--:|
+| `thompson_features` _(simulation only)_ | 0.267 | R9.99 | 817 ± 88 | 94.2% | 88% | 85% |
 | **`thompson_segment_decay`** | 0.263 | R9.68 | 1,041 ± 39 | 92.7% | 85% | 81% |
 | `thompson_segment` | 0.261 | R10.01 | 1,078 ± 166 | 92.4% | 84% | 81% |
 | `thompson_segment_payday` | 0.261 | R10.16 | 1,099 ± 127 | 92.3% | 84% | 80% |
@@ -24,7 +25,7 @@ Built as a portfolio project for the ecosystem.Ai technical team. It implements 
 | `static` | 0.172 | R4.42 | 5,563 ± 703 | 60.8% | 17% | 0% |
 | `random` | 0.149 | R5.80 | 6,728 ± 17 | 52.6% | 0% | -21% |
 
-_50,000 app opens per run, behaviour shift at 25,000, mean ± standard deviation over 10 seeds. Regret is take-ups lost against an oracle that knows the hidden take-up probabilities._
+_50,000 app opens per run, behaviour shift at 25,000, mean ± standard deviation over 10 seeds; in bold, the best policy the API can serve. Regret is take-ups lost against an oracle that knows the hidden take-up probabilities._
 <!-- END generated:md-results -->
 
 Every policy faced the identical sequence of app opens and outcomes in each seed, so differences are the policies' alone. The full findings, including where the evidence shows a tie, are in [WRITEUP.md](WRITEUP.md) and on the [results page](docs/results.html).
@@ -59,7 +60,7 @@ make simulate    # customers, a 3-seed comparison, 1,000 app opens through the A
 make dashboard   # http://localhost:8501
 ```
 
-`make compare` (or `python manage.py compare`) reproduces the 10-seed results above, in about 7 minutes. `make help` lists every target.
+`make compare` (or `python manage.py compare`) reproduces the 10-seed results above, in about 9 minutes. `make help` lists every target.
 
 **Or the whole system in Docker:** `docker compose up --build` starts Postgres, the API on [localhost:8000/docs](http://localhost:8000/docs) with four workers, and the dashboard on [localhost:8501](http://localhost:8501), then sends 1,000 app opens through the API so the live view fills while you watch. `docker compose down --volumes` removes it all again.
 
@@ -76,7 +77,7 @@ flowchart LR
         store[("Options store<br/>Beta belief per<br/>segment × offer")]
         log[("Event log<br/>invocations · impressions<br/>· responses")]
     end
-    eval["Offline evaluation<br/>9 policies × 10 seeds"]
+    eval["Offline evaluation<br/>10 policies × 10 seeds"]
     dash["Streamlit dashboard"]
 
     app -- "app open" --> inv
@@ -96,7 +97,7 @@ flowchart LR
 4. **The outcome** comes back on `POST /response`. It is logged once (a repeat gets 409), turned into a reward (1 for a take-up, 0 for a view; ignored offers teach nothing by default), and the belief is updated in one database transaction, computed from the stored values so concurrent updates never overwrite each other. Each update also discounts the old evidence in that segment by a factor of 0.9998, so a belief built on last month's behaviour fades.
 5. **The simulator** plays the customers: 5,000 synthetic South Africans in five segments, whose hidden take-up probabilities depend on segment, context and payday, and shift halfway through the run (young professionals turn to streaming, families to prepaid electricity). The policies never see these probabilities; the evaluation uses them to measure regret.
 
-Nine policies are compared: random, a static popularity ranking fitted on a month of history, epsilon-greedy and Thompson sampling with one global belief or one per segment, and Thompson variants with payday context, forgetting, and a revenue reward. Every choice and its reasoning is in [DECISIONS.md](DECISIONS.md).
+Ten policies are compared: random, a static popularity ranking fitted on a month of history, epsilon-greedy and Thompson sampling with one global belief or one per segment, Thompson variants with payday context, forgetting, and a revenue reward, and Thompson sampling on customer features instead of segments (simulation only for now). A sensitivity sweep reruns the key ones in six variants of the world, to check the conclusions don't depend on the one I wrote. Every choice and its reasoning is in [DECISIONS.md](DECISIONS.md).
 
 ## Using the API
 
