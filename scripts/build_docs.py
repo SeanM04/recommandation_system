@@ -29,12 +29,20 @@ import pandas as pd
 
 from recommender.algorithms.base import BanditPolicy
 from recommender.algorithms.epsilon_greedy import EpsilonGreedyPolicy
+from recommender.algorithms.factory import servable_policies
 from recommender.algorithms.linear_thompson import FEATURES
 from recommender.algorithms.rewards import make_reward
 from recommender.algorithms.static import StaticPolicy
 from recommender.algorithms.thompson import ThompsonSamplingPolicy
 from recommender.config import PROJECT_ROOT, load_offers, load_settings
 from recommender.domain import IGNORED, OUTCOMES, SEGMENTS, TAKEN_UP, Context, Customer, Offer
+from recommender.evaluation.stats import (
+    count,
+    difference_interval,
+    percent,
+    reduction_interval,
+    uplift_interval,
+)
 from recommender.simulator.ground_truth import GroundTruth, take_up_table, winners
 from recommender.simulator.population import SEGMENT_PROFILES, generate_customers
 from recommender.simulator.settings import load_simulation_settings
@@ -883,15 +891,17 @@ def _results() -> dict | None:
 
 
 def block_results_table(src: Sources, page: str) -> str:
-    """The published results table, best policy first."""
+    """The published results table, lowest regret first; the best servable policy marked."""
     data = _results()
     if data is None:
         return NO_RESULTS
-    best = data["table"][0]["policy"]
+    servable = servable_policies(src.settings)
+    best = _best_servable(data, servable)
     rows = []
     for row in data["table"]:
+        only = "" if row["policy"] in servable else " <small>simulation only</small>"
         cells = [
-            f"<code>{escape(row['policy'])}</code>",
+            f"<code>{escape(row['policy'])}</code>{only}",
             f"{row['take_up_rate']:.3f}",
             f"{row['take_up_before_shift']:.3f}",
             f"{row['take_up_after_shift']:.3f}",
@@ -917,7 +927,8 @@ def block_results_table(src: Sources, page: str) -> str:
     caption = (
         f"{data['rounds']:,} app opens per run, behaviour shift at {data['shift_round']:,}, "
         f"mean of {data['seeds']} seeds; the static baseline was fitted on "
-        f"{data['warm_up_rounds']:,} warm-up app opens."
+        f"{data['warm_up_rounds']:,} warm-up app opens. Highlighted: the best policy the API "
+        f"can serve."
     )
     return (
         f'<div class="table-wrap"><table class="results-table">\n<thead><tr>{head}</tr></thead>\n'
@@ -925,18 +936,36 @@ def block_results_table(src: Sources, page: str) -> str:
     )
 
 
+def _best_servable(data: dict, servable: list[str]) -> str:
+    """The servable policy with the lowest mean regret (the table is sorted by regret)."""
+    return next(row["policy"] for row in data["table"] if row["policy"] in servable)
+
+
+def _series(by_seed: list[dict], a: str, b: str, metric: str) -> tuple[list[float], list[float]]:
+    """``metric`` of policies ``a`` and ``b``, one value per seed both ran, in seed order."""
+    values = {(row["policy"], row["seed"]): row[metric] for row in by_seed}
+    seeds = sorted({row["seed"] for row in by_seed})
+    both = [s for s in seeds if (a, s) in values and (b, s) in values]
+    return [values[(a, s)] for s in both], [values[(b, s)] for s in both]
+
+
 def _paired(by_seed: list[dict], a: str, b: str, metric: str) -> list[float]:
     """Per seed, ``metric`` of policy ``a`` minus that of ``b``. Seeds are paired: both
     policies faced the identical app opens, so the difference is theirs alone."""
-    values = {(row["policy"], row["seed"]): row[metric] for row in by_seed}
-    seeds = sorted({row["seed"] for row in by_seed})
-    return [values[(a, s)] - values[(b, s)] for s in seeds if (a, s) in values and (b, s) in values]
+    first, second = _series(by_seed, a, b, metric)
+    return [x - y for x, y in zip(first, second, strict=True)]
 
 
-def _findings(data: dict) -> list[tuple[str, str]]:
+def _ci(interval: tuple[float, float], fmt: Callable[[tuple[float, float]], str]) -> str:
+    """' (95% interval 78%–84%)': a bootstrap interval over the seeds, for a finding."""
+    return f" (95% interval {fmt(interval)})"
+
+
+def _findings(data: dict, servable: list[str]) -> list[tuple[str, str]]:
     """Headline findings as (headline, text), in plain text for HTML and Markdown alike.
     Every comparison is paired by seed and says how many seeds agree, so nothing is
-    claimed that the runs do not support."""
+    claimed that the runs do not support. The findings lead with the best policy the API
+    can serve; a simulation-only policy gets a finding of its own."""
     by_seed = data.get("by_seed", [])
     for row in by_seed:
         row["regret_before_shift"] = row["regret"] - row["regret_after_shift"]
@@ -948,22 +977,33 @@ def _findings(data: dict) -> list[tuple[str, str]]:
         """In how many seeds the paired difference is below zero."""
         return sum(d < 0 for d in diffs)
 
-    learning = [r["policy"] for r in data["table"] if r["policy"] not in ("random", "static")]
-    best = data["table"][0]
+    learning = [
+        r["policy"]
+        for r in data["table"]
+        if r["policy"] not in ("random", "static") and r["policy"] in servable
+    ]
+    best = table[learning[0]]
     static, random_ = table.get("static"), table.get("random")
     if static and random_:
         vs_static = lower_in(_paired(by_seed, best["policy"], "static", "regret"))
         vs_random = lower_in(_paired(by_seed, best["policy"], "random", "regret"))
         uplift = best["take_up_rate"] / static["take_up_rate"] - 1
+        uplift_ci = uplift_interval(*_series(by_seed, best["policy"], "static", "take_up_rate"))
+        cut_random = reduction_interval(*_series(by_seed, best["policy"], "random", "regret"))
+        cut_static = reduction_interval(*_series(by_seed, best["policy"], "static", "regret"))
         items.append(
             (
-                "Learning per segment beats both baselines, in every run.",
+                "Learning per segment beats both baselines, in every run."
+                if vs_static == vs_random == n
+                else "Learning per segment beats both baselines.",
                 f"{best['policy']} reached {best['share_of_oracle']:.1%} of the oracle, with "
                 f"{uplift:.0%} more take-ups per app open than the static batch model "
-                f"({best['take_up_rate']:.3f} against {static['take_up_rate']:.3f}). It cut regret by "
-                f"{best['regret_vs_random']:.0%} against random and {best['regret_vs_static']:.0%} "
-                f"against static: below random's regret in {vs_random} of {n} seeds and below "
-                f"static's in {vs_static} of {n}.",
+                f"({best['take_up_rate']:.3f} against {static['take_up_rate']:.3f}"
+                f"; 95% interval {percent(uplift_ci)} more). It cut regret by "
+                f"{best['regret_vs_random']:.0%} against random{_ci(cut_random, percent)} and "
+                f"{best['regret_vs_static']:.0%} against static{_ci(cut_static, percent)}: below "
+                f"random's regret in {vs_random} of {n} seeds and below static's in {vs_static} "
+                f"of {n}.",
             )
         )
         items.append(
@@ -983,8 +1023,8 @@ def _findings(data: dict) -> list[tuple[str, str]]:
     if tied:
         items.append(
             (
-                "The top of the table is a tie.",
-                f"{best['policy']} has the lowest mean regret, but {', '.join(tied)} had lower "
+                "Among the policies the API can serve, the top is a tie.",
+                f"{best['policy']} has the lowest mean regret of them, but {', '.join(tied)} had lower "
                 f"regret in at least a fifth of the seeds, so the order among them is within the "
                 f"noise.",
             )
@@ -1002,20 +1042,50 @@ def _findings(data: dict) -> list[tuple[str, str]]:
             )
         )
 
+    features = table.get("thompson_features")
+    if features:
+        wins = lower_in(_paired(by_seed, "thompson_features", best["policy"], "regret"))
+        low, high = difference_interval(
+            *_series(by_seed, "thompson_features", best["policy"], "regret")
+        )
+        fewer = best["regret"] - features["regret"]
+        verdict = (
+            ("Customer features go further than segments.", f"{fewer:,.0f} fewer take-ups lost")
+            if wins >= 0.8 * n
+            else ("Customer features don't beat segments here.", f"{-fewer:,.0f} more lost")
+            if wins <= 0.2 * n
+            else ("Customer features and segments are a tie.", f"{fewer:,.0f} fewer lost")
+        )
+        items.append(
+            (
+                verdict[0],
+                f"Thompson sampling on customer features (thompson_features) reached "
+                f"{features['share_of_oracle']:.1%} of the oracle against "
+                f"{best['share_of_oracle']:.1%} for {best['policy']}, with lower regret in {wins} "
+                f"of {n} seeds ({verdict[1]}; 95% interval for the saving "
+                f"{count((-high, -low))}). It runs in the simulator only: its state is a matrix "
+                f"per offer, which the options store can't hold yet.",
+            )
+        )
+
     decay = table.get("thompson_segment_decay")
     if personal and decay:
         after = _paired(by_seed, "thompson_segment_decay", "thompson_segment", "regret_after_shift")
         before = _paired(
             by_seed, "thompson_segment_decay", "thompson_segment", "regret_before_shift"
         )
+        low, high = difference_interval(
+            *_series(by_seed, "thompson_segment_decay", "thompson_segment", "regret_after_shift")
+        )
         items.append(
             (
                 "Forgetting trades a little before the shift for more after it.",
                 f"With forgetting, regret after the shift was lower in {lower_in(after)} of {n} seeds, "
-                f"by {-sum(after) / len(after):,.0f} take-ups on average; before the shift it cost "
+                f"by {-sum(after) / len(after):,.0f} take-ups on average"
+                f"{_ci((-high, -low), count)}; before the shift it cost "
                 f"{sum(before) / len(before):,.0f} on average (higher in "
-                f"{sum(d > 0 for d in before)} of {n} seeds). Its value grows with how often, and "
-                f"how sharply, behaviour changes.",
+                f"{sum(d > 0 for d in before)} of {n} seeds). Whether the trade pays depends on "
+                f"how the world changes, which the sensitivity sweep tests.",
             )
         )
 
@@ -1025,14 +1095,20 @@ def _findings(data: dict) -> list[tuple[str, str]]:
             by_seed, "thompson_segment_revenue", "thompson_segment_decay", "revenue_per_open"
         )
         uplift = revenue["revenue_per_open"] / decay["revenue_per_open"] - 1
+        uplift_ci = uplift_interval(
+            *_series(
+                by_seed, "thompson_segment_revenue", "thompson_segment_decay", "revenue_per_open"
+            )
+        )
         drop = 1 - revenue["take_up_rate"] / decay["take_up_rate"]
         items.append(
             (
                 "The reward decides the business outcome.",
                 f"The same policy learning from margin instead of take-up earned {uplift:.0%} more "
                 f"revenue per app open (R{revenue['revenue_per_open']:.2f} against "
-                f"R{decay['revenue_per_open']:.2f}, more in {sum(d > 0 for d in more)} of {n} "
-                f"seeds), at the cost of {drop:.0%} fewer take-ups. Which one is right is a "
+                f"R{decay['revenue_per_open']:.2f}; 95% interval {percent(uplift_ci)} more; more in "
+                f"{sum(d > 0 for d in more)} of {n} seeds), at the cost of {drop:.0%} fewer "
+                f"take-ups. Which one is right is a "
                 f"business choice, not a modelling one.",
             )
         )
@@ -1040,11 +1116,16 @@ def _findings(data: dict) -> list[tuple[str, str]]:
     greedy = table.get("epsilon_greedy_segment")
     if personal and greedy:
         wins = lower_in(_paired(by_seed, "thompson_segment", "epsilon_greedy_segment", "regret"))
+        low, high = difference_interval(
+            *_series(by_seed, "thompson_segment", "epsilon_greedy_segment", "regret")
+        )
         items.append(
             (
                 "Thompson sampling explores better than epsilon-greedy.",
                 f"With the same per-segment statistics, regret was {personal['regret']:,.0f} against "
-                f"{greedy['regret']:,.0f}, lower in {wins} of {n} seeds: epsilon-greedy keeps "
+                f"{greedy['regret']:,.0f}, lower in {wins} of {n} seeds; Thompson sampling lost "
+                f"{greedy['regret'] - personal['regret']:,.0f} fewer take-ups"
+                f"{_ci((-high, -low), count)}: epsilon-greedy keeps "
                 f"spending a fixed share of slots on offers it already knows are poor.",
             )
         )
@@ -1084,7 +1165,7 @@ def block_findings(src: Sources, page: str) -> str:
         return NO_RESULTS
     items = [
         f"<strong>{escape(head, quote=False)}</strong> {escape(text, quote=False)}"
-        for head, text in _findings(data)
+        for head, text in _findings(data, servable_policies(src.settings))
     ]
     return '<ol class="findings">\n' + "\n".join(f"<li>{item}</li>" for item in items) + "\n</ol>"
 
@@ -1098,7 +1179,8 @@ def block_md_results(src: Sources, page: str) -> str:
     data = _results()
     if data is None:
         return MD_NO_RESULTS
-    best = data["table"][0]["policy"]
+    servable = servable_policies(src.settings)
+    best = _best_servable(data, servable)
     lines = [
         "| Policy | Take-up per app open | Revenue per app open | Regret (take-ups lost) "
         "| Share of oracle | Regret cut vs random | Regret cut vs static |",
@@ -1106,15 +1188,18 @@ def block_md_results(src: Sources, page: str) -> str:
     ]
     for row in data["table"]:
         name = f"`{row['policy']}`"
+        name = f"**{name}**" if row["policy"] == best else name
+        name += "" if row["policy"] in servable else " _(simulation only)_"
         lines.append(
-            f"| {f'**{name}**' if row['policy'] == best else name} "
+            f"| {name} "
             f"| {row['take_up_rate']:.3f} | R{row['revenue_per_open']:.2f} "
             f"| {row['regret']:,.0f} ± {row['regret_sd']:,.0f} | {row['share_of_oracle']:.1%} "
             f"| {row['regret_vs_random']:.0%} | {row['regret_vs_static']:.0%} |"
         )
     lines.append(
         f"\n_{data['rounds']:,} app opens per run, behaviour shift at {data['shift_round']:,}, "
-        f"mean ± standard deviation over {data['seeds']} seeds. Regret is take-ups lost against "
+        f"mean ± standard deviation over {data['seeds']} seeds; in bold, the best policy the API "
+        f"can serve. Regret is take-ups lost against "
         f"an oracle that knows the hidden take-up probabilities._"
     )
     return "\n".join(lines)
@@ -1125,7 +1210,7 @@ def block_md_findings(src: Sources, page: str) -> str:
     data = _results()
     if data is None:
         return MD_NO_RESULTS
-    findings = _findings(data)
+    findings = _findings(data, servable_policies(src.settings))
     return "\n".join(f"{i}. **{head}** {text}" for i, (head, text) in enumerate(findings, 1))
 
 
@@ -1134,7 +1219,10 @@ def block_md_headline(src: Sources, page: str) -> str:
     data = _results()
     if data is None:
         return MD_NO_RESULTS
-    return "\n".join(f"- **{head}** {text}" for head, text in _findings(data)[:2])
+    return "\n".join(
+        f"- **{head}** {text}"
+        for head, text in _findings(data, servable_policies(src.settings))[:2]
+    )
 
 
 def block_regret_chart(src: Sources, page: str) -> str:
@@ -1215,14 +1303,22 @@ def block_regret_chart(src: Sources, page: str) -> str:
     label = "Cumulative regret per policy over the run; lower is better. " + ", ".join(
         f"{name} ends at {curves[name]['regret'][-1]:,.0f}" for name, _ in series
     )
+    features = ""
+    if "thompson_features" in curves and series:
+        lead = curves[series[0][0]]["regret"][-1]
+        end = curves["thompson_features"]["regret"][-1]
+        features = (
+            f", and thompson_features (simulation only) ends {'below' if end < lead else 'above'} "
+            f"it, at {end:,.0f}"
+        )
     return (
         '<figure class="fig">\n<div class="fig-scroll">\n'
         f'<svg class="dg chart" viewBox="0 0 980 400" style="min-width: 760px" role="img" '
         f'aria-label="{escape(label)}">\n' + "\n".join(parts) + "\n</svg>\n</div>\n"
         f'<figcaption><span class="legend">{legend}</span><span>Expected take-ups lost '
         "against an oracle that knows the true probabilities, first seed. The other policies "
-        "are in the table: the per-segment Thompson variants overlap the blue line.</span>"
-        "</figcaption>\n</figure>"
+        f"are in the table: the per-segment Thompson variants overlap the blue line{features}."
+        "</span></figcaption>\n</figure>"
     )
 
 
@@ -1253,6 +1349,131 @@ def block_adaptation(src: Sources, page: str) -> str:
                             + [cell(values.get(p)) for p in policies])  # fmt: skip
     head = ["When", "Segment", *[f"<code>{p}</code>" for p in policies]]
     return table(head, body, cls="adaptation", numeric=tuple(range(2, 2 + len(policies))))
+
+
+# --- sensitivity (from docs/data/sensitivity.json, written by make sensitivity) ------------
+
+SENSITIVITY_PATH = DOCS / "data" / "sensitivity.json"
+NO_SENSITIVITY = '<p class="note">No sweep yet: run <code>make sensitivity</code>, then <code>make docs</code>.</p>'
+LEARNER = "thompson_segment_decay"  # the served policy, which the sweep puts under pressure
+
+
+def _sensitivity() -> dict | None:
+    """The sensitivity sweep (docs/data/sensitivity.json), or None before the first run."""
+    if not SENSITIVITY_PATH.exists():
+        return None
+    return json.loads(SENSITIVITY_PATH.read_text(encoding="utf-8"))
+
+
+def _sweep_means(data: dict) -> pd.DataFrame:
+    """Mean share of oracle per scenario (rows, in sweep order) and policy (columns)."""
+    rows = pd.DataFrame(data["by_seed"])
+    means = rows.pivot_table(index="scenario", columns="policy", values="share_of_oracle")
+    return means.reindex([s["name"] for s in data["scenarios"]])
+
+
+def _sensitivity_findings(data: dict) -> list[str]:
+    """What the sweep shows, in plain text: every claim counted over scenarios and seeds."""
+    rows = pd.DataFrame(data["by_seed"])
+    regret = rows.pivot_table(index=["scenario", "seed"], columns="policy", values="regret")
+    means = _sweep_means(data)
+    worlds, runs = len(means), len(regret)
+    found = []
+    if {LEARNER, "static", "random"} <= set(regret.columns):
+        beats = int(
+            ((regret[LEARNER] < regret["static"]) & (regret[LEARNER] < regret["random"])).sum()
+        )
+        low = means[LEARNER].idxmin()
+        found.append(
+            f"{LEARNER} had lower regret than both baselines in {beats} of {runs} runs across "
+            f"the {worlds} worlds, reaching {means[LEARNER].min():.0%}–{means[LEARNER].max():.0%} "
+            f"of the oracle (lowest: {low.lower()})."
+        )
+    if {"thompson_segment", "thompson"} <= set(means.columns):
+        wins = int((means["thompson_segment"] > means["thompson"]).sum())
+        found.append(
+            f"Learning per segment beat one global model in {wins} of {worlds} worlds, by "
+            f"{(means['thompson_segment'] - means['thompson']).min() * 100:.0f} to "
+            f"{(means['thompson_segment'] - means['thompson']).max() * 100:.0f} points of the "
+            f"oracle."
+        )
+    if {LEARNER, "thompson_segment"} <= set(means.columns):
+        gain = (means[LEARNER] - means["thompson_segment"]) * 100  # points of the oracle
+        helped = [w.lower() for w in gain.index if gain[w] > 0]
+        hurt = [w.lower() for w in gain.index if gain[w] <= 0]
+        found.append(
+            f"Forgetting is not free: it beat the same policy without forgetting in "
+            f"{len(helped)} of {worlds} worlds ({', '.join(helped) or 'none'}; up to "
+            f"{max(gain.max(), 0):.1f} points of the oracle)"
+            + (
+                f" and cost up to {-gain.min():.1f} points in the others ({', '.join(hurt)}). "
+                if hurt
+                else ". "
+            )
+            + "Its value depends on the world, so the forgetting rate is one to tune on real "
+            "traffic, not to carry over from a simulation."
+        )
+    if {"thompson_features", "thompson_segment"} <= set(means.columns):
+        ahead = [
+            w
+            for w in means.index
+            if means.loc[w, "thompson_features"] > means.loc[w, "thompson_segment"]
+        ]
+        found.append(
+            f"Thompson sampling on customer features beat per-segment Thompson sampling in "
+            f"{len(ahead)} of {worlds} worlds"
+            + (f" ({', '.join(w.lower() for w in ahead)})." if ahead else ".")
+        )
+    return found
+
+
+def block_sensitivity(src: Sources, page: str) -> str:
+    """Share of oracle per scenario and policy, with what the sweep shows."""
+    data = _sensitivity()
+    if data is None:
+        return NO_SENSITIVITY
+    means = _sweep_means(data)
+    policies = [p for p in SWEEP_ORDER if p in means.columns]
+    changes = {s["name"]: s["change"] for s in data["scenarios"]}
+    body = []
+    for world, row in means.iterrows():
+        best = row[policies].idxmax()
+        cells = [
+            f"<strong>{v:.1%}</strong>" if p == best else f"{v:.1%}"
+            for p, v in row[policies].items()
+        ]
+        body.append([f"{escape(str(world))}<br><small>{escape(changes[world])}</small>", *cells])
+    head = ["World", *[f"<code>{p}</code>" for p in policies]]
+    caption = (
+        f'<p class="source">Share of the oracle\'s take-ups, mean of {data["seeds"]} seeds × '
+        f"{data['rounds']:,} app opens per world; the best in each world in bold · "
+        "make sensitivity</p>"
+    )
+    findings = "\n".join(
+        f"<li>{escape(text, quote=False)}</li>" for text in _sensitivity_findings(data)
+    )
+    return (
+        table(head, body, cls="sensitivity", numeric=tuple(range(1, 1 + len(policies))))
+        + f"\n{caption}\n<ul>\n{findings}\n</ul>"
+    )
+
+
+def block_md_sensitivity(src: Sources, page: str) -> str:
+    """What the sensitivity sweep shows, as a Markdown list, for the write-up."""
+    data = _sensitivity()
+    if data is None:
+        return "_No sweep yet: run `make sensitivity`, then `make docs`._"
+    intro = (
+        f"_Six variants of the world, {data['seeds']} seeds × {data['rounds']:,} app opens "
+        f"each: no shift, an earlier shift, context effects at half and double strength, and "
+        f"offers' take-up rates half as far apart._"
+    )
+    return intro + "\n\n" + "\n".join(f"- {text}" for text in _sensitivity_findings(data))
+
+
+# The sweep's policies, from no learning to the richest model.
+SWEEP_ORDER = ["random", "static", "thompson", "epsilon_greedy_segment", "thompson_segment",
+               "thompson_segment_decay", "thompson_features"]  # fmt: skip
 
 
 # --- Models page: one card per configured policy ------------------------------------------
@@ -1454,20 +1675,20 @@ def block_model_cards(src: Sources, page: str) -> str:
     results = {row["policy"]: row for row in data["table"]} if data else {}
     order = {row["policy"]: i + 1 for i, row in enumerate(data["table"])} if data else {}
     active = src.settings.recommendation.active_policy
+    servable = servable_policies(src.settings)
     cards = []
     for name, spec in src.settings.policies.items():
         notes = MODEL_NOTES.get(name, {})
+        used = notes.get("used", "")
+        if name in servable:
+            used += f" Any request can ask for it with <code>?policy={escape(name)}</code>."
         rows = [
             ("The idea", notes.get("idea", "")),
             ("How it ranks", notes.get("ranks", "")),
             ("How it learns", notes.get("learns", "")),
             ("Settings", _settings_text(spec, src)),
             ("Its role here", notes.get("role", "")),
-            (
-                "Where it's used",
-                notes.get("used", "") + f" Any request can ask for it with "
-                f"<code>?policy={escape(name)}</code>.",
-            ),
+            ("Where it's used", used),
         ]
         if name in results:
             r = results[name]
@@ -1525,6 +1746,8 @@ BLOCKS: dict[str, Callable[[Sources, str], str]] = {
     "findings": block_findings,
     "regret-chart": block_regret_chart,
     "adaptation": block_adaptation,
+    "sensitivity": block_sensitivity,
+    "md-sensitivity": block_md_sensitivity,
     "model-tree": block_model_tree,
     "model-cards": block_model_cards,
     "commands": block_commands,
