@@ -50,6 +50,7 @@ from recommender.store.options_store import ArmStats, InMemoryOptionsStore
 from recommender.store.sql import SqlOptionsStore
 
 DOCS = PROJECT_ROOT / "docs"
+REPO_URL = "https://github.com/SeanM04/telco-offer-recommender"
 BLOCK = re.compile(
     r"(?P<begin><!-- BEGIN generated:(?P<name>[\w-]+) -->)(?P<body>.*?)"
     r"(?P<end><!-- END generated:(?P=name) -->)",
@@ -362,6 +363,7 @@ def block_sidenav(src: Sources, page: str) -> str:
         f'<div><p class="nav-label">Pages</p>\n<ul class="pages">\n{links}\n</ul></div>\n'
         f'<div class="phase-block"><p class="nav-label">Build status</p>\n'
         f'<ul class="phases">\n{phases}\n</ul></div>\n'
+        f'<a class="repo-link" href="{REPO_URL}">The code on GitHub</a>\n'
         '<button class="theme-toggle" type="button">Theme: system</button>'
     )
 

@@ -1,5 +1,8 @@
 # Telco Dynamic Offer Recommender
 
+[![CI](https://github.com/SeanM04/telco-offer-recommender/actions/workflows/ci.yml/badge.svg)](https://github.com/SeanM04/telco-offer-recommender/actions/workflows/ci.yml)
+**Documentation: [seanm04.github.io/telco-offer-recommender](https://seanm04.github.io/telco-offer-recommender/)**
+
 Every time a customer opens a telco or fintech app, this system picks which three offers to show (data bundles, airtime, streaming, electricity, insurance, a pay-later voucher) and learns from what the customer does with them. A real-time API ranks offers with contextual Thompson sampling: one Beta belief per customer segment and offer, updated the moment a customer takes up, views or ignores an offer, and slowly forgetting old evidence so it keeps up when behaviour changes. A simulated South African customer base with a hidden ground truth (including payday weeks and a mid-run change in what people want) measures how much better it does than a fixed popularity ranking and than random offers, and how fast it notices the change.
 
 Built as a portfolio project for the ecosystem.Ai technical team. It implements the same ideas (a dynamic recommender, an options store, real-time feedback, epsilon-greedy and Thompson sampling, forgetting) from scratch, in Python; it does not use ecosystem.Ai's product.
@@ -28,7 +31,7 @@ Built as a portfolio project for the ecosystem.Ai technical team. It implements 
 _50,000 app opens per run, behaviour shift at 25,000, mean ± standard deviation over 10 seeds; in bold, the best policy the API can serve. Regret is take-ups lost against an oracle that knows the hidden take-up probabilities._
 <!-- END generated:md-results -->
 
-Every policy faced the identical sequence of app opens and outcomes in each seed, so differences are the policies' alone. The full findings, including where the evidence shows a tie, are in [WRITEUP.md](WRITEUP.md) and on the [results page](docs/results.html).
+Every policy faced the identical sequence of app opens and outcomes in each seed, so differences are the policies' alone. The full findings, including where the evidence shows a tie, are in [WRITEUP.md](WRITEUP.md) and on the [results page](https://seanm04.github.io/telco-offer-recommender/results.html).
 
 ![The dashboard's algorithm comparison: results table and cumulative regret per policy, with the behaviour shift marked](docs/assets/screenshots/comparison.png)
 
@@ -151,7 +154,7 @@ Other endpoints: `GET /offers`, `GET /customers?segment=student`, `GET /policies
 | Try it (admins) | Play a customer: open the app, take up or ignore offers, and watch the belief move |
 | Users and API keys (admins) | Add users, change passwords, create and revoke API keys |
 
-Screenshots of every page are on the [dashboard docs page](docs/dashboard.html).
+Screenshots of every page are on the [dashboard docs page](https://seanm04.github.io/telco-offer-recommender/dashboard.html).
 
 ## Accounts and API keys
 
@@ -204,13 +207,14 @@ docs/                  HTML documentation (open docs/index.html)
 ## Quality
 
 - `make test` runs the suite: domain rules, the store under concurrent updates, every policy, the API end to end (including idempotency and, when Postgres is configured, against Postgres in a throwaway schema), the simulator, every dashboard page, and a check that the generated parts of the docs, this README and the write-up match the latest results. Tests never touch the real tables.
-- `make lint` runs ruff; `make docs` regenerates the data-driven parts of the docs and of this README.
+- `make lint` runs ruff, `make typecheck` runs mypy and `make pylint` gives pylint's full report; `make docs` regenerates the data-driven parts of the docs and of this README.
+- **CI** ([ci.yml](.github/workflows/ci.yml)) runs on every push: ruff, mypy, a check that the docs match the code and the latest results, and the tests on SQLite and on Postgres. A second job starts from a clean runner with no `.env`, runs `make install` and `make simulate`, and checks that the dashboard starts and answers.
 - Random seeds are fixed throughout: the same command gives the same numbers.
 - `make benchmark` measures latency end to end against a real server and database. One local worker answers an app open in 11 ms at the 95th percentile with one client. In Docker Compose, four workers on the same network as Postgres keep p95 under 25 ms up to four concurrent clients, at 224 requests a second (decision Q3 explains how that was measured).
 
 ## Documentation
 
 - [WRITEUP.md](WRITEUP.md): the problem, the approach, the results and what production would need, in two pages.
-- [docs/how-it-works.html](docs/how-it-works.html): the whole learning loop in one diagram, from an app open to the belief a response changes, and how the simulator tests it.
-- [docs/index.html](docs/index.html): the product map, architecture, the simulated world, the policies and every model one by one, the API, results, the dashboard page by page, running and operating it, workflows and tools, with diagrams. Open it in a browser.
+- [How it works](https://seanm04.github.io/telco-offer-recommender/how-it-works.html): the whole learning loop in one diagram, from an app open to the belief a response changes, and how the simulator tests it.
+- [The documentation site](https://seanm04.github.io/telco-offer-recommender/): the product map, architecture, the simulated world, the policies and every model one by one, the API, results, the dashboard page by page, running and operating it, workflows and tools, with diagrams. The same pages are in [docs/](docs/index.html) for reading offline.
 - [DECISIONS.md](DECISIONS.md): every ambiguity in the brief and how it was resolved.

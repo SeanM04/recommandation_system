@@ -167,6 +167,7 @@ pre code { background: none; padding: 0; overflow-wrap: normal; }
   cursor: pointer;
 }
 .theme-toggle:hover { color: var(--ink); border-color: var(--line-strong); }
+.repo-link { justify-self: start; font-weight: 500; color: var(--accent); }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-block: 24px 56px; }

@@ -23,3 +23,7 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Presentation decks: kept local, never pushed
+/presentation/
+*.pptx
