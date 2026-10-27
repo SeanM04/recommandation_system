@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help install db data truth simulate compare dashboard screenshots experiment experiment-features sensitivity nightly run benchmark docker-build docker-api benchmark-docker up down benchmark-compose test lint typecheck format docs
+.PHONY: help install db data truth simulate compare dashboard screenshots experiment experiment-features sensitivity nightly run benchmark docker-build docker-api benchmark-docker up down benchmark-compose test lint pylint typecheck format docs
 
 help:  ## List the targets
 	@grep -E '^[a-z-]+:.*## ' Makefile | sed -E 's/:.*## /	/' | expand -t 20
@@ -75,6 +75,10 @@ test:  ## Run the test suite
 lint:  ## Check code style
 	$(PYTHON) -m ruff check .
 	$(PYTHON) -m ruff format --check .
+
+pylint:  ## Deeper checks with pylint, the full report (not a CI gate until it is clean)
+	-$(PYTHON) -m pylint src/recommender scripts dashboard manage.py .claude/hooks
+	-$(PYTHON) -m pylint tests --disable=redefined-outer-name,unused-argument
 
 typecheck:  ## Type-check the package with mypy
 	$(PYTHON) -m mypy

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How the Recommender Works</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="The whole learning loop in one diagram: an app open, the ranking, the customer's response and the belief it changes, then how the simulator tests that loop against a known answer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="assets/docs.css">
+<script src="assets/docs.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidenav" aria-label="Documentation">
+<!-- BEGIN generated:sidenav -->
+<a class="brand" href="index.html"><b>Telco Dynamic Recommender</b><span>Project documentation</span></a>
+<div><p class="nav-label">Pages</p>
+<ul class="pages">
+<li><a href="index.html">Overview</a></li>
+<li><a href="how-it-works.html" aria-current=page>How it works</a></li>
+<li><a href="product.html">Product</a></li>
+<li><a href="architecture.html">Architecture</a></li>
+<li><a href="simulation.html">Simulated world</a></li>
+<li><a href="models.html">Policies &amp; models</a></li>
+<li><a href="api.html">API</a></li>
+<li><a href="results.html">Results</a></li>
+<li><a href="dashboard.html">Dashboard</a></li>
+<li><a href="operations.html">Run &amp; operate</a></li>
+<li><a href="workflows.html">Workflows</a></li>
+<li><a href="decisions.html">Decisions</a></li>
+<li><a href="stack.html">Tools &amp; quality</a></li>
+</ul></div>
+<div class="phase-block"><p class="nav-label">Build status</p>
+<ul class="phases">
+<li><span>1 · Domain &amp; data</span><span class="chip built">Built</span></li>
+<li><span>2 · Algorithms</span><span class="chip built">Built</span></li>
+<li><span>3 · Real-time API</span><span class="chip built">Built</span></li>
+<li><span>4 · Simulator</span><span class="chip built">Built</span></li>
+<li><span>5 · Evaluation &amp; dashboard</span><span class="chip built">Built</span></li>
+<li><span>6 · Quality &amp; delivery</span><span class="chip built">Built</span></li>
+</ul></div>
+<button class="theme-toggle" type="button">Theme: system</button>
+<!-- END generated:sidenav -->
+</nav>
+
+<main>
+<header class="page-head">
+  <p class="eyebrow">How it works</p>
+  <h1>One loop, end to end</h1>
+  <p class="lede">Every app open is ranked with what the previous responses taught. This page draws that loop once, from the customer's tap to the belief it changes, and then shows how the same loop is tested against a world whose answers are known.</p>
+  <ul class="toc">
+    <li><a href="#loop">The loop in one picture</a></li>
+    <li><a href="#steps">Step by step</a></li>
+    <li><a href="#testing">How we know it works</a></li>
+    <li><a href="#more">Read more</a></li>
+  </ul>
+</header>
+
+<section aria-labelledby="loop">
+  <h2 id="loop">The loop in one picture</h2>
+  <p>Two API calls make up one turn of the loop. <code>POST /invocations</code> ranks offers when a customer opens the app; <code>POST /response</code> reports what the customer did with them. The database between them, Postgres (or SQLite when there is no <code>.env</code>), holds what has been learned, and every API worker shares it.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 500" style="min-width: 820px" role="img" aria-label="The learning loop. The customer opens the app and the app calls POST /invocations. The API builds the moment from the customer's profile and the clock, reads the segment's beliefs from the options store, draws one sample from each and keeps the three highest, logs the app open and the offers shown, then replies with an invocation id. The customer responds and the app calls POST /response. The API reads the logged context, scores the outcome and logs it once, then updates the belief in the options store, shrinking the segment's other beliefs slightly. The next app open in that segment reads the updated belief.">
+        <defs>
+          <marker id="hw1-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+          <marker id="hw1-ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+          <marker id="hw1-ahl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah loop"/></marker>
+        </defs>
+
+        <!-- column labels -->
+        <text class="lbl" x="272" y="50"><tspan font-weight="600" letter-spacing="0.06em">REAL-TIME API</tspan> · FastAPI</text>
+        <text class="lbl" x="24" y="168"><tspan font-weight="600" letter-spacing="0.06em">CUSTOMER&#8217;S APP</tspan></text>
+
+        <!-- the reply to POST /invocations, back to the app -->
+        <path class="edge strong" d="M876 60V28H99V59" marker-end="url(#hw1-ahs)"/>
+        <text class="m" x="488" y="20" text-anchor="middle">200 · invocation_id and the top 3 offers</text>
+
+        <!-- 1 -->
+        <rect class="box term" x="24" y="60" width="150" height="80" rx="6"/>
+        <circle class="act" cx="44" cy="82" r="10"/>
+        <text class="step-n" x="44" y="86" text-anchor="middle">1</text>
+        <text class="t" x="62" y="87">Opens the app</text>
+        <text class="s" x="40" y="112">customer C00042,</text>
+        <text class="s" x="40" y="128">a small business</text>
+
+        <!-- 1 -> 2 -->
+        <text class="m" x="223" y="80" text-anchor="middle">POST</text>
+        <text class="m" x="223" y="92" text-anchor="middle">/invocations</text>
+        <path class="edge strong" d="M174 100H271" marker-end="url(#hw1-ahs)"/>
+
+        <!-- 2 -->
+        <rect class="box built" x="272" y="60" width="200" height="80" rx="6"/>
+        <circle class="act" cx="292" cy="82" r="10"/>
+        <text class="step-n" x="292" y="86" text-anchor="middle">2</text>
+        <text class="t" x="310" y="87">Build the moment</text>
+        <text class="s" x="288" y="112">profile + the clock:</text>
+        <text class="s" x="288" y="128">segment, time, payday week</text>
+        <path class="edge strong" d="M472 100H523" marker-end="url(#hw1-ahs)"/>
+
+        <!-- 3 -->
+        <rect class="box built" x="524" y="60" width="200" height="80" rx="6"/>
+        <circle class="act" cx="544" cy="82" r="10"/>
+        <text class="step-n" x="544" y="86" text-anchor="middle">3</text>
+        <text class="t" x="562" y="87">Rank by drawing</text>
+        <text class="s" x="540" y="112">one draw from each belief;</text>
+        <text class="s" x="540" y="128">the 3 highest are shown</text>
+        <path class="edge strong" d="M724 100H775" marker-end="url(#hw1-ahs)"/>
+
+        <!-- 4 -->
+        <rect class="box built" x="776" y="60" width="200" height="80" rx="6"/>
+        <circle class="act" cx="796" cy="82" r="10"/>
+        <text class="step-n" x="796" y="86" text-anchor="middle">4</text>
+        <text class="t" x="814" y="87">Log, then reply</text>
+        <text class="s" x="792" y="112">the app open, its context</text>
+        <text class="s" x="792" y="128">and the 3 offers shown</text>
+
+        <!-- top row to and from the database -->
+        <path class="edge" d="M372 214V141" marker-end="url(#hw1-ah)"/>
+        <text class="lbl" x="380" y="166">reads the profile</text>
+        <path class="edge loop" d="M624 214V141" marker-end="url(#hw1-ahl)"/>
+        <text class="lbl accent" x="632" y="166">reads the segment&#8217;s beliefs</text>
+        <path class="edge" d="M876 140V213" marker-end="url(#hw1-ah)"/>
+        <text class="lbl" x="884" y="166">writes</text>
+
+        <!-- the database -->
+        <rect class="frame" x="256" y="186" width="736" height="140" rx="10"/>
+        <text class="lbl" x="272" y="204"><tspan font-weight="600" letter-spacing="0.06em">DATABASE</tspan></text>
+
+        <rect class="box store" x="272" y="214" width="200" height="92" rx="6"/>
+        <text class="t" x="288" y="242">customers</text>
+        <text class="s" x="288" y="264">5,000 profiles,</text>
+        <text class="s" x="288" y="280">one lookup by id</text>
+
+        <rect class="box pick" x="524" y="214" width="200" height="92" rx="6"/>
+        <text class="t" x="540" y="242">Options store</text>
+        <text class="s" x="540" y="264">one Beta(α, β) belief per</text>
+        <text class="s" x="540" y="280">policy × segment × offer</text>
+
+        <rect class="box store" x="776" y="214" width="200" height="92" rx="6"/>
+        <text class="t" x="792" y="242">Event log</text>
+        <text class="s" x="792" y="264">invocations, impressions,</text>
+        <text class="s" x="792" y="280">responses</text>
+
+        <!-- the customer looks at the offers -->
+        <path class="edge" d="M150 140V361" marker-end="url(#hw1-ah)"/>
+        <text class="s" x="158" y="250">looks at</text>
+        <text class="s" x="158" y="263">the offers</text>
+
+        <!-- 5 -->
+        <rect class="box term" x="24" y="362" width="150" height="80" rx="6"/>
+        <circle class="act" cx="44" cy="384" r="10"/>
+        <text class="step-n" x="44" y="388" text-anchor="middle">5</text>
+        <text class="t" x="62" y="389">Responds</text>
+        <text class="s" x="40" y="414">takes one up, views</text>
+        <text class="s" x="40" y="430">it, or ignores it</text>
+
+        <!-- 5 -> 6: POST /response -->
+        <path class="edge strong" d="M99 442V484H876V443" marker-end="url(#hw1-ahs)"/>
+        <text class="m" x="488" y="476" text-anchor="middle">POST /response · invocation_id, offer_id, outcome</text>
+
+        <!-- bottom row to and from the database -->
+        <path class="edge loop" d="M624 362V307" marker-end="url(#hw1-ahl)"/>
+        <text class="lbl accent" x="616" y="344" text-anchor="end">updates the belief</text>
+        <path class="edge" d="M846 306V361" marker-end="url(#hw1-ah)"/>
+        <text class="lbl" x="838" y="344" text-anchor="end">reads the context</text>
+        <path class="edge" d="M906 362V307" marker-end="url(#hw1-ah)"/>
+        <text class="lbl" x="914" y="344">writes</text>
+
+        <!-- 6 -->
+        <rect class="box built" x="776" y="362" width="200" height="80" rx="6"/>
+        <circle class="act" cx="796" cy="384" r="10"/>
+        <text class="step-n" x="796" y="388" text-anchor="middle">6</text>
+        <text class="t" x="814" y="389">Score and log once</text>
+        <text class="s" x="792" y="414">reward: taken up 1, viewed 0</text>
+        <text class="s" x="792" y="430">once only; a repeat gets 409</text>
+        <path class="edge strong" d="M776 402H725" marker-end="url(#hw1-ahs)"/>
+
+        <!-- 7 -->
+        <rect class="box built" x="524" y="362" width="200" height="80" rx="6"/>
+        <circle class="act" cx="544" cy="384" r="10"/>
+        <text class="step-n" x="544" y="388" text-anchor="middle">7</text>
+        <text class="t" x="562" y="389">Learn and forget</text>
+        <text class="s" x="540" y="414">segment&#8217;s beliefs × 0.9998,</text>
+        <text class="s" x="540" y="430">then this offer + reward</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>The options store sits between the two calls: a response writes a belief from below (step 7), and the next app open in that segment reads it from above (step 3). That blue column is the whole learning loop. Nothing else carries what one customer taught to the next.</span>
+      <div class="legend"><span><i class="strong"></i>the request and reply</span><span><i></i>a database read or write</span><span><i class="loop"></i>the learning loop</span></div>
+    </figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="steps">
+  <h2 id="steps">Step by step</h2>
+  <p>The numbers match the diagram. The serving policy is <code>thompson_segment_decay</code>: Thompson sampling with one belief per customer segment and offer, and a little forgetting.</p>
+  <ol>
+    <li><strong>Opens the app.</strong> The app sends <code>POST /invocations</code> with the customer id. It may also name a channel, ask for a different number of offers, or set the moment (a day, a time of day, payday week) for testing.</li>
+    <li><strong>Build the moment.</strong> The API looks the customer up in the <code>customers</code> table (segment, device, contract, spend, province) and adds the moment from the clock in Africa/Johannesburg: the day of the week, the time of day, and whether it is payday week for that segment. Salaried segments are paid on the 25th; pensioners in the first week, when SASSA grants are paid.</li>
+    <li><strong>Rank by drawing.</strong> The policy reads its belief about every offer this segment may be shown: one Beta(α, β) distribution per offer, kept in the options store. It draws one plausible take-up rate from each belief and shows the three highest draws. An offer it knows well draws close to its rate every time; one it knows little about draws widely and now and then wins a slot. That is all the exploration there is, with nothing to tune (<a href="models.html#logic">how each policy ranks</a>).</li>
+    <li><strong>Log, then reply.</strong> Before answering, the API writes the app open with its full context to <code>invocations</code>, and each offer shown, with its position and its draw, to <code>impressions</code>, in one transaction. The reply carries an <code>invocation_id</code> that the response will quote.</li>
+    <li><strong>Responds.</strong> The customer takes an offer up, looks at it and moves on, or never notices it. The app reports each outcome to <code>POST /response</code>.</li>
+    <li><strong>Score and log once.</strong> The API reads the invocation back from the event log: which policy served it, the context it was ranked in, and which offers were shown (an offer that wasn't shown gets 422). The outcome becomes a reward: 1 for a take-up, 0 for a view, and no update for an ignored offer, because an offer nobody noticed says nothing about its appeal. The response is written once: the table's key is the invocation and the offer, so a repeat gets 409, even when two copies arrive at the same moment on different workers.</li>
+    <li><strong>Learn and forget.</strong> In one transaction, every belief in that segment shrinks by γ = 0.9998, then this offer's belief takes the reward: α grows by the reward and β by one minus it. Both are computed inside the database from the stored values, so concurrent responses never overwrite each other. A response counts half as much after about 3,500 more updates in its segment, so a belief reflects roughly the last 5,000 responses and can follow a change in taste. The next app open in this segment, on any API worker, reads the new belief at step 3.</li>
+  </ol>
+  <div class="note">
+    <p>A response names only the invocation, the offer and the outcome. The segment and the moment it is learned under come from the context logged at step 4, so a response can't be learned under the wrong segment or the wrong moment.</p>
+  </div>
+</section>
+
+<section aria-labelledby="testing">
+  <h2 id="testing">How we know it works</h2>
+  <p>Real customers can't tell us which offer would have been best. The simulator can. It plays 5,000 synthetic South African customers whose take-up rates come from a hidden table, by segment, offer and moment, with a change in taste halfway through the run. The recommender never sees that table: a test fails if any recommender code imports the simulator or opens its files.</p>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="dg" viewBox="0 0 1000 404" style="min-width: 820px" role="img" aria-label="Testing against a known answer. In production the customer's app calls the recommender. In the simulator, simulated customers make the same calls, and the hidden truth, which the recommender never reads, draws each of their outcomes. An oracle compares the three offers shown with the best possible ranking under the true rates and records the regret.">
+        <defs>
+          <marker id="hw2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+          <marker id="hw2-ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah strong"/></marker>
+        </defs>
+
+        <!-- production -->
+        <text class="lbl" x="24" y="36"><tspan font-weight="600" letter-spacing="0.06em">IN PRODUCTION</tspan></text>
+        <rect class="box term" x="24" y="56" width="280" height="64" rx="6"/>
+        <text class="t" x="44" y="84">Customer&#8217;s app</text>
+        <text class="s" x="44" y="104">real customers, real taps</text>
+        <path class="edge strong" d="M304 80H639" marker-end="url(#hw2-ahs)"/>
+        <text class="lbl" x="472" y="72" text-anchor="middle">app opens and responses</text>
+        <path class="edge strong" d="M640 100H305" marker-end="url(#hw2-ahs)"/>
+        <text class="lbl" x="472" y="116" text-anchor="middle">the top 3 offers</text>
+
+        <!-- the recommender: the same in both -->
+        <rect class="box built" x="640" y="56" width="336" height="324" rx="8"/>
+        <text class="t" x="660" y="86">The recommender</text>
+        <text class="s" x="660" y="106">the same code either way</text>
+        <rect class="box" x="660" y="122" width="296" height="36" rx="5"/>
+        <text class="t" x="676" y="145">API</text>
+        <text class="s" x="716" y="145">POST /invocations, POST /response</text>
+        <rect class="box" x="660" y="168" width="296" height="36" rx="5"/>
+        <text class="t" x="676" y="191">Policies</text>
+        <text class="s" x="744" y="191">rank by drawing, learn, forget</text>
+        <rect class="box store" x="660" y="214" width="296" height="36" rx="5"/>
+        <text class="t" x="676" y="237">Options store</text>
+        <text class="s" x="782" y="237">the beliefs</text>
+        <rect class="box store" x="660" y="260" width="296" height="36" rx="5"/>
+        <text class="t" x="676" y="283">Event log</text>
+        <text class="s" x="756" y="283">every call, kept</text>
+        <text class="s" x="660" y="324">Fast mode, for big comparisons, skips</text>
+        <text class="s" x="660" y="340">the API: the simulator calls the policies</text>
+        <text class="s" x="660" y="356">directly, with the beliefs in memory.</text>
+
+        <!-- the simulated world -->
+        <rect class="zone" x="12" y="148" width="588" height="244" rx="10"/>
+        <text class="zone-label" x="28" y="170">SIMULATED WORLD · HIDDEN FROM THE RECOMMENDER</text>
+
+        <rect class="box built" x="28" y="188" width="280" height="64" rx="6"/>
+        <text class="t" x="48" y="216">Simulated customers</text>
+        <text class="s" x="48" y="236">5,000 profiles, a 60-day calendar</text>
+        <path class="edge strong" d="M308 210H639" marker-end="url(#hw2-ahs)"/>
+        <text class="lbl" x="472" y="202" text-anchor="middle">the same calls</text>
+        <path class="edge strong" d="M640 230H309" marker-end="url(#hw2-ahs)"/>
+        <text class="lbl" x="472" y="246" text-anchor="middle">the top 3 offers</text>
+
+        <rect class="box secret" x="28" y="300" width="220" height="64" rx="6"/>
+        <text class="t" x="48" y="328">Hidden truth</text>
+        <text class="s" x="48" y="348">true take-up rates, the shift</text>
+        <path class="edge" d="M138 300V253" marker-end="url(#hw2-ah)"/>
+        <text class="lbl" x="146" y="282">draws each outcome</text>
+
+        <rect class="box built" x="320" y="300" width="200" height="64" rx="6"/>
+        <text class="t" x="340" y="328">Oracle</text>
+        <text class="s" x="340" y="348">scores regret per app open</text>
+        <path class="edge" d="M248 332H319" marker-end="url(#hw2-ah)"/>
+        <text class="lbl" x="284" y="324" text-anchor="middle">true rates</text>
+        <path class="edge" d="M640 332H521" marker-end="url(#hw2-ah)"/>
+        <text class="lbl" x="560" y="324" text-anchor="middle">the 3 shown</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span>Only the caller changes. The truth stays inside the simulated world: it decides what simulated customers do and lets the oracle score each app open, but nothing in it reaches the recommender.</span>
+    </figcaption>
+  </figure>
+  <ul>
+    <li><strong>Regret</strong> is what the oracle measures: after every app open it ranks the offers by their true rates, and the gap between its expected take-ups and those of the three offers actually shown is that app open's regret. Expected values, not one lucky draw, so the curves measure choices rather than luck.</li>
+    <li><strong>A fair race.</strong> In each seed every policy faces the identical sequence of customers and moments, so differences come from their choices alone. The static ranking, the batch model a telco might run today, gets a month of history to fit on first; the learning policies start from nothing.</li>
+    <li><strong>Enough runs to trust it.</strong> The published comparison runs 10 seeds of 50,000 app opens with the change in taste at the halfway point, and a sensitivity sweep reruns the key policies in six variants of the world. The <a href="results.html#findings">Results</a> page has the numbers.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="more">
+  <h2 id="more">Read more</h2>
+  <ul class="guide">
+    <li><a href="architecture.html#lifecycle">Life of one request</a><p>The same two calls as a sequence diagram, with every database statement in order.</p></li>
+    <li><a href="models.html#learning">Learning and forgetting</a><p>The update rule, why forgetting shrinks every offer and not just the one shown, and the code that runs.</p></li>
+    <li><a href="simulation.html#response">How customers respond</a><p>The attention model that turns three ranked offers into taken up, viewed and ignored.</p></li>
+    <li><a href="api.html#concurrency">Concurrency</a><p>How idempotency and atomic learning hold up with several workers sending at once.</p></li>
+  </ul>
+</section>
+
+<p class="foot">Prose and diagrams are written by hand from the code in <code>src/recommender/api/</code>, <code>src/recommender/store/</code> and <code>src/recommender/simulator/</code>.</p>
+</main>
+</div>
+</body>
+</html>

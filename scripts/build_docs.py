@@ -13,11 +13,11 @@ Usage:  python scripts/build_docs.py           rewrite the docs in place
 from __future__ import annotations
 
 import argparse
-import ast
 import inspect
 import json
 import math
 import re
+import subprocess
 import sys
 import textwrap
 from collections.abc import Callable
@@ -58,6 +58,7 @@ BLOCK = re.compile(
 
 PAGES = [
     ("index.html", "Overview"),
+    ("how-it-works.html", "How it works"),
     ("product.html", "Product"),
     ("architecture.html", "Architecture"),
     ("simulation.html", "Simulated world"),
@@ -136,6 +137,8 @@ TOOLS = [  # name, package in requirements.txt, role, status, why it was chosen
      "Powers FastAPI's TestClient; replaces the deprecated httpx."),
     ("Ruff", "ruff", "Lint and format", "built",
      "One fast tool for style, import order and common bugs."),
+    ("Pylint", "pylint", "Deeper checks", "built",
+     "Unused arguments, shadowed names, broad excepts and design limits that ruff doesn't check; run on every file Claude writes by a hook."),
     ("Git", None, "Version control", "built",
      "Small, logical commits for each step."),
     ("Make", None, "Task runner", "built",
@@ -201,6 +204,8 @@ TEST_FILES = {
     "forgetting costs and saves",
     "test_docstring_hook.py": "The Claude Code hook that requires a docstring on every new "
     "function",
+    "test_pylint_hook.py": "The Claude Code hook that runs pylint on every file Claude writes: "
+    "what it reports, and what it skips",
     "test_linear_thompson.py": "Thompson sampling on customer features: features, learning per "
     "segment, forgetting, simulation only",
     "test_stats.py": "Bootstrap intervals for paired, seed-by-seed comparisons",
@@ -292,27 +297,50 @@ class Sources:
 
     @cached_property
     def test_inventory(self) -> list[tuple[str, str, int]]:
-        """(file, test name, number of cases) for every test function."""
-        inventory = []
-        for path in sorted((PROJECT_ROOT / "tests").glob("test_*.py")):
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-            for node in tree.body:
-                if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-                    inventory.append((path.name, node.name, _parametrized_cases(node)))
-        return inventory
+        """(file, test name, number of cases) for every test function, as pytest collects them.
 
-
-def _parametrized_cases(node: ast.FunctionDef) -> int:
-    """How many cases a test function runs (its parametrize list, or 1)."""
-    for decorator in node.decorator_list:
-        if (
-            isinstance(decorator, ast.Call)
-            and getattr(decorator.func, "attr", "") == "parametrize"
-            and len(decorator.args) > 1
-            and isinstance(decorator.args[1], ast.List | ast.Tuple)
-        ):
-            return len(decorator.args[1].elts)
-    return 1
+        Asking pytest counts what reading the source can't: a fixture with ``params``
+        (each store test runs once per backend) and a parametrize list held in a
+        variable. Postgres cases are collected without Postgres too (they skip when run),
+        so the count is the same on every machine.
+        """
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "-o",
+                "addopts=",
+                "-p",
+                "no:cacheprovider",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"pytest could not collect the tests:\n{result.stdout}{result.stderr}"
+            )
+        cases: dict[tuple[str, str], int] = {}
+        for line in result.stdout.splitlines():
+            path, separator, test = line.partition("::")
+            if separator:  # tests/test_store.py::test_learn[sqlite] -> (test_store.py, test_learn)
+                key = (Path(path).name, test.split("[")[0])
+                cases[key] = cases.get(key, 0) + 1
+        # pytest reorders tests to share module-scoped fixtures; list them as each file reads.
+        written = {
+            (path.name, match[1]): index
+            for path in sorted((PROJECT_ROOT / "tests").glob("test_*.py"))
+            for index, match in enumerate(
+                re.finditer(r"^def (test_\w+)", path.read_text(encoding="utf-8"), re.M)
+            )
+        }
+        ordered = sorted(cases, key=lambda key: (key[0], written.get(key, len(written))))
+        return [(file, name, cases[file, name]) for file, name in ordered]
 
 
 # --- blocks ---------------------------------------------------------------------------

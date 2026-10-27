@@ -37,3 +37,43 @@ check_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 plugins = ["pydantic.mypy"]  # Pydantic models: optional fields stay optional
+
+# Pylint checks what ruff and mypy don't: unused arguments and variables, names that shadow
+# outer ones, broad excepts, inference-based errors, design limits. The Claude Code hook in
+# .claude/hooks/pylint_check.py runs it on every Python file Claude writes; `make pylint`
+# runs it over the repository.
+[tool.pylint.main]
+py-version = "3.11"
+source-roots = ["src", "dashboard"]  # dashboard pages import shared and auth from their folder
+# Not analysed: inferring into these takes most of pylint's time (10-30 s a file, 2-7 s
+# without), and mypy already checks how they are used.
+ignored-modules = [
+    "numpy", "numpy.*", "pandas", "pandas.*", "pyarrow", "pyarrow.*", "plotly", "plotly.*",
+    "streamlit", "streamlit.*", "sqlalchemy", "sqlalchemy.*", "fastapi", "fastapi.*",
+    "starlette", "starlette.*", "pydantic", "pydantic.*", "requests", "requests.*",
+    "psycopg", "psycopg.*", "uvicorn", "uvicorn.*", "yaml",
+]
+
+[tool.pylint."messages control"]
+disable = [
+    # Ruff owns line length and import order; one tool per rule.
+    "line-too-long",
+    "wrong-import-order",
+    "wrong-import-position",
+    "ungrouped-imports",
+    # Most classes here are dataclasses and Pydantic models: many fields, few methods.
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+]
+
+[tool.pylint.basic]
+no-docstring-rgx = "^test_"  # as the docstring hook: tests are named for what they check
+const-naming-style = "any"  # dashboard pages are scripts; their module-level names vary
+
+[tool.pylint.design]
+max-args = 8  # keyword-only settings are clearer than a config object here
+max-locals = 20
+max-statements = 60
+
+[tool.pylint.classes]
+exclude-protected = ["_asdict", "_fields", "_replace", "_source", "_make", "os._exit", "_mapping"]  # SQLAlchemy's Row._mapping is public API

@@ -20,6 +20,7 @@
 <div><p class="nav-label">Pages</p>
 <ul class="pages">
 <li><a href="index.html" aria-current=page>Overview</a></li>
+<li><a href="how-it-works.html">How it works</a></li>
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
@@ -64,7 +65,7 @@
 <div><dt>synthetic customers</dt><dd>5,000</dd></div>
 <div><dt>simulated days</dt><dd>60</dd></div>
 <div><dt>context effects</dt><dd>14</dd></div>
-<div><dt>automated tests</dt><dd>190</dd></div>
+<div><dt>automated tests</dt><dd>255</dd></div>
 </dl>
 <!-- END generated:facts -->
   <p class="source">From config/, the simulator and tests/ · rebuilt by <code>make docs</code></p>
@@ -79,6 +80,7 @@
     <li>The policy updates its statistics for that offer and context at once, so the next customer benefits from the last one.</li>
   </ol>
   <p>Real customers are replaced by a simulator. It knows the true take-up probabilities, which the recommender never sees, so we can measure exactly how much each approach loses while it learns (regret) and how fast it adapts when tastes change.</p>
+  <p><a href="how-it-works.html">How it works</a> draws this loop in one diagram, step by step.</p>
 </section>
 
 <section aria-labelledby="status">
@@ -98,6 +100,7 @@
 <section aria-labelledby="guide">
   <h2 id="guide">Read the docs</h2>
   <ul class="guide">
+    <li><a href="how-it-works.html">How it works</a><p>The whole loop in one diagram: an app open, the ranking, the response and the learning it triggers, then how the simulator tests it.</p></li>
     <li><a href="product.html">Product</a><p>The product decomposed: six capabilities, their features and code, one app open end to end, and who uses what.</p></li>
     <li><a href="architecture.html">Architecture</a><p>Components and how they talk, the life of one request, and how the hidden truth is kept away from the recommender.</p></li>
     <li><a href="simulation.html">Simulated world</a><p>Offers, customers, how a true take-up probability is computed, what each segment prefers, the behaviour shift and how customers respond to a list.</p></li>

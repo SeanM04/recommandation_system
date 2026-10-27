@@ -20,6 +20,7 @@
 <div><p class="nav-label">Pages</p>
 <ul class="pages">
 <li><a href="index.html">Overview</a></li>
+<li><a href="how-it-works.html">How it works</a></li>
 <li><a href="product.html">Product</a></li>
 <li><a href="architecture.html">Architecture</a></li>
 <li><a href="simulation.html">Simulated world</a></li>
@@ -75,6 +76,7 @@
 <tr><td><strong>pytest</strong></td><td>Tests</td><td>9.1.1</td><td>Plain asserts and fixtures; every phase ships with tests.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>HTTPX 2</strong></td><td>Test client</td><td>2.13.1</td><td>Powers FastAPI's TestClient; replaces the deprecated httpx.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Ruff</strong></td><td>Lint and format</td><td>0.17.0</td><td>One fast tool for style, import order and common bugs.</td><td><span class="chip built">Built</span></td></tr>
+<tr><td><strong>Pylint</strong></td><td>Deeper checks</td><td>4.1.3            # deeper static checks (make pylint, and the Claude Code hook)</td><td>Unused arguments, shadowed names, broad excepts and design limits that ruff doesn't check; run on every file Claude writes by a hook.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Git</strong></td><td>Version control</td><td>–</td><td>Small, logical commits for each step.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>Make</strong></td><td>Task runner</td><td>–</td><td>One entry point for every command; each target is a plain command.</td><td><span class="chip built">Built</span></td></tr>
 <tr><td><strong>PostgreSQL</strong></td><td>Project database</td><td>–</td><td>Telco_Dynamic_Recomender (Postgres 18) holds the options store; <code>make db</code> sets it up.</td><td><span class="chip built">Built</span></td></tr>
@@ -134,35 +136,35 @@
 <tbody>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_accounts.py</code> · Accounts: password hashing, sign-in, validation, unique names and API keys, on SQLite and Postgres</th></tr>
 <tr><td>Passwords are salted hashes checked exactly</td><td class="num">1</td></tr>
-<tr><td>Sign in with the right password only</td><td class="num">1</td></tr>
-<tr><td>Invalid accounts are refused</td><td class="num">4</td></tr>
-<tr><td>Usernames are unique</td><td class="num">1</td></tr>
-<tr><td>Change password and remove</td><td class="num">1</td></tr>
-<tr><td>Api keys are stored hashed and can be revoked</td><td class="num">1</td></tr>
+<tr><td>Sign in with the right password only</td><td class="num">2</td></tr>
+<tr><td>Invalid accounts are refused</td><td class="num">8</td></tr>
+<tr><td>Usernames are unique</td><td class="num">2</td></tr>
+<tr><td>Change password and remove</td><td class="num">2</td></tr>
+<tr><td>Api keys are stored hashed and can be revoked</td><td class="num">2</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_adaptation.py</code> · Behaviour-shift measures: switching, take-ups before and after, what forgetting costs and saves</th></tr>
 <tr><td>First share tracks the new favourite</td><td class="num">1</td></tr>
 <tr><td>Take ups before and after</td><td class="num">1</td></tr>
 <tr><td>The story of the shift</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_api.py</code> · API: invocations, responses, idempotency, per-request policy, errors, state and metrics</th></tr>
-<tr><td>Health reports the database</td><td class="num">1</td></tr>
-<tr><td>Every response carries its timing</td><td class="num">1</td></tr>
-<tr><td>Offers and customers</td><td class="num">1</td></tr>
+<tr><td>Health reports the database</td><td class="num">2</td></tr>
+<tr><td>Every response carries its timing</td><td class="num">2</td></tr>
+<tr><td>Offers and customers</td><td class="num">2</td></tr>
 <tr><td>Schema choices match the domain</td><td class="num">1</td></tr>
-<tr><td>Invocation returns ranked eligible offers</td><td class="num">1</td></tr>
-<tr><td>Default number of offers comes from settings</td><td class="num">1</td></tr>
-<tr><td>Context overrides</td><td class="num">1</td></tr>
-<tr><td>Policy can be chosen per request</td><td class="num">1</td></tr>
-<tr><td>Invalid invocations get clear errors</td><td class="num">6</td></tr>
-<tr><td>Response updates the model immediately</td><td class="num">1</td></tr>
-<tr><td>Duplicate response is rejected</td><td class="num">1</td></tr>
-<tr><td>Ignored offers are logged but do not update the model</td><td class="num">1</td></tr>
-<tr><td>Baselines log responses without learning</td><td class="num">1</td></tr>
-<tr><td>Invalid responses get clear errors</td><td class="num">1</td></tr>
-<tr><td>Policies list marks the active one</td><td class="num">1</td></tr>
-<tr><td>Simulation only policies are listed nowhere and explained</td><td class="num">1</td></tr>
-<tr><td>Static policy state shows its frozen table</td><td class="num">1</td></tr>
-<tr><td>Metrics count events and report latency</td><td class="num">1</td></tr>
-<tr><td>Revenue policy learns from margin</td><td class="num">1</td></tr>
+<tr><td>Invocation returns ranked eligible offers</td><td class="num">2</td></tr>
+<tr><td>Default number of offers comes from settings</td><td class="num">2</td></tr>
+<tr><td>Context overrides</td><td class="num">2</td></tr>
+<tr><td>Policy can be chosen per request</td><td class="num">2</td></tr>
+<tr><td>Invalid invocations get clear errors</td><td class="num">12</td></tr>
+<tr><td>Response updates the model immediately</td><td class="num">2</td></tr>
+<tr><td>Duplicate response is rejected</td><td class="num">2</td></tr>
+<tr><td>Ignored offers are logged but do not update the model</td><td class="num">2</td></tr>
+<tr><td>Baselines log responses without learning</td><td class="num">2</td></tr>
+<tr><td>Invalid responses get clear errors</td><td class="num">2</td></tr>
+<tr><td>Policies list marks the active one</td><td class="num">2</td></tr>
+<tr><td>Simulation only policies are listed nowhere and explained</td><td class="num">2</td></tr>
+<tr><td>Static policy state shows its frozen table</td><td class="num">2</td></tr>
+<tr><td>Metrics count events and report latency</td><td class="num">2</td></tr>
+<tr><td>Revenue policy learns from margin</td><td class="num">2</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_api_keys.py</code> · The API with keys required: refused without a valid key, /health open, off by default</th></tr>
 <tr><td>Calls without a valid key are refused</td><td class="num">1</td></tr>
 <tr><td>A valid key is accepted and health needs none</td><td class="num">1</td></tr>
@@ -175,12 +177,12 @@
 <tr><td>Runserver refuses a port in use</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_daily.py</code> · Nightly roll-up: counts per offer, local-day boundaries, safe reruns, on SQLite and Postgres</th></tr>
 <tr><td>Day bounds follow the local calendar</td><td class="num">1</td></tr>
-<tr><td>One row per offer with every outcome counted</td><td class="num">1</td></tr>
-<tr><td>App opens count on their local day</td><td class="num">1</td></tr>
-<tr><td>Rerunning a day replaces it and picks up late responses</td><td class="num">1</td></tr>
-<tr><td>An empty day and an empty log</td><td class="num">1</td></tr>
+<tr><td>One row per offer with every outcome counted</td><td class="num">2</td></tr>
+<tr><td>App opens count on their local day</td><td class="num">2</td></tr>
+<tr><td>Rerunning a day replaces it and picks up late responses</td><td class="num">2</td></tr>
+<tr><td>An empty day and an empty log</td><td class="num">2</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_dashboard.py</code> · Dashboard on a throwaway database and results folder: every page, content checks and a Try it click-through</th></tr>
-<tr><td>Every page renders</td><td class="num">1</td></tr>
+<tr><td>Every page renders</td><td class="num">6</td></tr>
 <tr><td>Result pages explain how to get results</td><td class="num">3</td></tr>
 <tr><td>Live view counts the logged app opens</td><td class="num">1</td></tr>
 <tr><td>Comparison lists every policy and says which run</td><td class="num">1</td></tr>
@@ -213,10 +215,10 @@
 <tr><td>Context build derives calendar fields</td><td class="num">1</td></tr>
 <tr><td>Database url precedence</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_events.py</code> · Event log: round trips, simultaneous duplicates, averages and safe concurrent start-up, on SQLite and Postgres</th></tr>
-<tr><td>Invocation round trip</td><td class="num">1</td></tr>
-<tr><td>Second response for the same offer is a duplicate</td><td class="num">1</td></tr>
-<tr><td>Simultaneous duplicates are recorded exactly once</td><td class="num">1</td></tr>
-<tr><td>Average rewards per offer</td><td class="num">1</td></tr>
+<tr><td>Invocation round trip</td><td class="num">2</td></tr>
+<tr><td>Second response for the same offer is a duplicate</td><td class="num">2</td></tr>
+<tr><td>Simultaneous duplicates are recorded exactly once</td><td class="num">2</td></tr>
+<tr><td>Average rewards per offer</td><td class="num">2</td></tr>
 <tr><td>Table creation is safe when workers start together</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_exploration.py</code> · Explore-vs-exploit measures: exploration share, chance of being best, evidence</th></tr>
 <tr><td>Exploration share counts app opens away from the favourite</td><td class="num">1</td></tr>
@@ -279,6 +281,10 @@
 <tr><td>Csv round trip</td><td class="num">1</td></tr>
 <tr><td>Read customers rejects bad values</td><td class="num">1</td></tr>
 <tr><td>Sample context mostly follows habit</td><td class="num">1</td></tr>
+<tr><th colspan="2" scope="rowgroup"><code>tests/test_pylint_hook.py</code> · The Claude Code hook that runs pylint on every file Claude writes: what it reports, and what it skips</th></tr>
+<tr><td>A written file reports every problem</td><td class="num">1</td></tr>
+<tr><td>An edit reports its own lines and errors anywhere</td><td class="num">1</td></tr>
+<tr><td>Files outside the project and other files are skipped</td><td class="num">1</td></tr>
 <tr><th colspan="2" scope="rowgroup"><code>tests/test_rewards.py</code> · Reward functions and the policy factory</th></tr>
 <tr><td>Binary reward</td><td class="num">1</td></tr>
 <tr><td>Margin reward scales by the top margin</td><td class="num">1</td></tr>
@@ -311,15 +317,15 @@
 <tr><td>New arm is the uniform prior</td><td class="num">1</td></tr>
 <tr><td>Update adds reward to alpha and the rest to beta</td><td class="num">1</td></tr>
 <tr><td>Decay shrinks evidence towards the prior</td><td class="num">1</td></tr>
-<tr><td>Unknown offers get the prior</td><td class="num">1</td></tr>
-<tr><td>Put then get round trip</td><td class="num">1</td></tr>
-<tr><td>Learn adds one reward</td><td class="num">1</td></tr>
-<tr><td>Learn with decay forgets every offer in the context first</td><td class="num">1</td></tr>
-<tr><td>Concurrent learning loses nothing</td><td class="num">1</td></tr>
-<tr><td>Concurrent learning with decay matches the sequential result</td><td class="num">1</td></tr>
-<tr><td>Concurrent learning with decay across many offers</td><td class="num">1</td></tr>
-<tr><td>Policies and context keys are isolated</td><td class="num">1</td></tr>
-<tr><td>Rows and reset</td><td class="num">1</td></tr>
+<tr><td>Unknown offers get the prior</td><td class="num">3</td></tr>
+<tr><td>Put then get round trip</td><td class="num">3</td></tr>
+<tr><td>Learn adds one reward</td><td class="num">3</td></tr>
+<tr><td>Learn with decay forgets every offer in the context first</td><td class="num">3</td></tr>
+<tr><td>Concurrent learning loses nothing</td><td class="num">3</td></tr>
+<tr><td>Concurrent learning with decay matches the sequential result</td><td class="num">3</td></tr>
+<tr><td>Concurrent learning with decay across many offers</td><td class="num">3</td></tr>
+<tr><td>Policies and context keys are isolated</td><td class="num">3</td></tr>
+<tr><td>Rows and reset</td><td class="num">3</td></tr>
 <tr><td>Sqlite store persists across connections</td><td class="num">1</td></tr>
 <tr><td>Alpha and beta are computed by the database</td><td class="num">1</td></tr>
 <tr><td>Copy options migrates every row and can be rerun</td><td class="num">1</td></tr>
@@ -330,7 +336,7 @@
 <tr><td>Gap curve samples the cumulative lead</td><td class="num">1</td></tr>
 <tr><td>Plain names for a business audience</td><td class="num">1</td></tr>
 </tbody>
-<caption>190 test cases in 175 test functions.</caption></table></div>
+<caption>255 test cases in 178 test functions.</caption></table></div>
 <!-- END generated:tests -->
   <p class="source">Collected from tests/ · rebuilt by make docs</p>
 </section>

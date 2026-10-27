@@ -8,6 +8,12 @@
             "type": "command",
             "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/require_docstrings.py\"",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/pylint_check.py\"",
+            "timeout": 120,
+            "asyncRewake": true
           }
         ]
       }

@@ -366,6 +366,12 @@ svg.dg { display: block; width: 100%; height: auto; margin: 0 auto; font-family:
 .dg .no { fill: var(--muted); font-weight: 600; font-size: 11px; }
 .dg .accent { fill: var(--accent); }
 .dg .hidden-text { fill: var(--hidden); }
+/* the learning loop on the How it works page: what carries a response to the next ranking */
+.dg .edge.loop { stroke: var(--accent); stroke-width: 2; }
+.dg .ah.loop { fill: var(--accent); }
+.dg .step-n { fill: var(--accent); font-weight: 600; font-size: 11px; }
+.legend i.strong { border-top-color: var(--ink); }
+.legend i.loop { border-top-color: var(--accent); }
 
 /* ---------- page guide, favourites, tests ---------- */
 .visually-hidden {
